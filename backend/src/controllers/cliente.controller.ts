@@ -44,7 +44,6 @@ export const ClienteController = {
       include: {
         ofertasCliente: { orderBy: { fecha: 'desc' }, take: 5 },
         ofertasImportadora: { orderBy: { fecha: 'desc' }, take: 5 },
-        ofertasComercializadora: { orderBy: { fecha: 'desc' }, take: 5 },
         facturas: { orderBy: { fecha: 'desc' }, take: 5 },
       },
     });

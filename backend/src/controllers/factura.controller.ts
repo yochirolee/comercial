@@ -11,7 +11,7 @@ const facturaSchema = z.object({
   estado: z.enum(['pendiente', 'pagada', 'vencida', 'cancelada']).optional(),
   impuestos: z.number().min(0).optional(),
   descuento: z.number().min(0).optional(),
-  tipoOfertaOrigen: z.enum(['cliente', 'importadora', 'comercializadora']).optional(),
+  tipoOfertaOrigen: z.enum(['cliente', 'importadora']).optional(),
   ofertaOrigenId: z.string().optional(),
   campoExtra1: z.string().optional(),
   campoExtra2: z.string().optional(),
@@ -31,7 +31,7 @@ const itemSchema = z.object({
 });
 
 const fromOfertaSchema = z.object({
-  tipoOferta: z.enum(['cliente', 'importadora', 'comercializadora']),
+  tipoOferta: z.enum(['cliente', 'importadora']),
   ofertaId: z.string().min(1, 'ID de oferta es requerido'),
   numeroFactura: z.string().min(1, 'Número de factura es requerido'),
 });
@@ -198,21 +198,7 @@ export const FacturaController = {
           items = oferta.items.map(item => ({
             productoId: item.productoId,
             cantidad: item.cantidad,
-            precioUnitario: item.precioUnitario,
-            subtotal: item.subtotal,
-          }));
-        }
-        break;
-      case 'comercializadora':
-        oferta = await prisma.ofertaComercializadora.findUnique({
-          where: { id: ofertaId },
-          include: { items: true },
-        });
-        if (oferta) {
-          items = oferta.items.map(item => ({
-            productoId: item.productoId,
-            cantidad: item.cantidad,
-            precioUnitario: item.precioUnitarioAjustado, // Usar precio ajustado
+            precioUnitario: item.precioAjustado,
             subtotal: item.subtotal,
           }));
         }
