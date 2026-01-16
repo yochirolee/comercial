@@ -1,0 +1,392 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// USUARIO - Autenticación del sistema
+// ==========================================
+model Usuario {
+  id               String   @id @default(cuid())
+  nombre           String
+  apellidos        String
+  telefono         String?
+  email            String   @unique
+  password         String   // Hash de la contraseña
+  activo           Boolean  @default(true)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Relaciones
+  resetTokens      PasswordResetToken[]
+}
+
+// ==========================================
+// TOKEN DE RECUPERACIÓN DE CONTRASEÑA
+// ==========================================
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  usuarioId String
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// EMPRESA - Información de tu empresa
+// ==========================================
+model Empresa {
+  id               String   @id @default(cuid())
+  nombre           String
+  direccion        String?
+  telefono         String?
+  email            String?
+  nit              String?
+  representante    String?  // Nombre del representante (Lic. Boris Cabrera)
+  cargoRepresentante String? // Cargo (Presidente)
+  codigoMincex     String?  // Código MINCEX (US-0439)
+  logo             String?  // Path del logo
+  firmaPresidente  String?  // Path de la imagen de firma del presidente
+  cunoEmpresa      String?  // Path de la imagen del cuño/sello
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ==========================================
+// CLIENTE - Clientes de tu negocio
+// ==========================================
+model Cliente {
+  id               String   @id @default(cuid())
+  nombre           String   // Nombre del cliente (persona)
+  apellidos        String?  // Apellidos del cliente
+  contacto         String?  // Persona de contacto para firma
+  nombreCompania   String?  // Nombre de la compañía del cliente (ej: PISOS DEL VALLE) - Usado en "CONSIGNADO A"
+  direccion        String?
+  telefono         String?
+  email            String?
+  nit              String?
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relaciones
+  ofertasCliente        OfertaCliente[]
+  ofertasImportadora    OfertaImportadora[]
+  facturas              Factura[]
+}
+
+// ==========================================
+// UNIDAD DE MEDIDA
+// ==========================================
+model UnidadMedida {
+  id               String   @id @default(cuid())
+  nombre           String   // libras, kilos, unidades, etc.
+  abreviatura      String   // lb, kg, und, etc.
+  usaCajas         Boolean  @default(false) // Si esta unidad usa cantidad de cajas
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  productos        Producto[]
+}
+
+// ==========================================
+// PRODUCTO - Productos que ofreces
+// ==========================================
+model Producto {
+  id               String   @id @default(cuid())
+  codigo           String?  @unique
+  nombre           String
+  descripcion      String?
+  precioBase       Float    // Precio base del producto
+  unidadMedidaId   String
+  unidadMedida     UnidadMedida @relation(fields: [unidadMedidaId], references: [id])
+  activo           Boolean  @default(true)
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relaciones
+  itemsOfertaGeneral         ItemOfertaGeneral[]
+  itemsOfertaCliente         ItemOfertaCliente[]
+  itemsOfertaImportadora     ItemOfertaImportadora[]
+  itemsFactura               ItemFactura[]
+}
+
+// ==========================================
+// OFERTA GENERAL - Lista de precios sin cliente
+// ==========================================
+model OfertaGeneral {
+  id               String   @id @default(cuid())
+  numero           String   @unique // Número de oferta
+  fecha            DateTime @default(now())
+  vigenciaHasta    DateTime?
+  observaciones    String?
+  estado           String   @default("activa") // activa, vencida, cancelada
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items            ItemOfertaGeneral[]
+}
+
+model ItemOfertaGeneral {
+  id               String   @id @default(cuid())
+  ofertaGeneralId  String
+  ofertaGeneral    OfertaGeneral @relation(fields: [ofertaGeneralId], references: [id], onDelete: Cascade)
+  productoId       String
+  producto         Producto @relation(fields: [productoId], references: [id])
+  cantidad         Float   @default(1) // Cantidad del producto (ej: 26100 KG, 21600 ML)
+  cantidadCajas    Float?   // Cantidad de cajas/sacos (solo si la unidad usa cajas)
+  precioUnitario   Float
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ==========================================
+// OFERTA AL CLIENTE - Precio acordado (sin flete/seguro)
+// ==========================================
+model OfertaCliente {
+  id               String   @id @default(cuid())
+  numero           String   @unique
+  fecha            DateTime @default(now())
+  vigenciaHasta    DateTime?
+  clienteId        String
+  cliente          Cliente  @relation(fields: [clienteId], references: [id])
+  observaciones    String?
+  estado           String   @default("pendiente") // pendiente, aceptada, rechazada, vencida
+  
+  // Información de envío
+  codigoMincex     String?  // Código MINCEX (US-0439)
+  puertoEmbarque   String?  @default("NEW ORLEANS, LA")
+  origen           String?  @default("ESTADOS UNIDOS")
+  moneda           String?  @default("USD")
+  terminosPago     String?  @default("PAGO 100% ANTES DEL EMBARQUE")
+  
+  // Firma del cliente
+  incluyeFirmaCliente Boolean @default(false)
+  
+  // Total acordado (sin desglose de flete/seguro)
+  total            Float    @default(0)  // Precio acordado final
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items            ItemOfertaCliente[]
+  // Ofertas a importadora generadas desde esta oferta
+  ofertasImportadora OfertaImportadora[]
+}
+
+model ItemOfertaCliente {
+  id               String   @id @default(cuid())
+  ofertaClienteId  String
+  ofertaCliente    OfertaCliente @relation(fields: [ofertaClienteId], references: [id], onDelete: Cascade)
+  productoId       String
+  producto         Producto @relation(fields: [productoId], references: [id])
+  cantidad         Float    // Cantidad del producto
+  cantidadCajas    Float?   // Cantidad de cajas (si aplica)
+  pesoNeto         Float?   // Peso neto
+  pesoBruto        Float?   // Peso bruto
+  precioUnitario   Float    // Precio por unidad de medida
+  subtotal         Float    // Importe (cantidad o pesoNeto * precioUnitario)
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ==========================================
+// OFERTA A IMPORTADORA - Con ajuste de precios para CIF
+// ==========================================
+model OfertaImportadora {
+  id               String   @id @default(cuid())
+  numero           String   @unique
+  fecha            DateTime @default(now())
+  vigenciaHasta    DateTime?
+  clienteId        String
+  cliente          Cliente  @relation(fields: [clienteId], references: [id])
+  observaciones    String?
+  estado           String   @default("pendiente")
+  
+  // Referencia a oferta cliente origen (opcional)
+  ofertaClienteId  String?
+  ofertaCliente    OfertaCliente? @relation(fields: [ofertaClienteId], references: [id])
+  
+  // Información de envío
+  codigoMincex     String?  // Código MINCEX (US-0439)
+  puertoEmbarque   String?  @default("NEW ORLEANS, LA")
+  origen           String?  @default("ESTADOS UNIDOS")
+  moneda           String?  @default("USD")
+  terminosPago     String?  @default("PAGO 100% ANTES DEL EMBARQUE")
+  
+  // Firma del cliente
+  incluyeFirmaCliente Boolean @default(true)
+  
+  // Ajuste de precios: true = ajusta precios para que CIF = precio acordado
+  // false = flete y seguro se suman al precio acordado
+  ajustarPrecios   Boolean  @default(true)
+  
+  // Precio acordado con el cliente (de la oferta cliente)
+  precioAcordado   Float    @default(0)
+  
+  // Desglose para la importadora
+  flete            Float    @default(0)
+  seguro           Float    @default(0)
+  tieneSeguro      Boolean  @default(false)
+  
+  // FOB ajustado = precioAcordado - flete - seguro
+  subtotalProductos Float   @default(0)  // FOB (productos con precios ajustados)
+  
+  // CIF = subtotalProductos + flete + seguro = precioAcordado
+  precioCIF        Float    @default(0)
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items            ItemOfertaImportadora[]
+}
+
+model ItemOfertaImportadora {
+  id                   String   @id @default(cuid())
+  ofertaImportadoraId  String
+  ofertaImportadora    OfertaImportadora @relation(fields: [ofertaImportadoraId], references: [id], onDelete: Cascade)
+  productoId           String
+  producto             Producto @relation(fields: [productoId], references: [id])
+  cantidad             Float    // Cantidad del producto
+  cantidadCajas        Float?   // Cantidad de cajas (si aplica)
+  pesoNeto             Float?   // Peso neto
+  pesoBruto            Float?   // Peso bruto
+  precioOriginal       Float    // Precio original (de la oferta al cliente)
+  precioAjustado       Float    // Precio ajustado para que CIF = precio acordado
+  subtotal             Float    // Importe con precio ajustado
+  
+  // Campos extra para uso futuro
+  campoExtra1          String?
+  campoExtra2          String?
+  campoExtra3          String?
+  campoExtra4          String?
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+// ==========================================
+// FACTURA
+// ==========================================
+model Factura {
+  id               String   @id @default(cuid())
+  numero           String   @unique
+  fecha            DateTime @default(now())
+  fechaVencimiento DateTime?
+  clienteId        String
+  cliente          Cliente  @relation(fields: [clienteId], references: [id])
+  observaciones    String?
+  estado           String   @default("pendiente") // pendiente, pagada, vencida, cancelada
+  
+  subtotal         Float    @default(0)
+  impuestos        Float    @default(0)
+  descuento        Float    @default(0)
+  total            Float    @default(0)
+  
+  // Referencia a oferta origen (opcional)
+  tipoOfertaOrigen String?  // cliente, importadora
+  ofertaOrigenId   String?
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items            ItemFactura[]
+}
+
+model ItemFactura {
+  id               String   @id @default(cuid())
+  facturaId        String
+  factura          Factura  @relation(fields: [facturaId], references: [id], onDelete: Cascade)
+  productoId       String
+  producto         Producto @relation(fields: [productoId], references: [id])
+  descripcion      String?
+  cantidad         Float
+  cantidadCajas    Float?
+  pesoNeto         Float?
+  pesoBruto        Float?
+  precioUnitario   Float
+  subtotal         Float
+  
+  // Campos extra para uso futuro
+  campoExtra1      String?
+  campoExtra2      String?
+  campoExtra3      String?
+  campoExtra4      String?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
