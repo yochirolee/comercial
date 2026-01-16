@@ -16,8 +16,35 @@ import { uploadRouter } from './routes/upload.routes.js';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Middlewares
-app.use(cors());
+// CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.some(allowed => origin.startsWith(allowed?.replace(/\/$/, '') || ''))) {
+      return callback(null, true);
+    }
+    
+    // In production, be more permissive for Vercel preview URLs
+    if (origin.includes('vercel.app')) {
+      return callback(null, true);
+    }
+    
+    callback(null, true); // Allow all for now
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(express.json());
 
 // Servir archivos estáticos (imágenes subidas)
