@@ -41,7 +41,7 @@ const emptyProducto: ProductoInput = {
   unidadMedidaId: "",
 };
 
-export default function ProductosPage(): JSX.Element {
+export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [unidades, setUnidades] = useState<UnidadMedida[]>([]);
   const [loading, setLoading] = useState(true);

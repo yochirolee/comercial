@@ -14,7 +14,7 @@ import type { EmpresaInput } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-export default function EmpresaPage(): JSX.Element {
+export default function EmpresaPage() {
   const [empresa, setEmpresa] = useState<EmpresaInput>({
     nombre: "",
     direccion: "",

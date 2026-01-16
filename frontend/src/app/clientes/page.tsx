@@ -36,7 +36,7 @@ const emptyCliente: ClienteInput = {
   nit: "",
 };
 
-export default function ClientesPage(): JSX.Element {
+export default function ClientesPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");

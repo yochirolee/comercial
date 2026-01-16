@@ -50,7 +50,7 @@ import type {
   OfertaImportadora,
 } from "@/lib/api";
 
-export default function FacturasPage(): JSX.Element {
+export default function FacturasPage() {
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
