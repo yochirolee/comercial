@@ -12,7 +12,8 @@ import { Save, Building2, Upload, Image, Signature, Stamp, X } from "lucide-reac
 import { empresaApi } from "@/lib/api";
 import type { EmpresaInput } from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Quitar /api del final si existe para evitar duplicación
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/api$/, '');
 
 export default function EmpresaPage() {
   const [empresa, setEmpresa] = useState<EmpresaInput>({
@@ -98,7 +99,7 @@ export default function EmpresaPage() {
     formData.append('image', file);
 
     try {
-      const response = await fetch(`${API_URL}/api/upload/${tipo}`, {
+      const response = await fetch(`${API_BASE}/api/upload/${tipo}`, {
         method: 'POST',
         body: formData,
       });
@@ -124,7 +125,7 @@ export default function EmpresaPage() {
 
   function getImageUrl(path: string | undefined): string {
     if (!path) return '';
-    return `${API_URL}/uploads/${path}`;
+    return `${API_BASE}/uploads/${path}`;
   }
 
   if (loading) {
