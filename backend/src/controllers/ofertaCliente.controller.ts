@@ -2,6 +2,25 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 
+const itemSchema = z.object({
+  productoId: z.string().min(1, 'Producto es requerido'),
+  cantidad: z.number().positive('La cantidad debe ser positiva'),
+  precioUnitario: z.number().positive('El precio debe ser positivo'),
+  // Campos informativos opcionales
+  cantidadCajas: z.number().optional(),
+  cantidadSacos: z.number().optional(),
+  pesoNeto: z.number().optional(),
+  pesoBruto: z.number().optional(),
+  pesoXSaco: z.number().optional(),
+  precioXSaco: z.number().optional(),
+  pesoXCaja: z.number().optional(),
+  precioXCaja: z.number().optional(),
+  campoExtra1: z.string().optional(),
+  campoExtra2: z.string().optional(),
+  campoExtra3: z.string().optional(),
+  campoExtra4: z.string().optional(),
+});
+
 const ofertaClienteSchema = z.object({
   numero: z.string().optional(), // Ahora es opcional, se genera automáticamente
   fecha: z.string().optional(),
@@ -15,6 +34,8 @@ const ofertaClienteSchema = z.object({
   moneda: z.string().optional(),
   terminosPago: z.string().optional(),
   incluyeFirmaCliente: z.boolean().optional(),
+  // Items para crear en un solo paso
+  items: z.array(itemSchema).optional(),
   campoExtra1: z.string().optional(),
   campoExtra2: z.string().optional(),
   campoExtra3: z.string().optional(),
@@ -57,19 +78,6 @@ async function generarNumeroOferta(): Promise<string> {
   const siguiente = (maxNumero + 1).toString().padStart(3, '0');
   return `${prefix}${siguiente}`;
 }
-
-const itemSchema = z.object({
-  productoId: z.string().min(1, 'Producto es requerido'),
-  cantidad: z.number().positive('La cantidad debe ser positiva'),
-  cantidadCajas: z.number().optional(),
-  pesoNeto: z.number().optional(),
-  pesoBruto: z.number().optional(),
-  precioUnitario: z.number().positive('El precio debe ser positivo'),
-  campoExtra1: z.string().optional(),
-  campoExtra2: z.string().optional(),
-  campoExtra3: z.string().optional(),
-  campoExtra4: z.string().optional(),
-});
 
 async function calcularTotal(ofertaId: string): Promise<void> {
   const items = await prisma.itemOfertaCliente.findMany({
@@ -163,12 +171,45 @@ export const OfertaClienteController = {
       return;
     }
 
+    // Extraer items del data
+    const { items, ...ofertaData } = validation.data;
+
+    // Calcular total si hay items
+    let total = 0;
+    const itemsToCreate = items?.map(item => {
+      const cantidadParaCalculo = item.pesoNeto || item.cantidad;
+      const subtotal = cantidadParaCalculo * item.precioUnitario;
+      total += subtotal;
+      return {
+        productoId: item.productoId,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        subtotal,
+        cantidadCajas: item.cantidadCajas,
+        cantidadSacos: item.cantidadSacos,
+        pesoNeto: item.pesoNeto,
+        pesoBruto: item.pesoBruto,
+        pesoXSaco: item.pesoXSaco,
+        precioXSaco: item.precioXSaco,
+        pesoXCaja: item.pesoXCaja,
+        precioXCaja: item.precioXCaja,
+        campoExtra1: item.campoExtra1,
+        campoExtra2: item.campoExtra2,
+        campoExtra3: item.campoExtra3,
+        campoExtra4: item.campoExtra4,
+      };
+    });
+
     const oferta = await prisma.ofertaCliente.create({
       data: {
-        ...validation.data,
+        ...ofertaData,
         numero,
-        fecha: validation.data.fecha ? new Date(validation.data.fecha) : new Date(),
-        vigenciaHasta: validation.data.vigenciaHasta ? new Date(validation.data.vigenciaHasta) : null,
+        fecha: ofertaData.fecha ? new Date(ofertaData.fecha) : new Date(),
+        vigenciaHasta: ofertaData.vigenciaHasta ? new Date(ofertaData.vigenciaHasta) : null,
+        total,
+        items: itemsToCreate && itemsToCreate.length > 0 ? {
+          create: itemsToCreate,
+        } : undefined,
       },
       include: {
         cliente: true,

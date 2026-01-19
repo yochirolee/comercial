@@ -2,30 +2,68 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 
+const itemSchema = z.object({
+  productoId: z.string().min(1, 'Producto es requerido'),
+  cantidad: z.number().positive('La cantidad debe ser positiva'),
+  precioUnitario: z.number().positive('El precio debe ser positivo'),
+  // Campos informativos opcionales
+  cantidadCajas: z.number().optional(),
+  cantidadSacos: z.number().optional(),
+  pesoXSaco: z.number().optional(),
+  precioXSaco: z.number().optional(),
+  pesoXCaja: z.number().optional(),
+  precioXCaja: z.number().optional(),
+  campoExtra1: z.string().optional(),
+  campoExtra2: z.string().optional(),
+  campoExtra3: z.string().optional(),
+  campoExtra4: z.string().optional(),
+});
+
 const ofertaGeneralSchema = z.object({
-  numero: z.string().min(1, 'Número de oferta es requerido'),
+  numero: z.string().optional(), // Ahora es opcional, se genera si no se proporciona
   fecha: z.string().optional(),
   vigenciaHasta: z.string().optional(),
   observaciones: z.string().optional(),
   estado: z.enum(['activa', 'vencida', 'cancelada']).optional(),
+  // Items para crear en un solo paso
+  items: z.array(itemSchema).optional(),
   campoExtra1: z.string().optional(),
   campoExtra2: z.string().optional(),
   campoExtra3: z.string().optional(),
   campoExtra4: z.string().optional(),
 });
 
-const itemSchema = z.object({
-  productoId: z.string().min(1, 'Producto es requerido'),
-  cantidad: z.number().positive('La cantidad debe ser positiva'),
-  cantidadCajas: z.number().optional(), // Solo si la unidad usa cajas/sacos
-  precioUnitario: z.number().positive('El precio debe ser positivo'),
-  campoExtra1: z.string().optional(),
-  campoExtra2: z.string().optional(),
-  campoExtra3: z.string().optional(),
-  campoExtra4: z.string().optional(),
-});
+// Generar número consecutivo para ofertas generales
+async function generarNumeroOfertaGeneral(): Promise<string> {
+  const ultimaOferta = await prisma.ofertaGeneral.findFirst({
+    where: {
+      numero: {
+        startsWith: 'LP-',
+      },
+    },
+    orderBy: {
+      numero: 'desc',
+    },
+  });
+
+  let siguienteNumero = 1;
+  if (ultimaOferta?.numero) {
+    const match = ultimaOferta.numero.match(/LP-(\d+)/);
+    if (match) {
+      siguienteNumero = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  return `LP-${siguienteNumero.toString().padStart(3, '0')}`;
+}
 
 export const OfertaGeneralController = {
+  // Obtener siguiente número disponible
+  async getNextNumber(req: Request, res: Response): Promise<void> {
+    const numero = await generarNumeroOfertaGeneral();
+    res.json({ numero });
+  },
+
   async getAll(req: Request, res: Response): Promise<void> {
     const { estado } = req.query;
     
@@ -78,21 +116,49 @@ export const OfertaGeneralController = {
       return;
     }
 
-    // Verificar número único
-    const existingOferta = await prisma.ofertaGeneral.findUnique({
-      where: { numero: validation.data.numero },
-    });
-    
-    if (existingOferta) {
-      res.status(400).json({ error: 'Ya existe una oferta con ese número' });
-      return;
+    // Generar número si no se proporciona
+    let numero = validation.data.numero;
+    if (!numero || numero.trim() === '') {
+      numero = await generarNumeroOfertaGeneral();
+    } else {
+      // Verificar número único si se proporciona
+      const existingOferta = await prisma.ofertaGeneral.findUnique({
+        where: { numero },
+      });
+      
+      if (existingOferta) {
+        res.status(400).json({ error: 'Ya existe una oferta con ese número' });
+        return;
+      }
     }
+
+    // Extraer items del data
+    const { items, ...ofertaData } = validation.data;
 
     const oferta = await prisma.ofertaGeneral.create({
       data: {
-        ...validation.data,
-        fecha: validation.data.fecha ? new Date(validation.data.fecha) : new Date(),
-        vigenciaHasta: validation.data.vigenciaHasta ? new Date(validation.data.vigenciaHasta) : null,
+        ...ofertaData,
+        numero,
+        fecha: ofertaData.fecha ? new Date(ofertaData.fecha) : new Date(),
+        vigenciaHasta: ofertaData.vigenciaHasta ? new Date(ofertaData.vigenciaHasta) : null,
+        // Crear items si se proporcionan
+        items: items && items.length > 0 ? {
+          create: items.map(item => ({
+            productoId: item.productoId,
+            cantidad: item.cantidad,
+            precioUnitario: item.precioUnitario,
+            cantidadCajas: item.cantidadCajas,
+            cantidadSacos: item.cantidadSacos,
+            pesoXSaco: item.pesoXSaco,
+            precioXSaco: item.precioXSaco,
+            pesoXCaja: item.pesoXCaja,
+            precioXCaja: item.precioXCaja,
+            campoExtra1: item.campoExtra1,
+            campoExtra2: item.campoExtra2,
+            campoExtra3: item.campoExtra3,
+            campoExtra4: item.campoExtra4,
+          })),
+        } : undefined,
       },
       include: {
         items: {

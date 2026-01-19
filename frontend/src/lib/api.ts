@@ -72,6 +72,7 @@ export const unidadesApi = {
 export const productosApi = {
   getAll: (search?: string) => fetchApi<Producto[]>(`/productos${search ? `?search=${search}` : ''}`),
   getById: (id: string) => fetchApi<Producto>(`/productos/${id}`),
+  getNextCode: () => fetchApi<{ codigo: string }>('/productos/next-code'),
   create: (data: ProductoInput) => fetchApi<Producto>('/productos', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -89,7 +90,8 @@ export const productosApi = {
 export const ofertasGeneralesApi = {
   getAll: () => fetchApi<OfertaGeneral[]>('/ofertas-generales'),
   getById: (id: string) => fetchApi<OfertaGeneral>(`/ofertas-generales/${id}`),
-  create: (data: OfertaGeneralInput) => fetchApi<OfertaGeneral>('/ofertas-generales', {
+  getNextNumber: () => fetchApi<{ numero: string }>('/ofertas-generales/next-number'),
+  create: (data: OfertaGeneralInputWithItems) => fetchApi<OfertaGeneral>('/ofertas-generales', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -114,7 +116,7 @@ export const ofertasClienteApi = {
   getAll: (clienteId?: string) => fetchApi<OfertaCliente[]>(`/ofertas-cliente${clienteId ? `?clienteId=${clienteId}` : ''}`),
   getById: (id: string) => fetchApi<OfertaCliente>(`/ofertas-cliente/${id}`),
   getNextNumber: () => fetchApi<{ numero: string }>('/ofertas-cliente/next-number'),
-  create: (data: OfertaClienteInput) => fetchApi<OfertaCliente>('/ofertas-cliente', {
+  create: (data: OfertaClienteInputWithItems) => fetchApi<OfertaCliente>('/ofertas-cliente', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -335,11 +337,15 @@ export interface OfertaGeneral {
 }
 
 export interface OfertaGeneralInput {
-  numero: string;
+  numero?: string;
   fecha?: string;
   vigenciaHasta?: string;
   observaciones?: string;
   estado?: string;
+}
+
+export interface OfertaGeneralInputWithItems extends OfertaGeneralInput {
+  items?: ItemOfertaGeneralInput[];
 }
 
 export interface ItemOfertaGeneral {
@@ -347,15 +353,27 @@ export interface ItemOfertaGeneral {
   productoId: string;
   producto: Producto;
   cantidad: number;
-  cantidadCajas?: number;
   precioUnitario: number;
+  // Campos informativos opcionales
+  cantidadCajas?: number;
+  cantidadSacos?: number;
+  pesoXSaco?: number;
+  precioXSaco?: number;
+  pesoXCaja?: number;
+  precioXCaja?: number;
 }
 
 export interface ItemOfertaGeneralInput {
   productoId: string;
   cantidad: number;
-  cantidadCajas?: number;
   precioUnitario: number;
+  // Campos informativos opcionales
+  cantidadCajas?: number;
+  cantidadSacos?: number;
+  pesoXSaco?: number;
+  precioXSaco?: number;
+  pesoXCaja?: number;
+  precioXCaja?: number;
 }
 
 // ==========================================
@@ -400,25 +418,41 @@ export interface OfertaClienteInput {
   incluyeFirmaCliente?: boolean;
 }
 
+export interface OfertaClienteInputWithItems extends OfertaClienteInput {
+  items?: ItemOfertaClienteInput[];
+}
+
 export interface ItemOfertaCliente {
   id: string;
   productoId: string;
   producto: Producto;
   cantidad: number;
-  cantidadCajas?: number;
-  pesoNeto?: number;
-  pesoBruto?: number;
   precioUnitario: number;
   subtotal: number;
+  // Campos informativos opcionales
+  cantidadCajas?: number;
+  cantidadSacos?: number;
+  pesoNeto?: number;
+  pesoBruto?: number;
+  pesoXSaco?: number;
+  precioXSaco?: number;
+  pesoXCaja?: number;
+  precioXCaja?: number;
 }
 
 export interface ItemOfertaClienteInput {
   productoId: string;
   cantidad: number;
+  precioUnitario: number;
+  // Campos informativos opcionales
   cantidadCajas?: number;
+  cantidadSacos?: number;
   pesoNeto?: number;
   pesoBruto?: number;
-  precioUnitario: number;
+  pesoXSaco?: number;
+  precioXSaco?: number;
+  pesoXCaja?: number;
+  precioXCaja?: number;
 }
 
 // ==========================================
@@ -495,21 +529,33 @@ export interface ItemOfertaImportadora {
   productoId: string;
   producto: Producto;
   cantidad: number;
-  cantidadCajas?: number;
-  pesoNeto?: number;
-  pesoBruto?: number;
   precioOriginal: number;     // Precio original (de oferta cliente)
   precioAjustado: number;     // Precio ajustado para que CIF = precio acordado
   subtotal: number;           // Con precio ajustado
+  // Campos informativos opcionales
+  cantidadCajas?: number;
+  cantidadSacos?: number;
+  pesoNeto?: number;
+  pesoBruto?: number;
+  pesoXSaco?: number;
+  precioXSaco?: number;
+  pesoXCaja?: number;
+  precioXCaja?: number;
 }
 
 export interface ItemOfertaImportadoraInput {
   productoId: string;
   cantidad: number;
+  precioOriginal: number;
+  // Campos informativos opcionales
   cantidadCajas?: number;
+  cantidadSacos?: number;
   pesoNeto?: number;
   pesoBruto?: number;
-  precioOriginal: number;
+  pesoXSaco?: number;
+  precioXSaco?: number;
+  pesoXCaja?: number;
+  precioXCaja?: number;
 }
 
 // ==========================================

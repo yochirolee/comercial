@@ -6,6 +6,9 @@ export const ofertaGeneralRouter = Router();
 // GET /api/ofertas-generales - Listar todas las ofertas generales
 ofertaGeneralRouter.get('/', OfertaGeneralController.getAll);
 
+// GET /api/ofertas-generales/next-number - Obtener siguiente número disponible
+ofertaGeneralRouter.get('/next-number', OfertaGeneralController.getNextNumber);
+
 // GET /api/ofertas-generales/:id - Obtener oferta por ID
 ofertaGeneralRouter.get('/:id', OfertaGeneralController.getById);
 

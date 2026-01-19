@@ -176,8 +176,15 @@ model ItemOfertaGeneral {
   productoId       String
   producto         Producto @relation(fields: [productoId], references: [id])
   cantidad         Float   @default(1) // Cantidad del producto (ej: 26100 KG, 21600 ML)
-  cantidadCajas    Float?   // Cantidad de cajas/sacos (solo si la unidad usa cajas)
+  cantidadCajas    Float?   // Cantidad de cajas (informativo)
+  cantidadSacos    Float?   // Cantidad de sacos (informativo)
   precioUnitario   Float
+  
+  // Campos informativos adicionales
+  pesoXSaco        Float?   // Peso por saco (informativo)
+  precioXSaco      Float?   // Precio por saco (informativo)
+  pesoXCaja        Float?   // Peso por caja (informativo)
+  precioXCaja      Float?   // Precio por caja (informativo)
   
   // Campos extra para uso futuro
   campoExtra1      String?
@@ -236,11 +243,18 @@ model ItemOfertaCliente {
   productoId       String
   producto         Producto @relation(fields: [productoId], references: [id])
   cantidad         Float    // Cantidad del producto
-  cantidadCajas    Float?   // Cantidad de cajas (si aplica)
+  cantidadCajas    Float?   // Cantidad de cajas (informativo)
+  cantidadSacos    Float?   // Cantidad de sacos (informativo)
   pesoNeto         Float?   // Peso neto
   pesoBruto        Float?   // Peso bruto
   precioUnitario   Float    // Precio por unidad de medida
   subtotal         Float    // Importe (cantidad o pesoNeto * precioUnitario)
+  
+  // Campos informativos adicionales
+  pesoXSaco        Float?   // Peso por saco (informativo)
+  precioXSaco      Float?   // Precio por saco (informativo)
+  pesoXCaja        Float?   // Peso por caja (informativo)
+  precioXCaja      Float?   // Precio por caja (informativo)
   
   // Campos extra para uso futuro
   campoExtra1      String?
@@ -316,12 +330,19 @@ model ItemOfertaImportadora {
   productoId           String
   producto             Producto @relation(fields: [productoId], references: [id])
   cantidad             Float    // Cantidad del producto
-  cantidadCajas        Float?   // Cantidad de cajas (si aplica)
+  cantidadCajas        Float?   // Cantidad de cajas (informativo)
+  cantidadSacos        Float?   // Cantidad de sacos (informativo)
   pesoNeto             Float?   // Peso neto
   pesoBruto            Float?   // Peso bruto
   precioOriginal       Float    // Precio original (de la oferta al cliente)
   precioAjustado       Float    // Precio ajustado para que CIF = precio acordado
   subtotal             Float    // Importe con precio ajustado
+  
+  // Campos informativos adicionales
+  pesoXSaco            Float?   // Peso por saco (informativo)
+  precioXSaco          Float?   // Precio por saco (informativo)
+  pesoXCaja            Float?   // Peso por caja (informativo)
+  precioXCaja          Float?   // Precio por caja (informativo)
   
   // Campos extra para uso futuro
   campoExtra1          String?

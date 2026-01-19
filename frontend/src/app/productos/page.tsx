@@ -79,12 +79,22 @@ export default function ProductosPage() {
     }));
   }
 
-  function openNewDialog(): void {
+  async function openNewDialog(): Promise<void> {
     setEditingId(null);
-    setFormData({
-      ...emptyProducto,
-      unidadMedidaId: unidades[0]?.id || "",
-    });
+    try {
+      // Obtener siguiente código consecutivo
+      const { codigo } = await productosApi.getNextCode();
+      setFormData({
+        ...emptyProducto,
+        codigo,
+        unidadMedidaId: unidades[0]?.id || "",
+      });
+    } catch (error) {
+      setFormData({
+        ...emptyProducto,
+        unidadMedidaId: unidades[0]?.id || "",
+      });
+    }
     setDialogOpen(true);
   }
 

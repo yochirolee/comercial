@@ -15,7 +15,38 @@ const productoSchema = z.object({
   campoExtra4: z.string().optional(),
 });
 
+// Generar código consecutivo para productos
+async function generarCodigoProducto(): Promise<string> {
+  // Buscar el último código con formato PROD-XXX
+  const ultimoProducto = await prisma.producto.findFirst({
+    where: {
+      codigo: {
+        startsWith: 'PROD-',
+      },
+    },
+    orderBy: {
+      codigo: 'desc',
+    },
+  });
+
+  let siguienteNumero = 1;
+  if (ultimoProducto?.codigo) {
+    const match = ultimoProducto.codigo.match(/PROD-(\d+)/);
+    if (match) {
+      siguienteNumero = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  return `PROD-${siguienteNumero.toString().padStart(3, '0')}`;
+}
+
 export const ProductoController = {
+  // Obtener siguiente código disponible
+  async getNextCode(req: Request, res: Response): Promise<void> {
+    const codigo = await generarCodigoProducto();
+    res.json({ codigo });
+  },
+
   async getAll(req: Request, res: Response): Promise<void> {
     const { search, activo } = req.query;
     
@@ -67,10 +98,14 @@ export const ProductoController = {
       return;
     }
 
-    // Verificar si el código ya existe (si se proporciona)
-    if (validation.data.codigo) {
+    // Generar código automático si no se proporciona
+    let codigo = validation.data.codigo;
+    if (!codigo || codigo.trim() === '') {
+      codigo = await generarCodigoProducto();
+    } else {
+      // Verificar si el código ya existe (si se proporciona uno manual)
       const existingProducto = await prisma.producto.findUnique({
-        where: { codigo: validation.data.codigo },
+        where: { codigo },
       });
       
       if (existingProducto) {
@@ -80,7 +115,10 @@ export const ProductoController = {
     }
 
     const producto = await prisma.producto.create({
-      data: validation.data,
+      data: {
+        ...validation.data,
+        codigo,
+      },
       include: {
         unidadMedida: true,
       },
