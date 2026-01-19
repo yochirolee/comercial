@@ -249,12 +249,15 @@ export const OfertaClienteController = {
       }
     }
 
+    // Extraer items y clienteId del data (no se pueden actualizar directamente)
+    const { items, clienteId, ...updateData } = validation.data;
+
     const oferta = await prisma.ofertaCliente.update({
       where: { id },
       data: {
-        ...validation.data,
-        fecha: validation.data.fecha ? new Date(validation.data.fecha) : undefined,
-        vigenciaHasta: validation.data.vigenciaHasta ? new Date(validation.data.vigenciaHasta) : undefined,
+        ...updateData,
+        fecha: updateData.fecha ? new Date(updateData.fecha) : undefined,
+        vigenciaHasta: updateData.vigenciaHasta ? new Date(updateData.vigenciaHasta) : undefined,
       },
       include: {
         cliente: true,

@@ -198,12 +198,15 @@ export const OfertaGeneralController = {
       }
     }
 
+    // Extraer items del data (no se puede actualizar directamente)
+    const { items, ...updateData } = validation.data;
+
     const oferta = await prisma.ofertaGeneral.update({
       where: { id },
       data: {
-        ...validation.data,
-        fecha: validation.data.fecha ? new Date(validation.data.fecha) : undefined,
-        vigenciaHasta: validation.data.vigenciaHasta ? new Date(validation.data.vigenciaHasta) : undefined,
+        ...updateData,
+        fecha: updateData.fecha ? new Date(updateData.fecha) : undefined,
+        vigenciaHasta: updateData.vigenciaHasta ? new Date(updateData.vigenciaHasta) : undefined,
       },
       include: {
         items: {
