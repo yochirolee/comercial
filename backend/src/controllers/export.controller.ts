@@ -450,7 +450,7 @@ function renderExcelTable(
   items: any[], 
   startRow: number,
   usePrecioAjustado: boolean = false
-): { endRow: number; totalImporte: number; lastCol: string } {
+): { endRow: number; totalImporte: number; lastCol: string; numCols: number } {
   const { headers, widthsExcel, optionalFields } = buildDynamicColumns(items);
   
   let row = startRow;
