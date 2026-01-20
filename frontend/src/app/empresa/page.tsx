@@ -125,6 +125,11 @@ export default function EmpresaPage() {
 
   function getImageUrl(path: string | undefined): string {
     if (!path) return '';
+    // Si ya es una URL completa (Cloudinary), devolverla tal cual
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    // Si es un path relativo (imágenes antiguas), construir URL del API
     return `${API_BASE}/uploads/${path}`;
   }
 

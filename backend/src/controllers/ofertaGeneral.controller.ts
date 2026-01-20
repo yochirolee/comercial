@@ -256,6 +256,32 @@ export const OfertaGeneralController = {
     res.status(201).json(item);
   },
 
+  async updateItem(req: Request, res: Response): Promise<void> {
+    const { itemId } = req.params;
+    const { cantidad, precioUnitario, cantidadCajas, cantidadSacos, pesoXSaco, precioXSaco, pesoXCaja, precioXCaja } = req.body;
+    
+    const item = await prisma.itemOfertaGeneral.update({
+      where: { id: itemId },
+      data: {
+        cantidad,
+        precioUnitario,
+        cantidadCajas,
+        cantidadSacos,
+        pesoXSaco,
+        precioXSaco,
+        pesoXCaja,
+        precioXCaja,
+      },
+      include: {
+        producto: {
+          include: { unidadMedida: true },
+        },
+      },
+    });
+    
+    res.json(item);
+  },
+
   async removeItem(req: Request, res: Response): Promise<void> {
     const { itemId } = req.params;
     
@@ -264,6 +290,64 @@ export const OfertaGeneralController = {
     });
     
     res.status(204).send();
+  },
+
+  // Ajustar precios para llegar a un total deseado
+  async adjustPrices(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { totalDeseado } = req.body;
+
+    if (!totalDeseado || totalDeseado <= 0) {
+      res.status(400).json({ error: 'El total deseado debe ser mayor a 0' });
+      return;
+    }
+
+    const oferta = await prisma.ofertaGeneral.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!oferta) {
+      res.status(404).json({ error: 'Oferta no encontrada' });
+      return;
+    }
+
+    // Calcular total actual
+    const totalActual = oferta.items.reduce(
+      (sum, item) => sum + item.cantidad * item.precioUnitario,
+      0
+    );
+
+    if (totalActual === 0) {
+      res.status(400).json({ error: 'La oferta no tiene productos con precio' });
+      return;
+    }
+
+    // Calcular factor de ajuste
+    const factor = totalDeseado / totalActual;
+
+    // Actualizar precios de cada item
+    for (const item of oferta.items) {
+      const nuevoPrecio = Math.round(item.precioUnitario * factor * 100) / 100; // Redondear a 2 decimales
+      await prisma.itemOfertaGeneral.update({
+        where: { id: item.id },
+        data: { precioUnitario: nuevoPrecio },
+      });
+    }
+
+    // Retornar oferta actualizada
+    const ofertaActualizada = await prisma.ofertaGeneral.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: {
+            producto: { include: { unidadMedida: true } },
+          },
+        },
+      },
+    });
+
+    res.json(ofertaActualizada);
   },
 };
 

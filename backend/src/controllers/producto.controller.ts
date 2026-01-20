@@ -165,13 +165,46 @@ export const ProductoController = {
   async delete(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     
-    // En lugar de eliminar, desactivamos el producto
-    await prisma.producto.update({
+    // Verificar si el producto tiene ofertas asociadas
+    const tieneOfertas = await prisma.producto.findUnique({
       where: { id },
-      data: { activo: false },
+      include: {
+        _count: {
+          select: {
+            itemsOfertaGeneral: true,
+            itemsOfertaCliente: true,
+            itemsOfertaImportadora: true,
+            itemsFactura: true,
+          },
+        },
+      },
     });
-    
-    res.status(204).send();
+
+    if (!tieneOfertas) {
+      res.status(404).json({ error: 'Producto no encontrado' });
+      return;
+    }
+
+    const totalAsociaciones = 
+      tieneOfertas._count.itemsOfertaGeneral +
+      tieneOfertas._count.itemsOfertaCliente +
+      tieneOfertas._count.itemsOfertaImportadora +
+      tieneOfertas._count.itemsFactura;
+
+    if (totalAsociaciones > 0) {
+      // Si tiene ofertas asociadas, solo desactivar (soft delete)
+      await prisma.producto.update({
+        where: { id },
+        data: { activo: false },
+      });
+      res.status(200).json({ message: 'Producto desactivado (tiene ofertas asociadas)' });
+    } else {
+      // Si no tiene ofertas, eliminar completamente
+      await prisma.producto.delete({
+        where: { id },
+      });
+      res.status(204).send();
+    }
   },
 };
 

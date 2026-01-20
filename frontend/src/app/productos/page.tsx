@@ -133,14 +133,14 @@ export default function ProductosPage() {
   }
 
   async function handleDelete(id: string): Promise<void> {
-    if (!confirm("¿Estás seguro de desactivar este producto?")) return;
+    if (!confirm("¿Estás seguro de eliminar este producto?\n\nSi tiene ofertas asociadas, solo se desactivará.")) return;
 
     try {
       await productosApi.delete(id);
-      toast.success("Producto desactivado");
+      toast.success("Producto eliminado");
       loadData();
     } catch (error) {
-      toast.error("Error al desactivar producto");
+      toast.error("Error al eliminar producto");
       console.error(error);
     }
   }
@@ -207,12 +207,17 @@ export default function ProductosPage() {
                     <Input
                       id="precioBase"
                       name="precioBase"
-                      type="number"
-                      step="0.01"
-                      min="0"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={formData.precioBase || ""}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === "" || val === "-") {
+                          setFormData((prev) => ({ ...prev, precioBase: 0 }));
+                        } else if (!isNaN(parseFloat(val))) {
+                          setFormData((prev) => ({ ...prev, precioBase: parseFloat(val) }));
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2">

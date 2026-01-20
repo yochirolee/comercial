@@ -368,4 +368,66 @@ export const OfertaClienteController = {
     
     res.status(204).send();
   },
+
+  // Ajustar precios para llegar a un total deseado
+  async adjustPrices(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { totalDeseado } = req.body;
+
+    if (!totalDeseado || totalDeseado <= 0) {
+      res.status(400).json({ error: 'El total deseado debe ser mayor a 0' });
+      return;
+    }
+
+    const oferta = await prisma.ofertaCliente.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    if (!oferta) {
+      res.status(404).json({ error: 'Oferta no encontrada' });
+      return;
+    }
+
+    // Calcular total actual (solo productos, sin flete ni seguro)
+    const totalActual = oferta.items.reduce(
+      (sum, item) => sum + item.cantidad * item.precioUnitario,
+      0
+    );
+
+    if (totalActual === 0) {
+      res.status(400).json({ error: 'La oferta no tiene productos con precio' });
+      return;
+    }
+
+    // Calcular factor de ajuste
+    const factor = totalDeseado / totalActual;
+
+    // Actualizar precios de cada item
+    for (const item of oferta.items) {
+      const nuevoPrecio = Math.round(item.precioUnitario * factor * 100) / 100;
+      await prisma.itemOfertaCliente.update({
+        where: { id: item.id },
+        data: { precioUnitario: nuevoPrecio },
+      });
+    }
+
+    // Recalcular total
+    await calcularTotal(id);
+
+    // Retornar oferta actualizada
+    const ofertaActualizada = await prisma.ofertaCliente.findUnique({
+      where: { id },
+      include: {
+        cliente: true,
+        items: {
+          include: {
+            producto: { include: { unidadMedida: true } },
+          },
+        },
+      },
+    });
+
+    res.json(ofertaActualizada);
+  },
 };

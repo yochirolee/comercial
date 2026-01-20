@@ -30,3 +30,5 @@ ofertaClienteRouter.put('/:id/items/:itemId', OfertaClienteController.updateItem
 // DELETE /api/ofertas-cliente/:id/items/:itemId - Eliminar item de oferta
 ofertaClienteRouter.delete('/:id/items/:itemId', OfertaClienteController.removeItem);
 
+// POST /api/ofertas-cliente/:id/adjust-prices - Ajustar precios para llegar a un total deseado
+ofertaClienteRouter.post('/:id/adjust-prices', OfertaClienteController.adjustPrices);

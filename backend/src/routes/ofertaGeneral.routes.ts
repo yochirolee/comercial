@@ -24,6 +24,11 @@ ofertaGeneralRouter.delete('/:id', OfertaGeneralController.delete);
 // POST /api/ofertas-generales/:id/items - Agregar item a oferta
 ofertaGeneralRouter.post('/:id/items', OfertaGeneralController.addItem);
 
+// PUT /api/ofertas-generales/:id/items/:itemId - Actualizar item de oferta
+ofertaGeneralRouter.put('/:id/items/:itemId', OfertaGeneralController.updateItem);
+
 // DELETE /api/ofertas-generales/:id/items/:itemId - Eliminar item de oferta
 ofertaGeneralRouter.delete('/:id/items/:itemId', OfertaGeneralController.removeItem);
 
+// POST /api/ofertas-generales/:id/adjust-prices - Ajustar precios para llegar a un total deseado
+ofertaGeneralRouter.post('/:id/adjust-prices', OfertaGeneralController.adjustPrices);

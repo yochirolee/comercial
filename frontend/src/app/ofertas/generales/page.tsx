@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -29,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save } from "lucide-react";
 import { ofertasGeneralesApi, productosApi, exportApi } from "@/lib/api";
 import type { OfertaGeneral, Producto, ItemOfertaGeneralInput } from "@/lib/api";
 
@@ -54,19 +53,47 @@ export default function OfertasGeneralesPage(): React.ReactElement {
   });
   const [itemsTemp, setItemsTemp] = useState<ItemTemp[]>([]);
 
-  // Form para agregar item temporal
+  // Form para agregar item temporal - usando strings para evitar pérdida de foco
   const [showAddItem, setShowAddItem] = useState(false);
-  const [itemForm, setItemForm] = useState<ItemOfertaGeneralInput>({
+  const [itemFormStrings, setItemFormStrings] = useState({
     productoId: "",
-    cantidad: 0,
-    precioUnitario: 0,
-    cantidadCajas: undefined,
-    cantidadSacos: undefined,
-    pesoXSaco: undefined,
-    precioXSaco: undefined,
-    pesoXCaja: undefined,
-    precioXCaja: undefined,
+    cantidad: "",
+    precioUnitario: "",
+    cantidadCajas: "",
+    cantidadSacos: "",
+    pesoXSaco: "",
+    precioXSaco: "",
+    pesoXCaja: "",
+    precioXCaja: "",
   });
+
+  // Estado para editar oferta existente
+  const [editingOferta, setEditingOferta] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    numero: "",
+    observaciones: "",
+  });
+
+  // Estado para agregar items a oferta existente
+  const [showAddItemToExisting, setShowAddItemToExisting] = useState(false);
+
+  // Estado para editar item existente
+  const [editItemDialogOpen, setEditItemDialogOpen] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editItemFormStrings, setEditItemFormStrings] = useState({
+    cantidad: "",
+    precioUnitario: "",
+    cantidadCajas: "",
+    cantidadSacos: "",
+    pesoXSaco: "",
+    precioXSaco: "",
+    pesoXCaja: "",
+    precioXCaja: "",
+  });
+
+  // Estado para ajustar precios por total deseado
+  const [showAdjustPrices, setShowAdjustPrices] = useState(false);
+  const [totalDeseado, setTotalDeseado] = useState("");
 
   async function loadData(): Promise<void> {
     try {
@@ -101,46 +128,60 @@ export default function OfertasGeneralesPage(): React.ReactElement {
     }
   }
 
-  function handleSelectProduct(productoId: string): void {
-    const prod = productos.find((p) => p.id === productoId);
-    setItemForm({
-      productoId,
-      cantidad: 0,
-      precioUnitario: prod?.precioBase || 0,
-      cantidadCajas: undefined,
-      cantidadSacos: undefined,
-      pesoXSaco: undefined,
-      precioXSaco: undefined,
-      pesoXCaja: undefined,
-      precioXCaja: undefined,
+  function resetItemForm(): void {
+    setItemFormStrings({
+      productoId: "",
+      cantidad: "",
+      precioUnitario: "",
+      cantidadCajas: "",
+      cantidadSacos: "",
+      pesoXSaco: "",
+      precioXSaco: "",
+      pesoXCaja: "",
+      precioXCaja: "",
     });
   }
 
+  function handleSelectProduct(productoId: string): void {
+    const prod = productos.find((p) => p.id === productoId);
+    setItemFormStrings((prev) => ({
+      ...prev,
+      productoId,
+      precioUnitario: prod?.precioBase?.toString() || "",
+    }));
+  }
+
+  // Convierte el formulario de strings a números para enviar al API
+  function getItemFormAsNumbers(): ItemOfertaGeneralInput {
+    return {
+      productoId: itemFormStrings.productoId,
+      cantidad: parseFloat(itemFormStrings.cantidad) || 0,
+      precioUnitario: parseFloat(itemFormStrings.precioUnitario) || 0,
+      cantidadCajas: itemFormStrings.cantidadCajas ? parseInt(itemFormStrings.cantidadCajas) : undefined,
+      cantidadSacos: itemFormStrings.cantidadSacos ? parseInt(itemFormStrings.cantidadSacos) : undefined,
+      pesoXSaco: itemFormStrings.pesoXSaco ? parseFloat(itemFormStrings.pesoXSaco) : undefined,
+      precioXSaco: itemFormStrings.precioXSaco ? parseFloat(itemFormStrings.precioXSaco) : undefined,
+      pesoXCaja: itemFormStrings.pesoXCaja ? parseFloat(itemFormStrings.pesoXCaja) : undefined,
+      precioXCaja: itemFormStrings.precioXCaja ? parseFloat(itemFormStrings.precioXCaja) : undefined,
+    };
+  }
+
   function addItemToList(): void {
-    if (!itemForm.productoId || itemForm.cantidad <= 0) {
+    const itemData = getItemFormAsNumbers();
+    if (!itemData.productoId || itemData.cantidad <= 0) {
       toast.error("Selecciona un producto y cantidad válida");
       return;
     }
     
-    const prod = productos.find((p) => p.id === itemForm.productoId);
+    const prod = productos.find((p) => p.id === itemData.productoId);
     const newItem: ItemTemp = {
-      ...itemForm,
+      ...itemData,
       tempId: `temp-${Date.now()}`,
       producto: prod,
     };
     
     setItemsTemp((prev) => [...prev, newItem]);
-    setItemForm({
-      productoId: "",
-      cantidad: 0,
-      precioUnitario: 0,
-      cantidadCajas: undefined,
-      cantidadSacos: undefined,
-      pesoXSaco: undefined,
-      precioXSaco: undefined,
-      pesoXCaja: undefined,
-      precioXCaja: undefined,
-    });
+    resetItemForm();
     setShowAddItem(false);
   }
 
@@ -159,7 +200,6 @@ export default function OfertasGeneralesPage(): React.ReactElement {
     setSaving(true);
 
     try {
-      // Preparar items sin tempId ni producto
       const items = itemsTemp.map(({ tempId, producto, ...item }) => item);
       
       await ofertasGeneralesApi.create({
@@ -193,7 +233,53 @@ export default function OfertasGeneralesPage(): React.ReactElement {
   async function openDetailDialog(oferta: OfertaGeneral): Promise<void> {
     const updated = await ofertasGeneralesApi.getById(oferta.id);
     setSelectedOferta(updated);
+    setEditFormData({
+      numero: updated.numero,
+      observaciones: updated.observaciones || "",
+    });
+    setEditingOferta(false);
+    setShowAddItemToExisting(false);
+    resetItemForm();
     setDetailDialogOpen(true);
+  }
+
+  async function handleUpdateOferta(): Promise<void> {
+    if (!selectedOferta) return;
+    setSaving(true);
+    try {
+      await ofertasGeneralesApi.update(selectedOferta.id, editFormData);
+      toast.success("Oferta actualizada");
+      const updated = await ofertasGeneralesApi.getById(selectedOferta.id);
+      setSelectedOferta(updated);
+      setEditingOferta(false);
+      loadData();
+    } catch (error) {
+      toast.error("Error al actualizar oferta");
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleAddItemToExisting(): Promise<void> {
+    const itemData = getItemFormAsNumbers();
+    if (!selectedOferta || !itemData.productoId || itemData.cantidad <= 0) {
+      toast.error("Selecciona un producto y cantidad válida");
+      return;
+    }
+
+    try {
+      await ofertasGeneralesApi.addItem(selectedOferta.id, itemData);
+      toast.success("Producto agregado");
+      const updated = await ofertasGeneralesApi.getById(selectedOferta.id);
+      setSelectedOferta(updated);
+      resetItemForm();
+      setShowAddItemToExisting(false);
+      loadData();
+    } catch (error) {
+      toast.error("Error al agregar producto");
+      console.error(error);
+    }
   }
 
   async function handleRemoveItem(itemId: string): Promise<void> {
@@ -211,6 +297,72 @@ export default function OfertasGeneralesPage(): React.ReactElement {
     }
   }
 
+  function openEditItemDialog(item: OfertaGeneral["items"][0]): void {
+    setEditingItemId(item.id);
+    setEditItemFormStrings({
+      cantidad: item.cantidad?.toString() || "",
+      precioUnitario: item.precioUnitario?.toString() || "",
+      cantidadCajas: item.cantidadCajas?.toString() || "",
+      cantidadSacos: item.cantidadSacos?.toString() || "",
+      pesoXSaco: item.pesoXSaco?.toString() || "",
+      precioXSaco: item.precioXSaco?.toString() || "",
+      pesoXCaja: item.pesoXCaja?.toString() || "",
+      precioXCaja: item.precioXCaja?.toString() || "",
+    });
+    setEditItemDialogOpen(true);
+  }
+
+  async function handleUpdateItem(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    if (!selectedOferta || !editingItemId) return;
+
+    try {
+      const updateData: Partial<ItemOfertaGeneralInput> = {
+        cantidad: parseFloat(editItemFormStrings.cantidad) || 0,
+        precioUnitario: parseFloat(editItemFormStrings.precioUnitario) || 0,
+        cantidadCajas: editItemFormStrings.cantidadCajas ? parseInt(editItemFormStrings.cantidadCajas) : undefined,
+        cantidadSacos: editItemFormStrings.cantidadSacos ? parseInt(editItemFormStrings.cantidadSacos) : undefined,
+        pesoXSaco: editItemFormStrings.pesoXSaco ? parseFloat(editItemFormStrings.pesoXSaco) : undefined,
+        precioXSaco: editItemFormStrings.precioXSaco ? parseFloat(editItemFormStrings.precioXSaco) : undefined,
+        pesoXCaja: editItemFormStrings.pesoXCaja ? parseFloat(editItemFormStrings.pesoXCaja) : undefined,
+        precioXCaja: editItemFormStrings.precioXCaja ? parseFloat(editItemFormStrings.precioXCaja) : undefined,
+      };
+      
+      await ofertasGeneralesApi.updateItem(selectedOferta.id, editingItemId, updateData);
+      toast.success("Producto actualizado");
+      const updated = await ofertasGeneralesApi.getById(selectedOferta.id);
+      setSelectedOferta(updated);
+      setEditItemDialogOpen(false);
+      setEditingItemId(null);
+      loadData();
+    } catch (error) {
+      toast.error("Error al actualizar");
+      console.error(error);
+    }
+  }
+
+  async function handleAdjustPrices(): Promise<void> {
+    if (!selectedOferta) return;
+    
+    const total = parseFloat(totalDeseado);
+    if (!total || total <= 0) {
+      toast.error("Ingresa un total válido mayor a 0");
+      return;
+    }
+
+    try {
+      const updated = await ofertasGeneralesApi.adjustPrices(selectedOferta.id, total);
+      toast.success("Precios ajustados correctamente");
+      setSelectedOferta(updated);
+      setShowAdjustPrices(false);
+      setTotalDeseado("");
+      loadData();
+    } catch (error) {
+      toast.error("Error al ajustar precios");
+      console.error(error);
+    }
+  }
+
   function formatCurrency(value: number): string {
     return new Intl.NumberFormat("es-ES", {
       style: "currency",
@@ -222,10 +374,113 @@ export default function OfertasGeneralesPage(): React.ReactElement {
     return new Date(date).toLocaleDateString("es-ES");
   }
 
-  // Calcular totales
   const totalTemp = itemsTemp.reduce(
     (acc, item) => acc + item.cantidad * item.precioUnitario,
     0
+  );
+
+  // Función inline para renderizar el formulario de item (evita re-crear componente)
+  const renderItemForm = (onAdd: () => void, onCancel: () => void) => (
+    <div className="bg-slate-50 rounded-lg p-4 space-y-4">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label>Producto *</Label>
+          <Select value={itemFormStrings.productoId} onValueChange={handleSelectProduct}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar producto" />
+            </SelectTrigger>
+            <SelectContent>
+              {productos.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.nombre} ({p.unidadMedida.abreviatura})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Cantidad *</Label>
+          <Input
+            placeholder="0"
+            value={itemFormStrings.cantidad}
+            onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidad: e.target.value }))}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Precio Unitario *</Label>
+          <Input
+            placeholder="0.00"
+            value={itemFormStrings.precioUnitario}
+            onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioUnitario: e.target.value }))}
+          />
+        </div>
+      </div>
+
+      {/* Campos informativos opcionales */}
+      <div className="border-t pt-4">
+        <p className="text-sm text-slate-500 mb-3">Campos informativos (opcionales)</p>
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs">Cant. Sacos</Label>
+            <Input
+              placeholder="-"
+              value={itemFormStrings.cantidadSacos}
+              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Peso x Saco</Label>
+            <Input
+              placeholder="-"
+              value={itemFormStrings.pesoXSaco}
+              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Precio x Saco</Label>
+            <Input
+              placeholder="-"
+              value={itemFormStrings.precioXSaco}
+              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXSaco: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Cant. Cajas</Label>
+            <Input
+              placeholder="-"
+              value={itemFormStrings.cantidadCajas}
+              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Peso x Caja</Label>
+            <Input
+              placeholder="-"
+              value={itemFormStrings.pesoXCaja}
+              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Precio x Caja</Label>
+            <Input
+              placeholder="-"
+              value={itemFormStrings.precioXCaja}
+              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="button" size="sm" onClick={onAdd}>
+          <Plus className="h-4 w-4 mr-2" />
+          Agregar
+        </Button>
+      </div>
+    </div>
   );
 
   return (
@@ -346,160 +601,16 @@ export default function OfertasGeneralesPage(): React.ReactElement {
                   type="button"
                   size="sm"
                   variant={showAddItem ? "secondary" : "default"}
-                  onClick={() => setShowAddItem(!showAddItem)}
+                  onClick={() => { setShowAddItem(!showAddItem); resetItemForm(); }}
                 >
                   {showAddItem ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                   {showAddItem ? "Cancelar" : "Agregar Producto"}
                 </Button>
               </div>
 
-              {/* Form para agregar item */}
-              {showAddItem && (
-                <div className="bg-slate-50 rounded-lg p-4 space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Producto *</Label>
-                      <Select
-                        value={itemForm.productoId}
-                        onValueChange={handleSelectProduct}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar producto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {productos.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.nombre} ({p.unidadMedida.abreviatura})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Cantidad ({productos.find(p => p.id === itemForm.productoId)?.unidadMedida.abreviatura || 'UM'}) *</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={itemForm.cantidad || ""}
-                        onChange={(e) => setItemForm((prev) => ({
-                          ...prev,
-                          cantidad: e.target.value === "" ? 0 : parseFloat(e.target.value),
-                        }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Precio por {productos.find(p => p.id === itemForm.productoId)?.unidadMedida.abreviatura || 'UM'} *</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={itemForm.precioUnitario || ""}
-                        onChange={(e) => setItemForm((prev) => ({
-                          ...prev,
-                          precioUnitario: e.target.value === "" ? 0 : parseFloat(e.target.value),
-                        }))}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Campos informativos opcionales */}
-                  <div className="border-t pt-4">
-                    <p className="text-sm text-slate-500 mb-3">Campos informativos (opcionales)</p>
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs">Cant. Sacos</Label>
-                        <Input
-                          type="number"
-                          step="1"
-                          min="0"
-                          placeholder="-"
-                          value={itemForm.cantidadSacos || ""}
-                          onChange={(e) => setItemForm((prev) => ({
-                            ...prev,
-                            cantidadSacos: e.target.value ? parseInt(e.target.value) : undefined,
-                          }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Peso x Saco</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="-"
-                          value={itemForm.pesoXSaco || ""}
-                          onChange={(e) => setItemForm((prev) => ({
-                            ...prev,
-                            pesoXSaco: e.target.value ? parseFloat(e.target.value) : undefined,
-                          }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Precio x Saco</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="-"
-                          value={itemForm.precioXSaco || ""}
-                          onChange={(e) => setItemForm((prev) => ({
-                            ...prev,
-                            precioXSaco: e.target.value ? parseFloat(e.target.value) : undefined,
-                          }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Cant. Cajas</Label>
-                        <Input
-                          type="number"
-                          step="1"
-                          min="0"
-                          placeholder="-"
-                          value={itemForm.cantidadCajas || ""}
-                          onChange={(e) => setItemForm((prev) => ({
-                            ...prev,
-                            cantidadCajas: e.target.value ? parseInt(e.target.value) : undefined,
-                          }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Peso x Caja</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="-"
-                          value={itemForm.pesoXCaja || ""}
-                          onChange={(e) => setItemForm((prev) => ({
-                            ...prev,
-                            pesoXCaja: e.target.value ? parseFloat(e.target.value) : undefined,
-                          }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs">Precio x Caja</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="-"
-                          value={itemForm.precioXCaja || ""}
-                          onChange={(e) => setItemForm((prev) => ({
-                            ...prev,
-                            precioXCaja: e.target.value ? parseFloat(e.target.value) : undefined,
-                          }))}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <Button type="button" onClick={addItemToList}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Agregar a la lista
-                    </Button>
-                  </div>
-                </div>
+              {showAddItem && renderItemForm(
+                addItemToList, 
+                () => { setShowAddItem(false); resetItemForm(); }
               )}
 
               {/* Lista de items temporales */}
@@ -508,6 +619,7 @@ export default function OfertasGeneralesPage(): React.ReactElement {
                   <TableRow>
                     <TableHead>Producto</TableHead>
                     <TableHead>UM</TableHead>
+                    <TableHead className="text-right">Sacos</TableHead>
                     <TableHead className="text-right">Cantidad</TableHead>
                     <TableHead className="text-right">Precio</TableHead>
                     <TableHead className="text-right">Importe</TableHead>
@@ -517,7 +629,7 @@ export default function OfertasGeneralesPage(): React.ReactElement {
                 <TableBody>
                   {itemsTemp.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-4 text-slate-500">
+                      <TableCell colSpan={7} className="text-center py-4 text-slate-500">
                         No hay productos agregados
                       </TableCell>
                     </TableRow>
@@ -526,6 +638,7 @@ export default function OfertasGeneralesPage(): React.ReactElement {
                       <TableRow key={item.tempId}>
                         <TableCell>{item.producto?.nombre}</TableCell>
                         <TableCell>{item.producto?.unidadMedida.abreviatura}</TableCell>
+                        <TableCell className="text-right">{item.cantidadSacos || item.cantidadCajas || "-"}</TableCell>
                         <TableCell className="text-right">{item.cantidad}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.precioUnitario)}</TableCell>
                         <TableCell className="text-right font-medium">
@@ -568,73 +681,288 @@ export default function OfertasGeneralesPage(): React.ReactElement {
         </DialogContent>
       </Dialog>
 
-      {/* Detail Dialog */}
+      {/* Detail/Edit Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-[900px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Lista de Precios: {selectedOferta?.numero}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              Lista de Precios: {selectedOferta?.numero}
+              {!editingOferta && (
+                <Button variant="ghost" size="icon" onClick={() => setEditingOferta(true)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+            </DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-slate-500">
-                Fecha: {selectedOferta && formatDate(selectedOferta.fecha)}
-              </p>
-            </div>
-
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>UM</TableHead>
-                  <TableHead className="text-right">Cantidad</TableHead>
-                  <TableHead className="text-right">Precio</TableHead>
-                  <TableHead className="text-right">Importe</TableHead>
-                  <TableHead className="w-16"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedOferta?.items.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-4 text-slate-500">
-                      No hay productos
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  selectedOferta?.items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{item.producto.nombre}</TableCell>
-                      <TableCell>{item.producto.unidadMedida.abreviatura}</TableCell>
-                      <TableCell className="text-right">{item.cantidad}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.precioUnitario)}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(item.cantidad * item.precioUnitario)}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveItem(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-
-            {selectedOferta && selectedOferta.items.length > 0 && (
-              <div className="flex justify-end">
-                <div className="text-lg font-bold">
-                  Total: {formatCurrency(
-                    selectedOferta.items.reduce((acc, item) => acc + item.cantidad * item.precioUnitario, 0)
-                  )}
+          <div className="space-y-6">
+            {/* Información básica - editable */}
+            {editingOferta ? (
+              <div className="bg-slate-50 rounded-lg p-4 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Número</Label>
+                    <Input
+                      value={editFormData.numero}
+                      onChange={(e) => setEditFormData((prev) => ({ ...prev, numero: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Observaciones</Label>
+                    <Input
+                      value={editFormData.observaciones}
+                      onChange={(e) => setEditFormData((prev) => ({ ...prev, observaciones: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setEditingOferta(false)}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={handleUpdateOferta} disabled={saving}>
+                    <Save className="h-4 w-4 mr-2" />
+                    Guardar
+                  </Button>
                 </div>
               </div>
+            ) : (
+              <div className="flex justify-between items-center text-sm">
+                <div>
+                  <span className="text-slate-500">Fecha:</span>{" "}
+                  {selectedOferta && formatDate(selectedOferta.fecha)}
+                </div>
+                {selectedOferta?.observaciones && (
+                  <div>
+                    <span className="text-slate-500">Observaciones:</span>{" "}
+                    {selectedOferta.observaciones}
+                  </div>
+                )}
+              </div>
             )}
+
+            {/* Sección de productos */}
+            <div className="border rounded-lg p-4 space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold">Productos</h3>
+                <Button
+                  size="sm"
+                  variant={showAddItemToExisting ? "secondary" : "default"}
+                  onClick={() => { setShowAddItemToExisting(!showAddItemToExisting); resetItemForm(); }}
+                >
+                  {showAddItemToExisting ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                  {showAddItemToExisting ? "Cancelar" : "Agregar Producto"}
+                </Button>
+              </div>
+
+              {showAddItemToExisting && renderItemForm(
+                handleAddItemToExisting, 
+                () => { setShowAddItemToExisting(false); resetItemForm(); }
+              )}
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Producto</TableHead>
+                    <TableHead>UM</TableHead>
+                    <TableHead className="text-right">Sacos</TableHead>
+                    <TableHead className="text-right">Cantidad</TableHead>
+                    <TableHead className="text-right">Precio</TableHead>
+                    <TableHead className="text-right">Importe</TableHead>
+                    <TableHead className="w-16"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {selectedOferta?.items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-4 text-slate-500">
+                        No hay productos
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    selectedOferta?.items.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.producto.nombre}</TableCell>
+                        <TableCell>{item.producto.unidadMedida.abreviatura}</TableCell>
+                        <TableCell className="text-right">
+                          {item.cantidadSacos || item.cantidadCajas || "-"}
+                        </TableCell>
+                        <TableCell className="text-right">{item.cantidad}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.precioUnitario)}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(item.cantidad * item.precioUnitario)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditItemDialog(item)}
+                            >
+                              <Pencil className="h-4 w-4 text-blue-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleRemoveItem(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+
+              {selectedOferta && selectedOferta.items.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div className="text-lg font-bold">
+                      Total Actual: {formatCurrency(
+                        selectedOferta.items.reduce((acc, item) => acc + item.cantidad * item.precioUnitario, 0)
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={showAdjustPrices ? "secondary" : "outline"}
+                      onClick={() => setShowAdjustPrices(!showAdjustPrices)}
+                    >
+                      {showAdjustPrices ? "Cancelar" : "Ajustar a Total"}
+                    </Button>
+                  </div>
+
+                  {showAdjustPrices && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                      <p className="text-sm text-amber-800">
+                        Ingresa el total deseado y los precios de los productos se ajustarán proporcionalmente.
+                      </p>
+                      <div className="flex gap-3 items-end">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-sm">Total Deseado ($)</Label>
+                          <Input
+                            placeholder="Ej: 5000"
+                            value={totalDeseado}
+                            onChange={(e) => setTotalDeseado(e.target.value)}
+                          />
+                        </div>
+                        <Button onClick={handleAdjustPrices}>
+                          Aplicar Ajuste
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Botones de exportación */}
+            <div className="flex justify-center gap-4 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => selectedOferta && exportApi.downloadPdf("ofertas-generales", selectedOferta.id)}
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                Descargar PDF
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => selectedOferta && exportApi.downloadExcel("ofertas-generales", selectedOferta.id)}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Descargar Excel
+              </Button>
+            </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Item Dialog */}
+      <Dialog open={editItemDialogOpen} onOpenChange={setEditItemDialogOpen}>
+        <DialogContent className="w-full max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar Producto</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateItem} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Cantidad *</Label>
+                <Input
+                  placeholder="0"
+                  value={editItemFormStrings.cantidad}
+                  onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, cantidad: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Precio Unitario *</Label>
+                <Input
+                  placeholder="0.00"
+                  value={editItemFormStrings.precioUnitario}
+                  onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioUnitario: e.target.value }))}
+                />
+              </div>
+            </div>
+            {/* Campos informativos opcionales */}
+            <div className="border-t pt-4">
+              <p className="text-sm text-slate-500 mb-3">Campos informativos (opcionales)</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Cant. Sacos</Label>
+                  <Input
+                    placeholder="-"
+                    value={editItemFormStrings.cantidadSacos}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Peso x Saco</Label>
+                  <Input
+                    placeholder="-"
+                    value={editItemFormStrings.pesoXSaco}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Precio x Saco</Label>
+                  <Input
+                    placeholder="-"
+                    value={editItemFormStrings.precioXSaco}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioXSaco: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Cant. Cajas</Label>
+                  <Input
+                    placeholder="-"
+                    value={editItemFormStrings.cantidadCajas}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Peso x Caja</Label>
+                  <Input
+                    placeholder="-"
+                    value={editItemFormStrings.pesoXCaja}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Precio x Caja</Label>
+                  <Input
+                    placeholder="-"
+                    value={editItemFormStrings.precioXCaja}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditItemDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit">Guardar</Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

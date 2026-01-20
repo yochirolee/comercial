@@ -1,29 +1,15 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import { cloudinaryService } from '../services/cloudinary.service';
 
 export const uploadRouter = Router();
 
-// Configurar multer para guardar las imágenes
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(process.cwd(), 'uploads', 'images');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-  },
-});
-
+// Configurar multer para guardar en memoria (para subir a Cloudinary)
 const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  storage: multer.memoryStorage(),
+  limits: { 
+    fileSize: parseInt(process.env.DELIVERY_MAX_MB || '6') * 1024 * 1024 
+  },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -34,8 +20,8 @@ const upload = multer({
   },
 });
 
-// Subir una imagen (logo, firma, cuño)
-uploadRouter.post('/:tipo', upload.single('image'), (req, res) => {
+// Subir una imagen (logo, firma, cuno) a Cloudinary
+uploadRouter.post('/:tipo', upload.single('image'), async (req, res) => {
   const { tipo } = req.params;
   
   if (!['logo', 'firma', 'cuno'].includes(tipo)) {
@@ -48,25 +34,43 @@ uploadRouter.post('/:tipo', upload.single('image'), (req, res) => {
     return;
   }
 
-  // Devolver el path relativo para guardar en la BD
-  const relativePath = `images/${req.file.filename}`;
-  
-  res.json({
-    success: true,
-    path: relativePath,
-    filename: req.file.filename,
-  });
-});
+  try {
+    // Verificar si Cloudinary está configurado
+    if (!cloudinaryService.isConfigured()) {
+      res.status(500).json({ error: 'Cloudinary no está configurado' });
+      return;
+    }
 
-// Servir imágenes estáticas
-uploadRouter.get('/images/:filename', (req, res) => {
-  const { filename } = req.params;
-  const filePath = path.join(process.cwd(), 'uploads', 'images', filename);
-  
-  if (fs.existsSync(filePath)) {
-    res.sendFile(filePath);
-  } else {
-    res.status(404).json({ error: 'Imagen no encontrada' });
+    // Generar nombre único
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = `${tipo}-${uniqueSuffix}`;
+    
+    // Subir a Cloudinary con subfolder según el tipo
+    const url = await cloudinaryService.uploadFile(
+      req.file.buffer,
+      filename,
+      tipo // subfolder: logo, firma, cuno
+    );
+
+    res.json({
+      success: true,
+      url,
+      path: url, // Para compatibilidad con el código existente
+      filename,
+    });
+  } catch (error) {
+    console.error('Error uploading to Cloudinary:', error);
+    res.status(500).json({ 
+      error: 'Error al subir imagen',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 
+// Ruta de compatibilidad para imágenes locales antiguas (redirect o 404)
+uploadRouter.get('/images/:filename', (req, res) => {
+  res.status(404).json({ 
+    error: 'Las imágenes ahora se sirven desde Cloudinary',
+    message: 'Por favor actualice la URL de la imagen'
+  });
+});

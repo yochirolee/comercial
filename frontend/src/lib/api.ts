@@ -104,8 +104,16 @@ export const ofertasGeneralesApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  updateItem: (id: string, itemId: string, data: Partial<ItemOfertaGeneralInput>) => fetchApi<ItemOfertaGeneral>(`/ofertas-generales/${id}/items/${itemId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
   removeItem: (id: string, itemId: string) => fetchApi<void>(`/ofertas-generales/${id}/items/${itemId}`, {
     method: 'DELETE',
+  }),
+  adjustPrices: (id: string, totalDeseado: number) => fetchApi<OfertaGeneral>(`/ofertas-generales/${id}/adjust-prices`, {
+    method: 'POST',
+    body: JSON.stringify({ totalDeseado }),
   }),
 };
 
@@ -135,6 +143,10 @@ export const ofertasClienteApi = {
   }),
   removeItem: (id: string, itemId: string) => fetchApi<void>(`/ofertas-cliente/${id}/items/${itemId}`, {
     method: 'DELETE',
+  }),
+  adjustPrices: (id: string, totalDeseado: number) => fetchApi<OfertaCliente>(`/ofertas-cliente/${id}/adjust-prices`, {
+    method: 'POST',
+    body: JSON.stringify({ totalDeseado }),
   }),
 };
 
@@ -174,6 +186,11 @@ export const ofertasImportadoraApi = {
   // Recalcular precios ajustados
   recalcular: (id: string) => fetchApi<OfertaImportadora>(`/ofertas-importadora/${id}/recalcular`, {
     method: 'POST',
+  }),
+  // Ajustar precios para llegar a un total CIF deseado
+  adjustPrices: (id: string, totalDeseado: number) => fetchApi<OfertaImportadora>(`/ofertas-importadora/${id}/adjust-prices`, {
+    method: 'POST',
+    body: JSON.stringify({ totalDeseado }),
   }),
 };
 
