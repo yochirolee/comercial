@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight, Pencil, Save } from "lucide-react";
 import { 
   ofertasImportadoraApi, 
   ofertasClienteApi, 
@@ -80,6 +80,20 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
   // Estado para ajustar precios por total deseado
   const [totalDeseado, setTotalDeseado] = useState("");
+
+  // Estado para editar item existente
+  const [editItemDialogOpen, setEditItemDialogOpen] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editItemFormStrings, setEditItemFormStrings] = useState({
+    cantidad: "",
+    cantidadCajas: "",
+    cantidadSacos: "",
+    pesoXSaco: "",
+    precioXSaco: "",
+    pesoXCaja: "",
+    precioXCaja: "",
+    precioOriginal: "",
+  });
 
   async function loadData(): Promise<void> {
     try {
@@ -260,6 +274,75 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       loadData();
     } catch (error) {
       toast.error("Error");
+      console.error(error);
+    }
+  }
+
+  // Abrir diálogo de edición de item
+  function openEditItemDialog(item: OfertaImportadora["items"][0]): void {
+    setEditingItemId(item.id);
+    setEditItemFormStrings({
+      cantidad: item.cantidad?.toString() || "",
+      cantidadCajas: item.cantidadCajas?.toString() || "",
+      cantidadSacos: item.cantidadSacos?.toString() || "",
+      pesoXSaco: item.pesoXSaco?.toString() || "",
+      precioXSaco: item.precioXSaco?.toString() || "",
+      pesoXCaja: item.pesoXCaja?.toString() || "",
+      precioXCaja: item.precioXCaja?.toString() || "",
+      precioOriginal: item.precioOriginal?.toString() || "",
+    });
+    setEditItemDialogOpen(true);
+  }
+
+  // Guardar cambios de item
+  async function handleUpdateItem(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    if (!selectedOferta || !editingItemId) return;
+
+    try {
+      const itemData = {
+        cantidad: parseFloat(editItemFormStrings.cantidad) || 0,
+        cantidadCajas: editItemFormStrings.cantidadCajas ? parseInt(editItemFormStrings.cantidadCajas) : undefined,
+        cantidadSacos: editItemFormStrings.cantidadSacos ? parseInt(editItemFormStrings.cantidadSacos) : undefined,
+        pesoXSaco: editItemFormStrings.pesoXSaco ? parseFloat(editItemFormStrings.pesoXSaco) : undefined,
+        precioXSaco: editItemFormStrings.precioXSaco ? parseFloat(editItemFormStrings.precioXSaco) : undefined,
+        pesoXCaja: editItemFormStrings.pesoXCaja ? parseFloat(editItemFormStrings.pesoXCaja) : undefined,
+        precioXCaja: editItemFormStrings.precioXCaja ? parseFloat(editItemFormStrings.precioXCaja) : undefined,
+        precioOriginal: parseFloat(editItemFormStrings.precioOriginal) || 0,
+      };
+
+      const updated = await ofertasImportadoraApi.updateItem(selectedOferta.id, editingItemId, itemData);
+      setSelectedOferta(updated);
+      toast.success("Producto actualizado");
+      setEditItemDialogOpen(false);
+      loadData();
+    } catch (error) {
+      toast.error("Error al actualizar");
+      console.error(error);
+    }
+  }
+
+  // Guardar todos los cambios de la oferta
+  async function handleSaveAllChanges(): Promise<void> {
+    if (!selectedOferta) return;
+
+    try {
+      await ofertasImportadoraApi.update(selectedOferta.id, {
+        numero: selectedOferta.numero,
+        flete: selectedOferta.flete,
+        seguro: selectedOferta.seguro,
+        tieneSeguro: selectedOferta.tieneSeguro,
+        puertoEmbarque: selectedOferta.puertoEmbarque,
+        origen: selectedOferta.origen,
+        moneda: selectedOferta.moneda,
+        terminosPago: selectedOferta.terminosPago,
+        incluyeFirmaCliente: selectedOferta.incluyeFirmaCliente,
+        estado: selectedOferta.estado,
+      });
+      toast.success("Cambios guardados");
+      loadData();
+    } catch (error) {
+      toast.error("Error al guardar");
       console.error(error);
     }
   }
@@ -952,9 +1035,14 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                         </TableCell>
                         <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -991,7 +1079,113 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </div>
               </div>
             </div>
+
+            {/* Botón de guardar cambios */}
+            <div className="flex justify-end pt-4 border-t">
+              <Button onClick={handleSaveAllChanges} className="gap-2">
+                <Save className="h-4 w-4" />
+                Guardar Cambios
+              </Button>
+            </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para editar item */}
+      <Dialog open={editItemDialogOpen} onOpenChange={setEditItemDialogOpen}>
+        <DialogContent className="w-full max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Producto</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateItem} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Cantidad (LBS) *</Label>
+                <Input
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={editItemFormStrings.cantidad}
+                  onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, cantidad: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Precio Original x LB *</Label>
+                <Input
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={editItemFormStrings.precioOriginal}
+                  onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioOriginal: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium mb-3">Campos Opcionales</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Cant. Cajas</Label>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={editItemFormStrings.cantidadCajas}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cant. Sacos</Label>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={editItemFormStrings.cantidadSacos}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Peso x Saco</Label>
+                  <Input
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={editItemFormStrings.pesoXSaco}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Precio x Saco</Label>
+                  <Input
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={editItemFormStrings.precioXSaco}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioXSaco: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Peso x Caja</Label>
+                  <Input
+                    inputMode="decimal"
+                    placeholder="0"
+                    value={editItemFormStrings.pesoXCaja}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Precio x Caja</Label>
+                  <Input
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={editItemFormStrings.precioXCaja}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditItemDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit">Guardar</Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

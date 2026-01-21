@@ -29,8 +29,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil } from "lucide-react";
-import { ofertasClienteApi, clientesApi, productosApi, exportApi } from "@/lib/api";
-import type { OfertaCliente, Cliente, Producto, ItemOfertaClienteInput } from "@/lib/api";
+import { ofertasClienteApi, ofertasGeneralesApi, clientesApi, productosApi, exportApi } from "@/lib/api";
+import type { OfertaCliente, OfertaGeneral, Cliente, Producto, ItemOfertaClienteInput } from "@/lib/api";
 
 interface ItemTemp extends ItemOfertaClienteInput {
   tempId: string;
@@ -39,6 +39,7 @@ interface ItemTemp extends ItemOfertaClienteInput {
 
 export default function OfertasClientePage(): React.ReactElement {
   const [ofertas, setOfertas] = useState<OfertaCliente[]>([]);
+  const [ofertasGenerales, setOfertasGenerales] = useState<OfertaGeneral[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,12 +98,14 @@ export default function OfertasClientePage(): React.ReactElement {
 
   async function loadData(): Promise<void> {
     try {
-      const [ofertasData, clientesData, productosData] = await Promise.all([
+      const [ofertasData, ofertasGeneralesData, clientesData, productosData] = await Promise.all([
         ofertasClienteApi.getAll(),
+        ofertasGeneralesApi.getAll(),
         clientesApi.getAll(),
         productosApi.getAll(),
       ]);
       setOfertas(ofertasData);
+      setOfertasGenerales(ofertasGeneralesData);
       setClientes(clientesData);
       setProductos(productosData.filter((p) => p.activo));
     } catch (error) {
@@ -155,10 +158,27 @@ export default function OfertasClientePage(): React.ReactElement {
 
   function handleSelectProduct(productoId: string): void {
     const prod = productos.find((p) => p.id === productoId);
+    
+    // Buscar si el producto existe en alguna oferta general para precargar campos opcionales
+    let itemOfertaGeneral: OfertaGeneral["items"][0] | undefined;
+    for (const og of ofertasGenerales) {
+      const found = og.items?.find((item) => item.productoId === productoId);
+      if (found) {
+        itemOfertaGeneral = found;
+        break;
+      }
+    }
+    
     setItemFormStrings((prev) => ({
       ...prev,
       productoId,
-      precioUnitario: prod?.precioBase?.toString() || "",
+      precioUnitario: itemOfertaGeneral?.precioUnitario?.toString() || prod?.precioBase?.toString() || "",
+      cantidadSacos: itemOfertaGeneral?.cantidadSacos?.toString() || "",
+      pesoXSaco: itemOfertaGeneral?.pesoXSaco?.toString() || "",
+      precioXSaco: itemOfertaGeneral?.precioXSaco?.toString() || "",
+      cantidadCajas: itemOfertaGeneral?.cantidadCajas?.toString() || "",
+      pesoXCaja: itemOfertaGeneral?.pesoXCaja?.toString() || "",
+      precioXCaja: itemOfertaGeneral?.precioXCaja?.toString() || "",
     }));
   }
 
