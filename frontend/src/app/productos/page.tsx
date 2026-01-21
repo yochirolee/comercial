@@ -49,6 +49,7 @@ export default function ProductosPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<ProductoInput>(emptyProducto);
+  const [precioString, setPrecioString] = useState(""); // Para permitir escribir decimales como "0.69"
   const [saving, setSaving] = useState(false);
 
   async function loadData(): Promise<void> {
@@ -81,6 +82,7 @@ export default function ProductosPage() {
 
   async function openNewDialog(): Promise<void> {
     setEditingId(null);
+    setPrecioString("");
     try {
       // Obtener siguiente código consecutivo
       const { codigo } = await productosApi.getNextCode();
@@ -107,6 +109,7 @@ export default function ProductosPage() {
       precioBase: producto.precioBase,
       unidadMedidaId: producto.unidadMedidaId,
     });
+    setPrecioString(producto.precioBase.toString());
     setDialogOpen(true);
   }
 
@@ -114,15 +117,22 @@ export default function ProductosPage() {
     e.preventDefault();
     setSaving(true);
 
+    // Convertir precio string a número
+    const dataToSend = {
+      ...formData,
+      precioBase: parseFloat(precioString) || 0,
+    };
+
     try {
       if (editingId) {
-        await productosApi.update(editingId, formData);
+        await productosApi.update(editingId, dataToSend);
         toast.success("Producto actualizado");
       } else {
-        await productosApi.create(formData);
+        await productosApi.create(dataToSend);
         toast.success("Producto creado");
       }
       setDialogOpen(false);
+      setPrecioString("");
       loadData();
     } catch (error) {
       toast.error("Error al guardar producto");
@@ -209,13 +219,12 @@ export default function ProductosPage() {
                       name="precioBase"
                       inputMode="decimal"
                       placeholder="0.00"
-                      value={formData.precioBase || ""}
+                      value={precioString}
                       onChange={(e) => {
                         const val = e.target.value;
-                        if (val === "" || val === "-") {
-                          setFormData((prev) => ({ ...prev, precioBase: 0 }));
-                        } else if (!isNaN(parseFloat(val))) {
-                          setFormData((prev) => ({ ...prev, precioBase: parseFloat(val) }));
+                        // Permitir vacío, números y punto decimal
+                        if (val === "" || /^[0-9]*\.?[0-9]*$/.test(val)) {
+                          setPrecioString(val);
                         }
                       }}
                     />
