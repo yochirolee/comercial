@@ -13,7 +13,8 @@
     "local:setup": "cp prisma/schema.local.prisma prisma/schema.prisma && prisma generate && prisma db push",
     "local:seed": "tsx prisma/seed.local.ts",
     "local:reset": "rm -f prisma/dev.db && npm run local:setup && npm run local:seed",
-    "local:dev": "DATABASE_URL=file:./prisma/dev.db tsx watch src/index.ts"
+    "local:dev": "cp prisma/schema.local.prisma prisma/schema.prisma && prisma generate && tsx watch src/index.ts",
+    "prod:restore": "cp prisma/schema.prod.prisma prisma/schema.prisma && prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",
