@@ -513,32 +513,32 @@ export const OfertaImportadoraController = {
       return;
     }
 
-    // Obtener los datos a actualizar
-    const updateData = { ...validation.data };
-    
     // Calcular el nuevo subtotal si cambió cantidad o precioOriginal
-    const cantidad = updateData.cantidad ?? existingItem.cantidad;
-    const pesoNeto = updateData.pesoNeto ?? existingItem.pesoNeto;
-    const precioOriginal = updateData.precioOriginal ?? existingItem.precioOriginal;
-    const precioAjustado = existingItem.precioAjustado; // Mantener el precio ajustado actual
+    const cantidad = validation.data.cantidad ?? existingItem.cantidad;
+    const pesoNeto = validation.data.pesoNeto ?? existingItem.pesoNeto;
+    const precioOriginal = validation.data.precioOriginal ?? existingItem.precioOriginal;
+    let precioAjustado = existingItem.precioAjustado; // Mantener el precio ajustado actual
     
     const cantidadParaCalculo = pesoNeto || cantidad;
     
     // Si cambió el precioOriginal, ajustar también el precioAjustado proporcionalmente
-    if (updateData.precioOriginal !== undefined && updateData.precioOriginal !== existingItem.precioOriginal) {
+    if (validation.data.precioOriginal !== undefined && validation.data.precioOriginal !== existingItem.precioOriginal) {
       const ratio = existingItem.precioOriginal > 0 
         ? existingItem.precioAjustado / existingItem.precioOriginal 
         : 1;
-      updateData.precioAjustado = Math.round(updateData.precioOriginal * ratio * 100) / 100;
+      precioAjustado = Math.round(validation.data.precioOriginal * ratio * 100) / 100;
     }
     
-    // Calcular subtotal con el precio ajustado (actual o nuevo)
-    const finalPrecioAjustado = updateData.precioAjustado ?? precioAjustado;
-    updateData.subtotal = Math.round(cantidadParaCalculo * finalPrecioAjustado * 100) / 100;
+    // Calcular subtotal con el precio ajustado
+    const subtotal = Math.round(cantidadParaCalculo * precioAjustado * 100) / 100;
 
     await prisma.itemOfertaImportadora.update({
       where: { id: itemId },
-      data: updateData,
+      data: {
+        ...validation.data,
+        precioAjustado,
+        subtotal,
+      },
     });
     
     // Solo actualizar los totales de la oferta (sin recalcular precios ajustados)
