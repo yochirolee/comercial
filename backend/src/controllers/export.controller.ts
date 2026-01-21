@@ -77,6 +77,23 @@ async function addImageToExcel(
   }
 }
 
+// Función para obtener imagen para PDFKit (buffer para URLs, path para locales)
+async function getImageForPdf(imagePath: string): Promise<Buffer | string | null> {
+  if (!imagePath) return null;
+  
+  const isRemote = imagePath.startsWith('http://') || imagePath.startsWith('https://');
+  
+  if (isRemote) {
+    return await fetchImageBuffer(imagePath);
+  } else {
+    // Archivo local
+    if (fs.existsSync(imagePath)) {
+      return imagePath;
+    }
+    return null;
+  }
+}
+
 // ==========================================
 // CONSTANTES DE EMPRESA (valores por defecto)
 // ==========================================
@@ -263,13 +280,16 @@ function buildDynamicColumns(items: any[]): DynamicColumns {
 // ==========================================
 // PDF - HEADER COMÚN (Empresa primero, luego título)
 // ==========================================
-function renderPdfHeader(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: number, contentWidth: number): number {
+async function renderPdfHeader(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: number, contentWidth: number): Promise<number> {
   const headerY = doc.y;
   
   // Logo a la izquierda (si existe)
   const logoPath = getImagePath(empresa.logo);
   if (logoPath) {
-    doc.image(logoPath, margin, headerY, { width: 70 });
+    const imageData = await getImageForPdf(logoPath);
+    if (imageData) {
+      doc.image(imageData, margin, headerY, { width: 70 });
+    }
   }
 
   // Empresa centrada (PRIMERO)
@@ -440,7 +460,7 @@ function renderPdfTerminos(doc: PDFKit.PDFDocument, margin: number): void {
 // ==========================================
 // PDF - FIRMA COMÚN
 // ==========================================
-function renderPdfFirma(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: number): void {
+async function renderPdfFirma(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: number): Promise<void> {
   // Más espacio antes de la firma para no tapar el texto
   doc.moveDown(4);
   
@@ -451,7 +471,10 @@ function renderPdfFirma(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: n
   // Imagen de firma (si existe) - arriba de la línea
   const firmaPath = getImagePath(empresa.firmaPresidente);
   if (firmaPath) {
-    doc.image(firmaPath, margin + 30, firmaImageY, { width: 100, height: 45 });
+    const firmaData = await getImageForPdf(firmaPath);
+    if (firmaData) {
+      doc.image(firmaData, margin + 30, firmaImageY, { width: 100, height: 45 });
+    }
   }
   
   // Línea de firma (debajo de la imagen)
@@ -468,7 +491,10 @@ function renderPdfFirma(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: n
   // Cuño (si existe) - al lado de la firma
   const cunoPath = getImagePath(empresa.cunoEmpresa);
   if (cunoPath) {
-    doc.image(cunoPath, margin + firmaWidth + 20, firmaImageY + 10, { width: 70, height: 70 });
+    const cunoData = await getImageForPdf(cunoPath);
+    if (cunoData) {
+      doc.image(cunoData, margin + firmaWidth + 20, firmaImageY + 10, { width: 70, height: 70 });
+    }
   }
 }
 
@@ -803,7 +829,7 @@ export const ExportController = {
     const contentWidth = pageWidth - margin * 2;
 
     // HEADER COMÚN (empresa primero, luego título)
-    const afterHeaderY = renderPdfHeader(doc, empresa, margin, contentWidth);
+    const afterHeaderY = await renderPdfHeader(doc, empresa, margin, contentWidth);
     doc.y = afterHeaderY;
 
     // TABLA DE ITEMS (centrada, con total incluido)
@@ -814,7 +840,7 @@ export const ExportController = {
     renderPdfTerminos(doc, margin);
 
     // FIRMA
-    renderPdfFirma(doc, empresa, margin);
+    await renderPdfFirma(doc, empresa, margin);
 
     doc.end();
   },
@@ -910,7 +936,7 @@ export const ExportController = {
     const contentWidth = pageWidth - margin * 2;
 
     // HEADER COMÚN
-    const afterHeaderY = renderPdfHeader(doc, empresa, margin, contentWidth);
+    const afterHeaderY = await renderPdfHeader(doc, empresa, margin, contentWidth);
     doc.y = afterHeaderY + 10;
 
     // INFO DE OFERTA Y CLIENTE
@@ -950,13 +976,19 @@ export const ExportController = {
     // Imagen de firma empresa (si existe)
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      doc.image(firmaPath, margin + 40, firmaStartY, { width: 100, height: 45 });
+      const firmaData = await getImageForPdf(firmaPath);
+      if (firmaData) {
+        doc.image(firmaData, margin + 40, firmaStartY, { width: 100, height: 45 });
+      }
     }
 
     // Cuño (si existe) - al lado de la firma empresa
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      doc.image(cunoPath, margin + firmaWidth + 20, firmaStartY + 10, { width: 70, height: 70 });
+      const cunoData = await getImageForPdf(cunoPath);
+      if (cunoData) {
+        doc.image(cunoData, margin + firmaWidth + 20, firmaStartY + 10, { width: 70, height: 70 });
+      }
     }
 
     // Líneas de firma
@@ -1224,7 +1256,7 @@ export const ExportController = {
     const contentWidth = pageWidth - margin * 2;
 
     // HEADER COMÚN
-    const afterHeaderY = renderPdfHeader(doc, empresa, margin, contentWidth);
+    const afterHeaderY = await renderPdfHeader(doc, empresa, margin, contentWidth);
     doc.y = afterHeaderY + 10;
 
     // INFO DE OFERTA Y CLIENTE (igual que CLIENTE)
@@ -1280,13 +1312,19 @@ export const ExportController = {
     // Imagen de firma empresa (si existe)
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      doc.image(firmaPath, margin + 40, firmaStartY, { width: 100, height: 45 });
+      const firmaData = await getImageForPdf(firmaPath);
+      if (firmaData) {
+        doc.image(firmaData, margin + 40, firmaStartY, { width: 100, height: 45 });
+      }
     }
 
     // Cuño (si existe) - entre las dos firmas o al lado si no hay firma cliente
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      doc.image(cunoPath, margin + firmaWidth + 20, firmaStartY + 10, { width: 70, height: 70 });
+      const cunoData = await getImageForPdf(cunoPath);
+      if (cunoData) {
+        doc.image(cunoData, margin + firmaWidth + 20, firmaStartY + 10, { width: 70, height: 70 });
+      }
     }
 
     // Líneas de firma
