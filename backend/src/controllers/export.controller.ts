@@ -20,7 +20,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
     if (!response.ok) return null;
     
     const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const buffer = Buffer.from(new Uint8Array(arrayBuffer));
     
     // Guardar en cache
     imageCache.set(url, buffer);
@@ -51,7 +51,7 @@ async function addImageToExcel(
       
       const ext = getImageExtension(imagePath);
       const imageId = workbook.addImage({
-        buffer,
+        buffer: buffer as Buffer,
         extension: ext,
       });
       worksheet.addImage(imageId, {
