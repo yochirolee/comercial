@@ -5,6 +5,77 @@ import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import path from 'path';
 
+// Cache para imágenes descargadas (evita descargar múltiples veces)
+const imageCache: Map<string, Buffer> = new Map();
+
+// Función para descargar imagen remota y obtener buffer
+async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+  try {
+    // Verificar cache
+    if (imageCache.has(url)) {
+      return imageCache.get(url)!;
+    }
+    
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Guardar en cache
+    imageCache.set(url, buffer);
+    
+    return buffer;
+  } catch (error) {
+    console.error('Error fetching image:', url, error);
+    return null;
+  }
+}
+
+// Función para agregar imagen a Excel (maneja URLs remotas y archivos locales)
+async function addImageToExcel(
+  workbook: ExcelJS.Workbook,
+  worksheet: ExcelJS.Worksheet,
+  imagePath: string | null,
+  position: { col: number; row: number },
+  size: { width: number; height: number }
+): Promise<void> {
+  if (!imagePath) return;
+  
+  try {
+    const isRemote = imagePath.startsWith('http://') || imagePath.startsWith('https://');
+    
+    if (isRemote) {
+      const buffer = await fetchImageBuffer(imagePath);
+      if (!buffer) return;
+      
+      const ext = getImageExtension(imagePath);
+      const imageId = workbook.addImage({
+        buffer,
+        extension: ext,
+      });
+      worksheet.addImage(imageId, {
+        tl: position,
+        ext: size,
+      });
+    } else {
+      // Archivo local
+      if (!fs.existsSync(imagePath)) return;
+      
+      const imageId = workbook.addImage({
+        filename: imagePath,
+        extension: getImageExtension(imagePath),
+      });
+      worksheet.addImage(imageId, {
+        tl: position,
+        ext: size,
+      });
+    }
+  } catch (error) {
+    console.error('Error adding image to Excel:', error);
+  }
+}
+
 // ==========================================
 // CONSTANTES DE EMPRESA (valores por defecto)
 // ==========================================
@@ -67,6 +138,13 @@ async function getEmpresaInfo(): Promise<EmpresaInfo> {
 
 function getImagePath(imagePath: string | null): string | null {
   if (!imagePath) return null;
+  
+  // Si es una URL de Cloudinary u otra URL remota, devolverla tal cual
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  
+  // Si es un path local, buscar en uploads/
   const fullPath = path.join(process.cwd(), 'uploads', imagePath);
   if (fs.existsSync(fullPath)) {
     return fullPath;
@@ -75,7 +153,14 @@ function getImagePath(imagePath: string | null): string | null {
 }
 
 function getImageExtension(imagePath: string): 'png' | 'jpeg' | 'gif' {
-  const ext = path.extname(imagePath).toLowerCase();
+  // Extraer extensión de URL o path
+  let ext = '';
+  if (imagePath.includes('?')) {
+    // URL con query params
+    ext = path.extname(imagePath.split('?')[0]).toLowerCase();
+  } else {
+    ext = path.extname(imagePath).toLowerCase();
+  }
   if (ext === '.jpg' || ext === '.jpeg') return 'jpeg';
   if (ext === '.gif') return 'gif';
   return 'png';
@@ -131,8 +216,8 @@ function buildDynamicColumns(items: any[]): DynamicColumns {
   
   // Columnas base: ITEM, DESCRIPCION
   const headers: string[] = ['ITEM', 'DESCRIPCION'];
-  const widthsPdf: number[] = [30, 140]; // Reducido descripción para dar espacio
-  const widthsExcel: number[] = [6, 30];
+  const widthsPdf: number[] = [30, 200]; // Descripción más ancha para tablas con pocas columnas
+  const widthsExcel: number[] = [6, 45];
 
   // Agregar campos opcionales en orden lógico
   if (optionalFields.cantidadSacos) {
@@ -389,25 +474,18 @@ function renderPdfFirma(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: n
 // ==========================================
 // EXCEL - HEADER COMÚN
 // ==========================================
-function renderExcelHeader(
+async function renderExcelHeader(
   worksheet: ExcelJS.Worksheet, 
   workbook: ExcelJS.Workbook,
   empresa: EmpresaInfo, 
   lastCol: string
-): number {
+): Promise<number> {
   let row = 1;
 
   // Logo (si existe)
   const logoPath = getImagePath(empresa.logo);
   if (logoPath) {
-    const logoImage = workbook.addImage({
-      filename: logoPath,
-      extension: getImageExtension(logoPath),
-    });
-    worksheet.addImage(logoImage, {
-      tl: { col: 0, row: row - 1 },
-      ext: { width: 70, height: 50 },
-    });
+    await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: row - 1 }, { width: 70, height: 50 });
   }
 
   // Empresa primero (nombre, dirección, contacto)
@@ -640,39 +718,25 @@ function renderExcelTerminos(worksheet: ExcelJS.Worksheet, row: number, lastCol:
 // ==========================================
 // EXCEL - FIRMA
 // ==========================================
-function renderExcelFirma(
+async function renderExcelFirma(
   worksheet: ExcelJS.Worksheet, 
   workbook: ExcelJS.Workbook,
   empresa: EmpresaInfo, 
   startRow: number
-): number {
+): Promise<number> {
   let row = startRow + 2;
 
   // Imagen de firma (si existe) - centrada sobre la sección de firma (columnas A-C)
   const firmaPath = getImagePath(empresa.firmaPresidente);
   if (firmaPath) {
-    const firmaImage = workbook.addImage({
-      filename: firmaPath,
-      extension: getImageExtension(firmaPath),
-    });
-    worksheet.addImage(firmaImage, {
-      tl: { col: 1.2, row: row - 1 },
-      ext: { width: 100, height: 50 },
-    });
+    await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.2, row: row - 1 }, { width: 100, height: 50 });
     row += 3;
   }
 
   // Cuño (si existe) - al lado de la firma
   const cunoPath = getImagePath(empresa.cunoEmpresa);
   if (cunoPath) {
-    const cunoImage = workbook.addImage({
-      filename: cunoPath,
-      extension: getImageExtension(cunoPath),
-    });
-    worksheet.addImage(cunoImage, {
-      tl: { col: 3, row: startRow + 1 },
-      ext: { width: 70, height: 70 },
-    });
+    await addImageToExcel(workbook, worksheet, cunoPath, { col: 3, row: startRow + 1 }, { width: 70, height: 70 });
   }
 
   // Línea y texto de firma
@@ -785,7 +849,7 @@ export const ExportController = {
       : 'A' + String.fromCharCode(64 + lastColIndex - 26);
 
     // HEADER (empresa + título)
-    let row = renderExcelHeader(worksheet, workbook, empresa, lastCol);
+    let row = await renderExcelHeader(worksheet, workbook, empresa, lastCol);
 
     // TABLA DE ITEMS
     const { endRow, totalImporte, numCols } = renderExcelTable(worksheet, oferta.items, row, false);
@@ -798,7 +862,7 @@ export const ExportController = {
     row = renderExcelTerminos(worksheet, row, lastCol);
 
     // FIRMA
-    renderExcelFirma(worksheet, workbook, empresa, row);
+    await renderExcelFirma(worksheet, workbook, empresa, row);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=oferta-general-${oferta.numero || 'sin-numero'}.xlsx`);
@@ -958,14 +1022,7 @@ export const ExportController = {
     // LOGO (si existe)
     const logoPath = getImagePath(empresa.logo);
     if (logoPath) {
-      const logoImage = workbook.addImage({
-        filename: logoPath,
-        extension: getImageExtension(logoPath),
-      });
-      worksheet.addImage(logoImage, {
-        tl: { col: 0, row: 0 },
-        ext: { width: 70, height: 50 },
-      });
+      await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: 0 }, { width: 70, height: 50 });
     }
 
     // Empresa (nombre, dirección, contacto) - primero
@@ -1061,27 +1118,13 @@ export const ExportController = {
     // FIRMA EMPRESA - Imagen
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      const firmaImage = workbook.addImage({
-        filename: firmaPath,
-        extension: getImageExtension(firmaPath),
-      });
-      worksheet.addImage(firmaImage, {
-        tl: { col: 0.8, row: firmaStartRow - 1 },
-        ext: { width: 100, height: 50 },
-      });
+      await addImageToExcel(workbook, worksheet, firmaPath, { col: 0.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
     }
 
     // CUÑO
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      const cunoImage = workbook.addImage({
-        filename: cunoPath,
-        extension: getImageExtension(cunoPath),
-      });
-      worksheet.addImage(cunoImage, {
-        tl: { col: 2.5, row: firmaStartRow - 1 },
-        ext: { width: 70, height: 70 },
-      });
+      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
     }
 
     row = firmaStartRow + 3;
@@ -1307,14 +1350,7 @@ export const ExportController = {
     // Logo (si existe)
     const logoPath = getImagePath(empresa.logo);
     if (logoPath) {
-      const logoImage = workbook.addImage({
-        filename: logoPath,
-        extension: getImageExtension(logoPath),
-      });
-      worksheet.addImage(logoImage, {
-        tl: { col: 0, row: row - 1 },
-        ext: { width: 70, height: 50 },
-      });
+      await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: row - 1 }, { width: 70, height: 50 });
     }
 
     // EMPRESA PRIMERO
@@ -1441,26 +1477,12 @@ export const ExportController = {
 
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      const firmaImage = workbook.addImage({
-        filename: firmaPath,
-        extension: getImageExtension(firmaPath),
-      });
-      worksheet.addImage(firmaImage, {
-        tl: { col: 0.8, row: firmaStartRow - 1 },
-        ext: { width: 100, height: 50 },
-      });
+      await addImageToExcel(workbook, worksheet, firmaPath, { col: 0.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
     }
 
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      const cunoImage = workbook.addImage({
-        filename: cunoPath,
-        extension: getImageExtension(cunoPath),
-      });
-      worksheet.addImage(cunoImage, {
-        tl: { col: 2.5, row: firmaStartRow - 1 },
-        ext: { width: 70, height: 70 },
-      });
+      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
     }
 
     row = firmaStartRow + 3;

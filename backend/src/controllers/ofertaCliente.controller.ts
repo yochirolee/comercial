@@ -389,9 +389,14 @@ export const OfertaClienteController = {
       return;
     }
 
-    // Calcular total actual (solo productos, sin flete ni seguro)
+    if (oferta.items.length === 0) {
+      res.status(400).json({ error: 'La oferta no tiene productos' });
+      return;
+    }
+
+    // Calcular total actual
     const totalActual = oferta.items.reduce(
-      (sum, item) => sum + item.cantidad * item.precioUnitario,
+      (sum, item) => sum + item.subtotal,
       0
     );
 
@@ -403,17 +408,49 @@ export const OfertaClienteController = {
     // Calcular factor de ajuste
     const factor = totalDeseado / totalActual;
 
-    // Actualizar precios de cada item
-    for (const item of oferta.items) {
-      const nuevoPrecio = Math.round(item.precioUnitario * factor * 100) / 100;
-      await prisma.itemOfertaCliente.update({
-        where: { id: item.id },
-        data: { precioUnitario: nuevoPrecio },
-      });
+    // Actualizar precios de cada item (excepto el último)
+    let totalAcumulado = 0;
+    const itemsOrdenados = [...oferta.items].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    
+    for (let i = 0; i < itemsOrdenados.length; i++) {
+      const item = itemsOrdenados[i];
+      const cantidadParaCalculo = item.pesoNeto || item.cantidad;
+      
+      if (i < itemsOrdenados.length - 1) {
+        // Para todos excepto el último, aplicar factor con redondeo
+        const nuevoPrecio = Math.round(item.precioUnitario * factor * 100) / 100;
+        const nuevoSubtotal = Math.round(cantidadParaCalculo * nuevoPrecio * 100) / 100;
+        totalAcumulado += nuevoSubtotal;
+        
+        await prisma.itemOfertaCliente.update({
+          where: { id: item.id },
+          data: { 
+            precioUnitario: nuevoPrecio,
+            subtotal: nuevoSubtotal,
+          },
+        });
+      } else {
+        // Para el último item, calcular precio para que el total sea exacto
+        const subtotalNecesario = Math.round((totalDeseado - totalAcumulado) * 100) / 100;
+        const nuevoPrecio = cantidadParaCalculo > 0 
+          ? Math.round((subtotalNecesario / cantidadParaCalculo) * 100) / 100
+          : 0;
+        
+        await prisma.itemOfertaCliente.update({
+          where: { id: item.id },
+          data: { 
+            precioUnitario: nuevoPrecio,
+            subtotal: subtotalNecesario,
+          },
+        });
+      }
     }
 
-    // Recalcular total
-    await calcularTotal(id);
+    // Actualizar total de la oferta
+    await prisma.ofertaCliente.update({
+      where: { id },
+      data: { total: totalDeseado },
+    });
 
     // Retornar oferta actualizada
     const ofertaActualizada = await prisma.ofertaCliente.findUnique({
