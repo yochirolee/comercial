@@ -353,9 +353,10 @@ function renderPdfTable(
   let totalImporte = 0;
 
   for (const item of items) {
-    const cantidadLbs = item.cantidad;
+    const cantidadParaCalculo = item.pesoNeto || item.cantidad;
     const precioXLb = usePrecioAjustado ? (item.precioAjustado || item.precioUnitario) : item.precioUnitario;
-    const importe = cantidadLbs * precioXLb;
+    // Usar subtotal guardado si existe, sino calcular
+    const importe = item.subtotal != null ? item.subtotal : cantidadParaCalculo * precioXLb;
     totalImporte += importe;
     
     xPos = tableLeft;
@@ -402,7 +403,7 @@ function renderPdfTable(
     }
     
     // CANTIDAD LBS
-    doc.text(formatCurrency(cantidadLbs), xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'right' });
+    doc.text(formatCurrency(item.cantidad), xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'right' });
     xPos += widthsPdf[colIndex++];
     
     // PRECIO X LB
@@ -586,9 +587,10 @@ function renderExcelTable(
 
   for (const item of items) {
     const dataRow = worksheet.getRow(row);
-    const cantidadLbs = item.cantidad;
+    const cantidadParaCalculo = item.pesoNeto || item.cantidad;
     const precioXLb = usePrecioAjustado ? (item.precioAjustado || item.precioUnitario) : item.precioUnitario;
-    const importe = cantidadLbs * precioXLb;
+    // Usar subtotal guardado si existe, sino calcular
+    const importe = item.subtotal != null ? item.subtotal : cantidadParaCalculo * precioXLb;
     totalImporte += importe;
 
     // Construir valores dinámicamente
@@ -601,7 +603,7 @@ function renderExcelTable(
     if (optionalFields.pesoXCaja) values.push(item.pesoXCaja ?? '-');
     if (optionalFields.precioXCaja) values.push(item.precioXCaja ?? '-');
     
-    values.push(cantidadLbs, precioXLb, importe);
+    values.push(item.cantidad, precioXLb, importe);
     
     dataRow.values = values;
 
