@@ -50,8 +50,9 @@ async function addImageToExcel(
       if (!buffer) return;
       
       const ext = getImageExtension(imagePath);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const imageId = workbook.addImage({
-        buffer: buffer as Buffer,
+        buffer: buffer as any,
         extension: ext,
       });
       worksheet.addImage(imageId, {
