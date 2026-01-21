@@ -326,7 +326,6 @@ export const OfertaImportadoraController = {
     
     // CIF = Subtotal productos + Flete + Seguro
     const cifFinal = subtotalProductos + flete + seguroFinal;
-    const factorAjuste = 1; // No hay ajuste de precios en creación
 
     // Crear oferta importadora
     const ofertaImportadora = await prisma.ofertaImportadora.create({
@@ -349,8 +348,7 @@ export const OfertaImportadoraController = {
         precioCIF: cifFinal,
         items: {
           create: ofertaCliente.items.map(item => {
-            const precioAjustado = item.precioUnitario * factorAjuste;
-            const cantidadParaCalculo = item.pesoNeto || item.cantidad;
+            // Usar subtotal de oferta cliente directamente (ya tiene ajustes aplicados)
             return {
               productoId: item.productoId,
               cantidad: item.cantidad,
@@ -359,8 +357,8 @@ export const OfertaImportadoraController = {
               pesoNeto: item.pesoNeto,
               pesoBruto: item.pesoBruto,
               precioOriginal: item.precioUnitario,
-              precioAjustado,
-              subtotal: cantidadParaCalculo * precioAjustado,
+              precioAjustado: item.precioUnitario,
+              subtotal: item.subtotal, // Usar subtotal guardado para mantener exactitud
               // Campos opcionales informativos
               pesoXSaco: item.pesoXSaco,
               precioXSaco: item.precioXSaco,
@@ -619,13 +617,31 @@ export const OfertaImportadoraController = {
     // Calcular factor de ajuste
     const factor = totalFobDeseado / totalFobOriginal;
 
+    // Ordenar items para consistencia (ajustar el último para absorber redondeo)
+    const itemsOrdenados = [...oferta.items].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    
     // Actualizar precios ajustados y subtotales de cada item
-    let subtotalProductos = 0;
-    for (const item of oferta.items) {
-      const nuevoPrecioAjustado = Math.round(item.precioOriginal * factor * 10000) / 10000; // 4 decimales para precisión
+    let subtotalAcumulado = 0;
+    for (let i = 0; i < itemsOrdenados.length; i++) {
+      const item = itemsOrdenados[i];
       const cantidadParaCalculo = item.pesoNeto || item.cantidad;
-      const nuevoSubtotal = cantidadParaCalculo * nuevoPrecioAjustado;
-      subtotalProductos += nuevoSubtotal;
+      
+      let nuevoPrecioAjustado: number;
+      let nuevoSubtotal: number;
+      
+      if (i < itemsOrdenados.length - 1) {
+        // Para todos excepto el último, aplicar factor con redondeo
+        nuevoPrecioAjustado = Math.round(item.precioOriginal * factor * 100) / 100;
+        nuevoSubtotal = Math.round(cantidadParaCalculo * nuevoPrecioAjustado * 100) / 100;
+        subtotalAcumulado += nuevoSubtotal;
+      } else {
+        // Para el último item, calcular para que el total sea exacto
+        nuevoSubtotal = Math.round((totalFobDeseado - subtotalAcumulado) * 100) / 100;
+        nuevoPrecioAjustado = cantidadParaCalculo > 0 
+          ? Math.round((nuevoSubtotal / cantidadParaCalculo) * 100) / 100
+          : 0;
+        subtotalAcumulado += nuevoSubtotal;
+      }
       
       await prisma.itemOfertaImportadora.update({
         where: { id: item.id },
@@ -635,6 +651,8 @@ export const OfertaImportadoraController = {
         },
       });
     }
+    
+    const subtotalProductos = subtotalAcumulado;
 
     // Actualizar totales de la oferta Y el precio acordado (para que futuros recálculos lo respeten)
     await prisma.ofertaImportadora.update({
