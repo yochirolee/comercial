@@ -340,6 +340,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         estado: selectedOferta.estado,
       });
       toast.success("Cambios guardados");
+      setDetailDialogOpen(false);
       loadData();
     } catch (error) {
       toast.error("Error al guardar");
@@ -677,7 +678,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="w-[90vw] max-w-[1400px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Ship className="h-5 w-5" />
               Oferta Importadora: {selectedOferta?.numero}
@@ -687,6 +688,10 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </Badge>
               )}
             </DialogTitle>
+            <Button onClick={handleSaveAllChanges} className="gap-2">
+              <Save className="h-4 w-4" />
+              Guardar y Cerrar
+            </Button>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -1080,13 +1085,6 @@ export default function OfertasImportadoraPage(): React.ReactElement {
               </div>
             </div>
 
-            {/* Botón de guardar cambios */}
-            <div className="flex justify-end pt-4 border-t">
-              <Button onClick={handleSaveAllChanges} className="gap-2">
-                <Save className="h-4 w-4" />
-                Guardar Cambios
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>
