@@ -758,14 +758,14 @@ async function renderExcelFirma(
   // Imagen de firma (si existe) - centrada sobre la sección de firma
   const firmaPath = getImagePath(empresa.firmaPresidente);
   if (firmaPath) {
-    await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.5, row: row - 1 }, { width: 100, height: 50 });
+    await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.8, row: row - 1 }, { width: 100, height: 50 });
     row += 3;
   }
 
   // Cuño (si existe) - al lado de la firma
   const cunoPath = getImagePath(empresa.cunoEmpresa);
   if (cunoPath) {
-    await addImageToExcel(workbook, worksheet, cunoPath, { col: 3, row: startRow + 1 }, { width: 70, height: 70 });
+    await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: startRow + 1 }, { width: 70, height: 70 });
   }
 
   // Línea y texto de firma
@@ -1153,13 +1153,13 @@ export const ExportController = {
     // FIRMA EMPRESA - Imagen (centrada sobre la sección de firma)
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.5, row: firmaStartRow - 1 }, { width: 100, height: 50 });
+      await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
     }
 
     // CUÑO - al lado de la firma
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      await addImageToExcel(workbook, worksheet, cunoPath, { col: 3, row: firmaStartRow - 1 }, { width: 70, height: 70 });
+      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
     }
 
     row = firmaStartRow + 3;
@@ -1518,12 +1518,12 @@ export const ExportController = {
 
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.5, row: firmaStartRow - 1 }, { width: 100, height: 50 });
+      await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
     }
 
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      await addImageToExcel(workbook, worksheet, cunoPath, { col: 3, row: firmaStartRow - 1 }, { width: 70, height: 70 });
+      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
     }
 
     row = firmaStartRow + 3;
