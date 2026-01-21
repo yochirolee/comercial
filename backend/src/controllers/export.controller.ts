@@ -288,7 +288,7 @@ async function renderPdfHeader(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, ma
   if (logoPath) {
     const imageData = await getImageForPdf(logoPath);
     if (imageData) {
-      doc.image(imageData, margin, headerY, { width: 70 });
+      doc.image(imageData, margin, headerY, { width: 120, height: 45 });
     }
   }
 
@@ -510,10 +510,10 @@ async function renderExcelHeader(
 ): Promise<number> {
   let row = 1;
 
-  // Logo (si existe)
+  // Logo (si existe) - más ancho para logos rectangulares
   const logoPath = getImagePath(empresa.logo);
   if (logoPath) {
-    await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: row - 1 }, { width: 70, height: 50 });
+    await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: row - 1 }, { width: 130, height: 45 });
   }
 
   // Empresa primero (nombre, dirección, contacto)
@@ -755,17 +755,17 @@ async function renderExcelFirma(
 ): Promise<number> {
   let row = startRow + 2;
 
-  // Imagen de firma (si existe) - centrada sobre la sección de firma (columnas A-C)
+  // Imagen de firma (si existe) - centrada sobre la sección de firma
   const firmaPath = getImagePath(empresa.firmaPresidente);
   if (firmaPath) {
-    await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.2, row: row - 1 }, { width: 100, height: 50 });
+    await addImageToExcel(workbook, worksheet, firmaPath, { col: 2.2, row: row - 1 }, { width: 100, height: 50 });
     row += 3;
   }
 
   // Cuño (si existe) - al lado de la firma
   const cunoPath = getImagePath(empresa.cunoEmpresa);
   if (cunoPath) {
-    await addImageToExcel(workbook, worksheet, cunoPath, { col: 3, row: startRow + 1 }, { width: 70, height: 70 });
+    await addImageToExcel(workbook, worksheet, cunoPath, { col: 3.8, row: startRow + 1 }, { width: 70, height: 70 });
   }
 
   // Línea y texto de firma
@@ -1054,10 +1054,10 @@ export const ExportController = {
 
     let row = 1;
 
-    // LOGO (si existe)
+    // LOGO (si existe) - más ancho para logos rectangulares
     const logoPath = getImagePath(empresa.logo);
     if (logoPath) {
-      await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: 0 }, { width: 70, height: 50 });
+      await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: 0 }, { width: 130, height: 45 });
     }
 
     // Empresa (nombre, dirección, contacto) - primero
@@ -1150,16 +1150,16 @@ export const ExportController = {
     // FIRMAS - Empresa a la izquierda, Cliente a la derecha (en la misma fila)
     const firmaStartRow = row + 2;
 
-    // FIRMA EMPRESA - Imagen
+    // FIRMA EMPRESA - Imagen (centrada sobre la sección de firma)
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      await addImageToExcel(workbook, worksheet, firmaPath, { col: 0.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
+      await addImageToExcel(workbook, worksheet, firmaPath, { col: 2.2, row: firmaStartRow - 1 }, { width: 100, height: 50 });
     }
 
-    // CUÑO
+    // CUÑO - al lado de la firma
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
+      await addImageToExcel(workbook, worksheet, cunoPath, { col: 3.8, row: firmaStartRow - 1 }, { width: 70, height: 70 });
     }
 
     row = firmaStartRow + 3;
@@ -1388,10 +1388,10 @@ export const ExportController = {
     // Llenar header con lastCol correcto
     let row = 1;
 
-    // Logo (si existe)
+    // Logo (si existe) - más ancho para logos rectangulares
     const logoPath = getImagePath(empresa.logo);
     if (logoPath) {
-      await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: row - 1 }, { width: 70, height: 50 });
+      await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: row - 1 }, { width: 130, height: 45 });
     }
 
     // EMPRESA PRIMERO
@@ -1518,12 +1518,12 @@ export const ExportController = {
 
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      await addImageToExcel(workbook, worksheet, firmaPath, { col: 0.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
+      await addImageToExcel(workbook, worksheet, firmaPath, { col: 2.2, row: firmaStartRow - 1 }, { width: 100, height: 50 });
     }
 
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
+      await addImageToExcel(workbook, worksheet, cunoPath, { col: 3.8, row: firmaStartRow - 1 }, { width: 70, height: 70 });
     }
 
     row = firmaStartRow + 3;
@@ -1630,7 +1630,7 @@ export const ExportController = {
     const logoPath = getImagePath(empresa.logo);
     
     if (logoPath) {
-      doc.image(logoPath, margin, headerY, { width: 80 });
+      doc.image(logoPath, margin, headerY, { width: 120, height: 45 });
     }
     
     doc.fontSize(14).font('Helvetica-Bold');
