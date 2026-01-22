@@ -213,12 +213,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setDetailDialogOpen(true);
   }
 
-  // Guardar cambios generales de la oferta
+  // Guardar cambios generales de la oferta y cerrar
   async function handleSaveChanges(): Promise<void> {
     if (!selectedOferta) return;
 
     try {
-      const updated = await ofertasImportadoraApi.update(selectedOferta.id, {
+      await ofertasImportadoraApi.update(selectedOferta.id, {
         numero: selectedOferta.numero,
         flete: selectedOferta.flete,
         seguro: selectedOferta.seguro,
@@ -230,8 +230,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         incluyeFirmaCliente: selectedOferta.incluyeFirmaCliente,
         estado: selectedOferta.estado,
       });
-      setSelectedOferta(updated);
       toast.success("Cambios guardados");
+      setDetailDialogOpen(false);
       loadData();
     } catch (error) {
       toast.error("Error al guardar");
@@ -637,10 +637,28 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </Badge>
               )}
             </DialogTitle>
-            <Button onClick={handleSaveChanges} className="gap-2">
-              <Save className="h-4 w-4" />
-              Guardar Cambios
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => selectedOferta && exportApi.downloadPdf("ofertas-importadora", selectedOferta.id)}
+              >
+                <FileDown className="h-4 w-4 mr-1" />
+                PDF
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => selectedOferta && exportApi.downloadExcel("ofertas-importadora", selectedOferta.id)}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-1" />
+                Excel
+              </Button>
+              <Button onClick={handleSaveChanges} size="sm" className="gap-2">
+                <Save className="h-4 w-4" />
+                Guardar y Cerrar
+              </Button>
+            </div>
           </DialogHeader>
 
           <div className="space-y-4">
