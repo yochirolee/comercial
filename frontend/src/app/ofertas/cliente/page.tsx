@@ -895,7 +895,7 @@ export default function OfertasClientePage(): React.ReactElement {
                 </Label>
               </div>
               <div className="flex justify-end">
-                <Button onClick={handleUpdateOferta} size="sm">
+                <Button onClick={() => handleUpdateOferta(false)} size="sm">
                   Guardar Cambios
                 </Button>
               </div>
