@@ -269,12 +269,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     }
   }
 
-  // Abrir diálogo de edición de item (solo campos informativos)
+  // Abrir diálogo de edición de item (cantidad + campos informativos, NO precio)
   function openEditItemDialog(item: OfertaImportadora["items"][0]): void {
     setEditingItemId(item.id);
     setEditItemForm({
-      cantidad: "",
-      precioUnitario: "",
+      cantidad: (item.pesoNeto || item.cantidad)?.toString() || "",
+      precioUnitario: "", // No se usa
       cantidadCajas: item.cantidadCajas?.toString() || "",
       cantidadSacos: item.cantidadSacos?.toString() || "",
       pesoXSaco: item.pesoXSaco?.toString() || "",
@@ -285,14 +285,15 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setEditItemDialogOpen(true);
   }
 
-  // Guardar cambios de item (solo campos informativos, NO toca precios)
+  // Guardar cambios de item (cantidad + campos informativos, NO precio)
   async function handleUpdateItem(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!selectedOferta || !editingItemId) return;
 
     try {
-      // Solo enviar campos informativos, NO precio
+      // Enviar cantidad y campos informativos, NO precio (mantiene precio ajustado)
       const itemData = {
+        cantidad: editItemForm.cantidad ? parseFloat(editItemForm.cantidad) : undefined,
         cantidadCajas: editItemForm.cantidadCajas ? parseInt(editItemForm.cantidadCajas) : undefined,
         cantidadSacos: editItemForm.cantidadSacos ? parseInt(editItemForm.cantidadSacos) : undefined,
         pesoXSaco: editItemForm.pesoXSaco ? parseFloat(editItemForm.pesoXSaco) : undefined,
@@ -304,7 +305,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       const updated = await ofertasImportadoraApi.updateItem(selectedOferta.id, editingItemId, itemData);
       setSelectedOferta(updated);
       setEditItemDialogOpen(false);
-      toast.success("Campos informativos actualizados");
+      toast.success("Producto actualizado");
       loadData();
     } catch (error) {
       toast.error("Error al actualizar");
@@ -893,16 +894,31 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo para editar campos informativos del item */}
+      {/* Diálogo para editar item (cantidad + campos informativos, NO precio) */}
       <Dialog open={editItemDialogOpen} onOpenChange={setEditItemDialogOpen}>
         <DialogContent className="w-full max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar Campos Informativos</DialogTitle>
+            <DialogTitle>Editar Producto</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdateItem} className="space-y-4">
             <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded">
-              Aquí puedes editar los campos informativos del producto. Los precios y cantidades principales no se modifican aquí. Para cambiar el total CIF, usa el botón "Ajustar" en la vista principal.
+              Puedes cambiar la cantidad y los campos informativos. El precio ajustado se mantiene. Para cambiar el total CIF, usa el botón "Ajustar".
             </p>
+
+            {/* Cantidad principal */}
+            <div className="space-y-2">
+              <Label>Cantidad (LBS/KG)</Label>
+              <Input
+                inputMode="decimal"
+                value={editItemForm.cantidad}
+                onChange={(e) => setEditItemForm(prev => ({ ...prev, cantidad: e.target.value }))}
+                placeholder="0"
+              />
+            </div>
+
+            <div className="border-t pt-3">
+              <Label className="text-sm font-medium text-slate-500">Campos Informativos</Label>
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
