@@ -562,9 +562,10 @@ export interface ItemOfertaImportadora {
 }
 
 export interface ItemOfertaImportadoraInput {
-  productoId: string;
-  cantidad: number;
-  precioUnitario: number; // El precio del producto
+  productoId?: string;
+  cantidad?: number;
+  precioUnitario?: number; // El precio del producto (actualiza original y ajustado)
+  precioAjustado?: number; // Solo actualiza el precio ajustado (no el original)
   // Campos informativos opcionales
   cantidadCajas?: number;
   cantidadSacos?: number;

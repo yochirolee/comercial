@@ -269,12 +269,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     }
   }
 
-  // Abrir diálogo de edición de item (cantidad + campos informativos, NO precio)
+  // Abrir diálogo de edición de item
   function openEditItemDialog(item: OfertaImportadora["items"][0]): void {
     setEditingItemId(item.id);
     setEditItemForm({
       cantidad: (item.pesoNeto || item.cantidad)?.toString() || "",
-      precioUnitario: "", // No se usa
+      precioUnitario: item.precioAjustado?.toString() || "", // Mostrar precio ajustado actual
       cantidadCajas: item.cantidadCajas?.toString() || "",
       cantidadSacos: item.cantidadSacos?.toString() || "",
       pesoXSaco: item.pesoXSaco?.toString() || "",
@@ -285,15 +285,16 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setEditItemDialogOpen(true);
   }
 
-  // Guardar cambios de item (cantidad + campos informativos, NO precio)
+  // Guardar cambios de item
   async function handleUpdateItem(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!selectedOferta || !editingItemId) return;
 
     try {
-      // Enviar cantidad y campos informativos, NO precio (mantiene precio ajustado)
       const itemData = {
         cantidad: editItemForm.cantidad ? parseFloat(editItemForm.cantidad) : undefined,
+        // Enviar precio ajustado si fue modificado
+        precioAjustado: editItemForm.precioUnitario ? parseFloat(editItemForm.precioUnitario) : undefined,
         cantidadCajas: editItemForm.cantidadCajas ? parseInt(editItemForm.cantidadCajas) : undefined,
         cantidadSacos: editItemForm.cantidadSacos ? parseInt(editItemForm.cantidadSacos) : undefined,
         pesoXSaco: editItemForm.pesoXSaco ? parseFloat(editItemForm.pesoXSaco) : undefined,
@@ -901,19 +902,26 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             <DialogTitle>Editar Producto</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdateItem} className="space-y-4">
-            <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded">
-              Puedes cambiar la cantidad y los campos informativos. El precio ajustado se mantiene. Para cambiar el total CIF, usa el botón "Ajustar".
-            </p>
-
-            {/* Cantidad principal */}
-            <div className="space-y-2">
-              <Label>Cantidad (LBS/KG)</Label>
-              <Input
-                inputMode="decimal"
-                value={editItemForm.cantidad}
-                onChange={(e) => setEditItemForm(prev => ({ ...prev, cantidad: e.target.value }))}
-                placeholder="0"
-              />
+            {/* Cantidad y Precio */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Cantidad (LBS/KG)</Label>
+                <Input
+                  inputMode="decimal"
+                  value={editItemForm.cantidad}
+                  onChange={(e) => setEditItemForm(prev => ({ ...prev, cantidad: e.target.value }))}
+                  placeholder="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Precio Ajustado</Label>
+                <Input
+                  inputMode="decimal"
+                  value={editItemForm.precioUnitario}
+                  onChange={(e) => setEditItemForm(prev => ({ ...prev, precioUnitario: e.target.value }))}
+                  placeholder="0.00"
+                />
+              </div>
             </div>
 
             <div className="border-t pt-3">

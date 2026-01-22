@@ -63,6 +63,7 @@ const itemSchema = z.object({
   pesoNeto: z.number().optional(),
   pesoBruto: z.number().optional(),
   precioUnitario: z.number().positive('El precio debe ser positivo'),
+  precioAjustado: z.number().positive('El precio debe ser positivo').optional(), // Para edición directa
   pesoXSaco: z.number().optional(),
   precioXSaco: z.number().optional(),
   pesoXCaja: z.number().optional(),
@@ -552,6 +553,12 @@ export const OfertaImportadoraController = {
     if (validation.data.precioUnitario !== undefined) {
       updateData.precioOriginal = validation.data.precioUnitario;
       updateData.precioAjustado = validation.data.precioUnitario;
+      recalcularSubtotal = true;
+    }
+    
+    // Precio ajustado directo: solo actualiza precioAjustado (NO precioOriginal)
+    if (validation.data.precioAjustado !== undefined) {
+      updateData.precioAjustado = validation.data.precioAjustado;
       recalcularSubtotal = true;
     }
     
