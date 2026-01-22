@@ -541,24 +541,34 @@ export const OfertaImportadoraController = {
     if (validation.data.campoExtra3 !== undefined) updateData.campoExtra3 = validation.data.campoExtra3;
     if (validation.data.campoExtra4 !== undefined) updateData.campoExtra4 = validation.data.campoExtra4;
     
-    // Cantidad: si cambia, recalcular subtotal con el precio ajustado existente
+    // Cantidad: si cambia, marcar para recalcular subtotal
+    let recalcularSubtotal = false;
     if (validation.data.cantidad !== undefined) {
       updateData.cantidad = validation.data.cantidad;
+      recalcularSubtotal = true;
     }
     
     // Precio unitario: si cambia, actualizar precioOriginal Y precioAjustado
     if (validation.data.precioUnitario !== undefined) {
       updateData.precioOriginal = validation.data.precioUnitario;
       updateData.precioAjustado = validation.data.precioUnitario;
+      recalcularSubtotal = true;
     }
     
-    // Recalcular subtotal con los valores finales
-    const cantidad = (updateData.cantidad as number) ?? existingItem.cantidad;
-    const pesoNeto = (updateData.pesoNeto as number) ?? existingItem.pesoNeto;
-    const precioAjustado = (updateData.precioAjustado as number) ?? existingItem.precioAjustado;
+    // pesoNeto también afecta el subtotal
+    if (validation.data.pesoNeto !== undefined) {
+      recalcularSubtotal = true;
+    }
     
-    const cantidadParaCalculo = pesoNeto || cantidad;
-    updateData.subtotal = Math.round(cantidadParaCalculo * precioAjustado * 100) / 100;
+    // Solo recalcular subtotal si cambiaron cantidad, precio o pesoNeto
+    if (recalcularSubtotal) {
+      const cantidad = (updateData.cantidad as number) ?? existingItem.cantidad;
+      const pesoNeto = (updateData.pesoNeto as number) ?? existingItem.pesoNeto;
+      const precioAjustado = (updateData.precioAjustado as number) ?? existingItem.precioAjustado;
+      
+      const cantidadParaCalculo = pesoNeto || cantidad;
+      updateData.subtotal = Math.round(cantidadParaCalculo * precioAjustado * 100) / 100;
+    }
 
     await prisma.itemOfertaImportadora.update({
       where: { id: itemId },

@@ -269,12 +269,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     }
   }
 
-  // Abrir diálogo de edición de item
+  // Abrir diálogo de edición de item (solo campos informativos)
   function openEditItemDialog(item: OfertaImportadora["items"][0]): void {
     setEditingItemId(item.id);
     setEditItemForm({
-      cantidad: (item.pesoNeto || item.cantidad)?.toString() || "",
-      precioUnitario: item.precioOriginal?.toString() || "",
+      cantidad: "",
+      precioUnitario: "",
       cantidadCajas: item.cantidadCajas?.toString() || "",
       cantidadSacos: item.cantidadSacos?.toString() || "",
       pesoXSaco: item.pesoXSaco?.toString() || "",
@@ -285,15 +285,14 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setEditItemDialogOpen(true);
   }
 
-  // Guardar cambios de item
+  // Guardar cambios de item (solo campos informativos, NO toca precios)
   async function handleUpdateItem(e: React.FormEvent): Promise<void> {
     e.preventDefault();
     if (!selectedOferta || !editingItemId) return;
 
     try {
+      // Solo enviar campos informativos, NO precio
       const itemData = {
-        cantidad: parseFloat(editItemForm.cantidad) || 0,
-        precioUnitario: parseFloat(editItemForm.precioUnitario) || 0,
         cantidadCajas: editItemForm.cantidadCajas ? parseInt(editItemForm.cantidadCajas) : undefined,
         cantidadSacos: editItemForm.cantidadSacos ? parseInt(editItemForm.cantidadSacos) : undefined,
         pesoXSaco: editItemForm.pesoXSaco ? parseFloat(editItemForm.pesoXSaco) : undefined,
@@ -305,7 +304,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       const updated = await ofertasImportadoraApi.updateItem(selectedOferta.id, editingItemId, itemData);
       setSelectedOferta(updated);
       setEditItemDialogOpen(false);
-      toast.success("Producto actualizado");
+      toast.success("Campos informativos actualizados");
       loadData();
     } catch (error) {
       toast.error("Error al actualizar");
@@ -894,89 +893,67 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo para editar item */}
+      {/* Diálogo para editar campos informativos del item */}
       <Dialog open={editItemDialogOpen} onOpenChange={setEditItemDialogOpen}>
         <DialogContent className="w-full max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar Producto</DialogTitle>
+            <DialogTitle>Editar Campos Informativos</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdateItem} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Cantidad *</Label>
-                <Input
-                  inputMode="decimal"
-                  value={editItemForm.cantidad}
-                  onChange={(e) => setEditItemForm(prev => ({ ...prev, cantidad: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Precio Unitario *</Label>
-                <Input
-                  inputMode="decimal"
-                  value={editItemForm.precioUnitario}
-                  onChange={(e) => setEditItemForm(prev => ({ ...prev, precioUnitario: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="border-t pt-4">
-              <h4 className="text-sm font-medium mb-3">Campos Opcionales</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="text-sm">Cant. Cajas</Label>
-                  <Input
-                    inputMode="numeric"
-                    value={editItemForm.cantidadCajas}
-                    onChange={(e) => setEditItemForm(prev => ({ ...prev, cantidadCajas: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm">Cant. Sacos</Label>
-                  <Input
-                    inputMode="numeric"
-                    value={editItemForm.cantidadSacos}
-                    onChange={(e) => setEditItemForm(prev => ({ ...prev, cantidadSacos: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm">Peso/Saco</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={editItemForm.pesoXSaco}
-                    onChange={(e) => setEditItemForm(prev => ({ ...prev, pesoXSaco: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm">$/Saco</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={editItemForm.precioXSaco}
-                    onChange={(e) => setEditItemForm(prev => ({ ...prev, precioXSaco: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm">Peso/Caja</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={editItemForm.pesoXCaja}
-                    onChange={(e) => setEditItemForm(prev => ({ ...prev, pesoXCaja: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm">$/Caja</Label>
-                  <Input
-                    inputMode="decimal"
-                    value={editItemForm.precioXCaja}
-                    onChange={(e) => setEditItemForm(prev => ({ ...prev, precioXCaja: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <p className="text-xs text-amber-600">
-              ⚠️ Si cambias el precio, se actualizará el precio original. Para ajustar al total CIF, usa el botón "Ajustar" en la vista principal.
+            <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded">
+              Aquí puedes editar los campos informativos del producto. Los precios y cantidades principales no se modifican aquí. Para cambiar el total CIF, usa el botón "Ajustar" en la vista principal.
             </p>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">Cant. Cajas</Label>
+                <Input
+                  inputMode="numeric"
+                  value={editItemForm.cantidadCajas}
+                  onChange={(e) => setEditItemForm(prev => ({ ...prev, cantidadCajas: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Cant. Sacos</Label>
+                <Input
+                  inputMode="numeric"
+                  value={editItemForm.cantidadSacos}
+                  onChange={(e) => setEditItemForm(prev => ({ ...prev, cantidadSacos: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Peso/Saco</Label>
+                <Input
+                  inputMode="decimal"
+                  value={editItemForm.pesoXSaco}
+                  onChange={(e) => setEditItemForm(prev => ({ ...prev, pesoXSaco: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">$/Saco</Label>
+                <Input
+                  inputMode="decimal"
+                  value={editItemForm.precioXSaco}
+                  onChange={(e) => setEditItemForm(prev => ({ ...prev, precioXSaco: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Peso/Caja</Label>
+                <Input
+                  inputMode="decimal"
+                  value={editItemForm.pesoXCaja}
+                  onChange={(e) => setEditItemForm(prev => ({ ...prev, pesoXCaja: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">$/Caja</Label>
+                <Input
+                  inputMode="decimal"
+                  value={editItemForm.precioXCaja}
+                  onChange={(e) => setEditItemForm(prev => ({ ...prev, precioXCaja: e.target.value }))}
+                />
+              </div>
+            </div>
 
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setEditItemDialogOpen(false)}>
