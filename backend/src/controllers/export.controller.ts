@@ -229,13 +229,28 @@ interface DynamicColumns {
   optionalFields: OptionalFields;
 }
 
-function buildDynamicColumns(items: any[]): DynamicColumns {
+function buildDynamicColumns(items: any[], unidadMedida?: string): DynamicColumns {
   const optionalFields = detectOptionalFields(items);
   
-  // Columnas base: ITEM, DESCRIPCION
+  // Determinar unidad de medida (usar la del primer producto o 'LB' por defecto)
+  const unidad = unidadMedida || items[0]?.producto?.unidadMedida?.abreviatura || 'LB';
+  
+  // Contar columnas opcionales para ajustar ancho de descripción
+  let numOptionalCols = 0;
+  if (optionalFields.cantidadSacos) numOptionalCols++;
+  if (optionalFields.pesoXSaco) numOptionalCols++;
+  if (optionalFields.precioXSaco) numOptionalCols++;
+  if (optionalFields.cantidadCajas) numOptionalCols++;
+  if (optionalFields.pesoXCaja) numOptionalCols++;
+  if (optionalFields.precioXCaja) numOptionalCols++;
+  
+  // Columnas base: ITEM, DESCRIPCION (ajustar ancho según columnas opcionales)
   const headers: string[] = ['ITEM', 'DESCRIPCION'];
-  const widthsPdf: number[] = [30, 200]; // Descripción más ancha para tablas con pocas columnas
-  const widthsExcel: number[] = [6, 45];
+  // Si hay muchas columnas, reducir descripción; si hay pocas, ampliarla
+  const descWidthPdf = numOptionalCols >= 4 ? 100 : numOptionalCols >= 2 ? 140 : 180;
+  const descWidthExcel = numOptionalCols >= 4 ? 25 : numOptionalCols >= 2 ? 32 : 40;
+  const widthsPdf: number[] = [30, descWidthPdf];
+  const widthsExcel: number[] = [6, descWidthExcel];
 
   // Agregar campos opcionales en orden lógico
   if (optionalFields.cantidadSacos) {
@@ -269,8 +284,8 @@ function buildDynamicColumns(items: any[]): DynamicColumns {
     widthsExcel.push(11);
   }
 
-  // Columnas finales: CANT. LBS (o CANT.), PRECIO X LB (o PRECIO), IMPORTE
-  headers.push('CANT.\nLBS', 'PRECIO\nX LB', 'IMPORTE');
+  // Columnas finales: usar unidad de medida del producto
+  headers.push(`CANT.\n${unidad}`, `PRECIO\nX ${unidad}`, 'IMPORTE');
   widthsPdf.push(55, 55, 70);
   widthsExcel.push(11, 11, 13);
 
@@ -319,7 +334,9 @@ function renderPdfTable(
   includeTotal: boolean = false,
   totalLabel: string = 'TOTAL CIF'
 ): { yPos: number; totalImporte: number; tableLeft: number; tableWidth: number; lastColWidth: number } {
-  const { headers, widthsPdf, optionalFields } = buildDynamicColumns(items);
+  // Obtener unidad de medida del primer item
+  const unidadMedida = items[0]?.producto?.unidadMedida?.abreviatura;
+  const { headers, widthsPdf, optionalFields } = buildDynamicColumns(items, unidadMedida);
   
   const tableTop = doc.y;
   const tableWidth = widthsPdf.reduce((a, b) => a + b, 0);
@@ -557,7 +574,9 @@ function renderExcelTable(
   startRow: number,
   usePrecioAjustado: boolean = false
 ): { endRow: number; totalImporte: number; lastCol: string; numCols: number } {
-  const { headers, widthsExcel, optionalFields } = buildDynamicColumns(items);
+  // Obtener unidad de medida del primer item
+  const unidadMedida = items[0]?.producto?.unidadMedida?.abreviatura;
+  const { headers, widthsExcel, optionalFields } = buildDynamicColumns(items, unidadMedida);
   
   let row = startRow;
 
@@ -871,7 +890,8 @@ export const ExportController = {
     const worksheet = workbook.addWorksheet('Oferta General');
 
     // Primero, calcular columnas para saber lastCol
-    const { headers } = buildDynamicColumns(oferta.items);
+    const unidadMedida = oferta.items[0]?.producto?.unidadMedida?.abreviatura;
+    const { headers } = buildDynamicColumns(oferta.items, unidadMedida);
     const lastColIndex = headers.length;
     const lastCol = lastColIndex <= 26 
       ? String.fromCharCode(64 + lastColIndex) 
@@ -1046,7 +1066,8 @@ export const ExportController = {
     const worksheet = workbook.addWorksheet('Oferta');
 
     // Calcular columnas dinámicas primero
-    const { headers } = buildDynamicColumns(oferta.items);
+    const unidadMedida = oferta.items[0]?.producto?.unidadMedida?.abreviatura;
+    const { headers } = buildDynamicColumns(oferta.items, unidadMedida);
     const lastColIndex = headers.length;
     const lastCol = lastColIndex <= 26 
       ? String.fromCharCode(64 + lastColIndex) 

@@ -81,6 +81,11 @@ const crearDesdeOfertaSchema = z.object({
   tieneSeguro: z.boolean().optional(),
   incluyeFirmaCliente: z.boolean().optional(),
   totalCifDeseado: z.number().optional(), // Si se quiere ajustar al crear
+  // Términos
+  puertoEmbarque: z.string().optional(),
+  origen: z.string().optional(),
+  moneda: z.string().optional(),
+  terminosPago: z.string().optional(),
 });
 
 // Función auxiliar para actualizar totales de la oferta (sin tocar precios)
@@ -218,7 +223,10 @@ export const OfertaImportadoraController = {
       return;
     }
 
-    const { ofertaClienteId, flete, seguro, tieneSeguro, incluyeFirmaCliente, totalCifDeseado } = validation.data;
+    const { 
+      ofertaClienteId, flete, seguro, tieneSeguro, incluyeFirmaCliente, totalCifDeseado,
+      puertoEmbarque, origen, moneda, terminosPago,
+    } = validation.data;
     
     const numero = validation.data.numero || await generarNumeroOferta();
 
@@ -264,10 +272,11 @@ export const OfertaImportadoraController = {
         clienteId: ofertaCliente.clienteId,
         ofertaClienteId,
         codigoMincex: ofertaCliente.codigoMincex,
-        puertoEmbarque: ofertaCliente.puertoEmbarque,
-        origen: ofertaCliente.origen,
-        moneda: ofertaCliente.moneda,
-        terminosPago: ofertaCliente.terminosPago,
+        // Usar valores proporcionados si existen, si no usar los de oferta cliente
+        puertoEmbarque: puertoEmbarque || ofertaCliente.puertoEmbarque,
+        origen: origen || ofertaCliente.origen,
+        moneda: moneda || ofertaCliente.moneda,
+        terminosPago: terminosPago || ofertaCliente.terminosPago,
         incluyeFirmaCliente: incluyeFirmaCliente ?? true,
         flete,
         seguro: seguroFinal,

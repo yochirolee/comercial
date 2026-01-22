@@ -64,6 +64,10 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   const [tieneSeguro, setTieneSeguro] = useState(false);
   const [incluyeFirmaCliente, setIncluyeFirmaCliente] = useState(true);
   const [totalCifDeseado, setTotalCifDeseado] = useState("");
+  const [puertoEmbarque, setPuertoEmbarque] = useState("");
+  const [origen, setOrigen] = useState("");
+  const [moneda, setMoneda] = useState("USD");
+  const [terminosPago, setTerminosPago] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Estado para ajustar precios en edición
@@ -119,6 +123,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setTieneSeguro(false);
     setIncluyeFirmaCliente(true);
     setTotalCifDeseado("");
+    // Cargar términos de la primera oferta
+    setPuertoEmbarque(primeraOferta?.puertoEmbarque || "");
+    setOrigen(primeraOferta?.origen || "");
+    setMoneda(primeraOferta?.moneda || "USD");
+    setTerminosPago(primeraOferta?.terminosPago || "");
     setDialogOpen(true);
   }
 
@@ -127,6 +136,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setSelectedOfertaClienteId(ofertaClienteId);
     setSelectedOfertaCliente(oferta || null);
     setNumeroOferta(oferta?.numero || "");
+    // Cargar términos de la oferta seleccionada
+    setPuertoEmbarque(oferta?.puertoEmbarque || "");
+    setOrigen(oferta?.origen || "");
+    setMoneda(oferta?.moneda || "USD");
+    setTerminosPago(oferta?.terminosPago || "");
   }
 
   // Calcular CIF
@@ -157,6 +171,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         incluyeFirmaCliente,
         // Solo enviar totalCifDeseado si es diferente al calculado
         totalCifDeseado: cifDeseado > 0 && cifDeseado !== cifCalculado ? cifDeseado : undefined,
+        // Términos
+        puertoEmbarque: puertoEmbarque || undefined,
+        origen: origen || undefined,
+        moneda: moneda || undefined,
+        terminosPago: terminosPago || undefined,
       });
       
       if (cifDeseado > 0 && cifDeseado !== cifCalculado) {
@@ -413,6 +432,47 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                       <Label htmlFor="incluyeFirma" className="cursor-pointer">
                         Incluir firma del cliente en la plantilla
                       </Label>
+                    </div>
+                  </div>
+                )}
+
+                {/* Términos */}
+                {selectedOfertaCliente && (
+                  <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
+                    <h4 className="font-medium text-slate-700">Términos</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-sm">Puerto de Embarque</Label>
+                        <Input
+                          value={puertoEmbarque}
+                          onChange={(e) => setPuertoEmbarque(e.target.value)}
+                          placeholder="NEW ORLEANS, LA"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm">Origen</Label>
+                        <Input
+                          value={origen}
+                          onChange={(e) => setOrigen(e.target.value)}
+                          placeholder="ESTADOS UNIDOS"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm">Moneda</Label>
+                        <Input
+                          value={moneda}
+                          onChange={(e) => setMoneda(e.target.value)}
+                          placeholder="USD"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-sm">Términos de Pago</Label>
+                        <Input
+                          value={terminosPago}
+                          onChange={(e) => setTerminosPago(e.target.value)}
+                          placeholder="100% antes del embarque"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}

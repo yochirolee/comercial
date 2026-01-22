@@ -535,6 +535,11 @@ export interface CrearDesdeOfertaClienteInput {
   tieneSeguro?: boolean;
   incluyeFirmaCliente?: boolean;
   totalCifDeseado?: number; // Si se quiere ajustar al crear
+  // Términos
+  puertoEmbarque?: string;
+  origen?: string;
+  moneda?: string;
+  terminosPago?: string;
 }
 
 export interface ItemOfertaImportadora {
