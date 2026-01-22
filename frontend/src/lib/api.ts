@@ -183,10 +183,6 @@ export const ofertasImportadoraApi = {
   removeItem: (id: string, itemId: string) => fetchApi<void>(`/ofertas-importadora/${id}/items/${itemId}`, {
     method: 'DELETE',
   }),
-  // Recalcular precios ajustados
-  recalcular: (id: string) => fetchApi<OfertaImportadora>(`/ofertas-importadora/${id}/recalcular`, {
-    method: 'POST',
-  }),
   // Ajustar precios para llegar a un total CIF deseado
   adjustPrices: (id: string, totalDeseado: number) => fetchApi<OfertaImportadora>(`/ofertas-importadora/${id}/adjust-prices`, {
     method: 'POST',

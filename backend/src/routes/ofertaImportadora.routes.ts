@@ -18,8 +18,5 @@ ofertaImportadoraRouter.post('/:id/items', OfertaImportadoraController.addItem);
 ofertaImportadoraRouter.put('/:id/items/:itemId', OfertaImportadoraController.updateItem);
 ofertaImportadoraRouter.delete('/:id/items/:itemId', OfertaImportadoraController.removeItem);
 
-// Recalcular precios
-ofertaImportadoraRouter.post('/:id/recalcular', OfertaImportadoraController.recalcular);
-
 // Ajustar precios para llegar a un total CIF deseado
 ofertaImportadoraRouter.post('/:id/adjust-prices', OfertaImportadoraController.adjustPrices);
