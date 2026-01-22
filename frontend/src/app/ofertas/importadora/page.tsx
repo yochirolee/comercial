@@ -637,7 +637,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </Badge>
               )}
             </DialogTitle>
-            <div className="flex gap-2">
+            <div className="flex gap-2 mr-6">
               <Button 
                 variant="outline" 
                 size="sm"
