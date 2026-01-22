@@ -538,7 +538,7 @@ export interface CrearDesdeOfertaClienteInput {
   seguro?: number;
   tieneSeguro?: boolean;
   incluyeFirmaCliente?: boolean;
-  ajustarPrecios?: boolean; // true = ajusta precios para que CIF = precio acordado, false = suma flete/seguro
+  totalCifDeseado?: number; // Si se quiere ajustar al crear
 }
 
 export interface ItemOfertaImportadora {
@@ -563,7 +563,7 @@ export interface ItemOfertaImportadora {
 export interface ItemOfertaImportadoraInput {
   productoId: string;
   cantidad: number;
-  precioOriginal: number;
+  precioUnitario: number; // El precio del producto
   // Campos informativos opcionales
   cantidadCajas?: number;
   cantidadSacos?: number;

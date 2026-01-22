@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 
 const ofertaImportadoraSchema = z.object({
-  numero: z.string().optional(), // Ahora es opcional, se genera automáticamente
+  numero: z.string().optional(),
   fecha: z.string().optional(),
   vigenciaHasta: z.string().optional(),
   clienteId: z.string().min(1, 'Cliente es requerido'),
@@ -16,23 +16,16 @@ const ofertaImportadoraSchema = z.object({
   moneda: z.string().optional(),
   terminosPago: z.string().optional(),
   incluyeFirmaCliente: z.boolean().optional(),
-  ajustarPrecios: z.boolean().optional(), // true = ajusta precios, false = suma flete/seguro al total
-  precioAcordado: z.number().min(0).optional(),
   flete: z.number().min(0).optional(),
   seguro: z.number().min(0).optional(),
   tieneSeguro: z.boolean().optional(),
-  campoExtra1: z.string().optional(),
-  campoExtra2: z.string().optional(),
-  campoExtra3: z.string().optional(),
-  campoExtra4: z.string().optional(),
 });
 
 // Genera el siguiente número de oferta en formato Z26XXX
 async function generarNumeroOferta(): Promise<string> {
-  const year = new Date().getFullYear().toString().slice(-2); // "26" para 2026
+  const year = new Date().getFullYear().toString().slice(-2);
   const prefix = `Z${year}`;
   
-  // Buscar el último número de oferta del año actual en ambas tablas
   const [ultimaOfertaCliente, ultimaOfertaImportadora] = await Promise.all([
     prisma.ofertaCliente.findFirst({
       where: { numero: { startsWith: prefix } },
@@ -46,7 +39,6 @@ async function generarNumeroOferta(): Promise<string> {
     }),
   ]);
 
-  // Extraer los números consecutivos
   let maxNumero = 0;
   
   if (ultimaOfertaCliente?.numero) {
@@ -59,7 +51,6 @@ async function generarNumeroOferta(): Promise<string> {
     if (!isNaN(num) && num > maxNumero) maxNumero = num;
   }
 
-  // Siguiente número con padding de 3 dígitos
   const siguiente = (maxNumero + 1).toString().padStart(3, '0');
   return `${prefix}${siguiente}`;
 }
@@ -68,9 +59,14 @@ const itemSchema = z.object({
   productoId: z.string().min(1, 'Producto es requerido'),
   cantidad: z.number().positive('La cantidad debe ser positiva'),
   cantidadCajas: z.number().optional(),
+  cantidadSacos: z.number().optional(),
   pesoNeto: z.number().optional(),
   pesoBruto: z.number().optional(),
-  precioOriginal: z.number().positive('El precio debe ser positivo'),
+  precioUnitario: z.number().positive('El precio debe ser positivo'),
+  pesoXSaco: z.number().optional(),
+  precioXSaco: z.number().optional(),
+  pesoXCaja: z.number().optional(),
+  precioXCaja: z.number().optional(),
   campoExtra1: z.string().optional(),
   campoExtra2: z.string().optional(),
   campoExtra3: z.string().optional(),
@@ -79,16 +75,16 @@ const itemSchema = z.object({
 
 const crearDesdeOfertaSchema = z.object({
   ofertaClienteId: z.string().min(1, 'Oferta cliente es requerida'),
-  numero: z.string().optional(), // Ahora es opcional, se genera automáticamente
+  numero: z.string().optional(),
   flete: z.number().min(0, 'Flete debe ser positivo'),
   seguro: z.number().min(0).optional(),
   tieneSeguro: z.boolean().optional(),
   incluyeFirmaCliente: z.boolean().optional(),
-  ajustarPrecios: z.boolean().optional(), // true = ajusta precios, false = suma flete/seguro al total
+  totalCifDeseado: z.number().optional(), // Si se quiere ajustar al crear
 });
 
-// Recalcular totales y ajustar precios (respeta configuración ajustarPrecios)
-async function recalcularOferta(ofertaId: string): Promise<void> {
+// Función auxiliar para actualizar totales de la oferta (sin tocar precios)
+async function actualizarTotales(ofertaId: string): Promise<void> {
   const oferta = await prisma.ofertaImportadora.findUnique({
     where: { id: ofertaId },
     include: { items: true },
@@ -98,83 +94,20 @@ async function recalcularOferta(ofertaId: string): Promise<void> {
   
   const flete = oferta.flete || 0;
   const seguro = oferta.tieneSeguro ? (oferta.seguro || 0) : 0;
-  const precioAcordado = oferta.precioAcordado || 0;
-  const debeAjustar = oferta.ajustarPrecios !== false; // Por defecto true
   
-  // Calcular subtotal original de productos
-  const subtotalOriginal = oferta.items.reduce((acc, item) => {
-    const cantidadParaCalculo = item.pesoNeto || item.cantidad;
-    return acc + (cantidadParaCalculo * item.precioOriginal);
-  }, 0);
+  // Sumar subtotales de items (ya tienen el precio ajustado aplicado)
+  const subtotalProductos = oferta.items.reduce((acc, item) => acc + item.subtotal, 0);
   
-  if (subtotalOriginal <= 0 || precioAcordado <= 0) {
-    // Si no hay productos o precio acordado, solo actualizamos los totales básicos
-    const subtotalProductos = oferta.items.reduce((acc, item) => acc + item.subtotal, 0);
-    await prisma.ofertaImportadora.update({
-      where: { id: ofertaId },
-      data: {
-        subtotalProductos,
-        precioCIF: subtotalProductos + flete + seguro,
-      },
-    });
-    return;
-  }
-
-  let fobFinal: number;
-  let cifFinal: number;
-  let factorAjuste: number;
-
-  if (debeAjustar) {
-    // MODO AJUSTE: El cliente paga lo acordado, se ajustan los precios
-    fobFinal = precioAcordado - flete - seguro;
-    cifFinal = precioAcordado;
-    
-    if (fobFinal <= 0) {
-      await prisma.ofertaImportadora.update({
-        where: { id: ofertaId },
-        data: {
-          subtotalProductos: 0,
-          precioCIF: precioAcordado,
-        },
-      });
-      return;
-    }
-    
-    factorAjuste = fobFinal / subtotalOriginal;
-  } else {
-    // MODO SIN AJUSTE: Flete y seguro se suman al precio acordado
-    fobFinal = subtotalOriginal; // FOB = precio original de productos
-    cifFinal = subtotalOriginal + flete + seguro; // CIF = FOB + flete + seguro
-    factorAjuste = 1; // No hay ajuste
-  }
-  
-  // Actualizar cada item con precio ajustado
-  for (const item of oferta.items) {
-    const precioAjustado = item.precioOriginal * factorAjuste;
-    const cantidadParaCalculo = item.pesoNeto || item.cantidad;
-    const subtotal = cantidadParaCalculo * precioAjustado;
-    
-    await prisma.itemOfertaImportadora.update({
-      where: { id: item.id },
-      data: {
-        precioAjustado,
-        subtotal,
-      },
-    });
-  }
-  
-  // Actualizar totales de la oferta
   await prisma.ofertaImportadora.update({
     where: { id: ofertaId },
     data: {
-      subtotalProductos: fobFinal,
-      precioCIF: cifFinal,
+      subtotalProductos,
+      precioCIF: subtotalProductos + flete + seguro,
     },
   });
 }
 
 export const OfertaImportadoraController = {
-  // Obtener el siguiente número de oferta disponible
   async getNextNumber(req: Request, res: Response): Promise<void> {
     const numero = await generarNumeroOferta();
     res.json({ numero });
@@ -241,7 +174,6 @@ export const OfertaImportadoraController = {
       return;
     }
 
-    // Generar número automático si no se proporciona
     const numero = validation.data.numero || await generarNumeroOferta();
 
     const existingOferta = await prisma.ofertaImportadora.findUnique({
@@ -277,6 +209,7 @@ export const OfertaImportadoraController = {
   },
 
   // Crear oferta importadora desde una oferta al cliente
+  // Copia TODOS los valores de la oferta cliente (precios, cantidades, campos opcionales)
   async createFromOfertaCliente(req: Request, res: Response): Promise<void> {
     const validation = crearDesdeOfertaSchema.safeParse(req.body);
     
@@ -285,12 +218,10 @@ export const OfertaImportadoraController = {
       return;
     }
 
-    const { ofertaClienteId, flete, seguro, tieneSeguro, incluyeFirmaCliente, ajustarPrecios } = validation.data;
+    const { ofertaClienteId, flete, seguro, tieneSeguro, incluyeFirmaCliente, totalCifDeseado } = validation.data;
     
-    // Generar número automático si no se proporciona
     const numero = validation.data.numero || await generarNumeroOferta();
 
-    // Verificar número único
     const existingOferta = await prisma.ofertaImportadora.findUnique({
       where: { numero },
     });
@@ -300,7 +231,7 @@ export const OfertaImportadoraController = {
       return;
     }
 
-    // Obtener oferta cliente
+    // Obtener oferta cliente con todos sus datos
     const ofertaCliente = await prisma.ofertaCliente.findUnique({
       where: { id: ofertaClienteId },
       include: {
@@ -318,16 +249,15 @@ export const OfertaImportadoraController = {
       return;
     }
 
-    const precioAcordado = ofertaCliente.total;
     const seguroFinal = tieneSeguro ? (seguro || 0) : 0;
     
-    // Calcular subtotal de productos desde los items
+    // Subtotal de productos = suma de subtotales de la oferta cliente
     const subtotalProductos = ofertaCliente.items.reduce((acc, item) => acc + item.subtotal, 0);
     
     // CIF = Subtotal productos + Flete + Seguro
-    const cifFinal = subtotalProductos + flete + seguroFinal;
+    const cifCalculado = subtotalProductos + flete + seguroFinal;
 
-    // Crear oferta importadora
+    // Crear oferta importadora con los items copiados de oferta cliente
     const ofertaImportadora = await prisma.ofertaImportadora.create({
       data: {
         numero,
@@ -339,37 +269,33 @@ export const OfertaImportadoraController = {
         moneda: ofertaCliente.moneda,
         terminosPago: ofertaCliente.terminosPago,
         incluyeFirmaCliente: incluyeFirmaCliente ?? true,
-        ajustarPrecios: false, // No se ajustan precios en creación
-        precioAcordado,
         flete,
         seguro: seguroFinal,
         tieneSeguro: tieneSeguro || false,
-        subtotalProductos: subtotalProductos,
-        precioCIF: cifFinal,
+        subtotalProductos,
+        precioCIF: cifCalculado,
         items: {
-          create: ofertaCliente.items.map(item => {
-            // Usar subtotal de oferta cliente directamente (ya tiene ajustes aplicados)
-            return {
-              productoId: item.productoId,
-              cantidad: item.cantidad,
-              cantidadCajas: item.cantidadCajas,
-              cantidadSacos: item.cantidadSacos,
-              pesoNeto: item.pesoNeto,
-              pesoBruto: item.pesoBruto,
-              precioOriginal: item.precioUnitario,
-              precioAjustado: item.precioUnitario,
-              subtotal: item.subtotal, // Usar subtotal guardado para mantener exactitud
-              // Campos opcionales informativos
-              pesoXSaco: item.pesoXSaco,
-              precioXSaco: item.precioXSaco,
-              pesoXCaja: item.pesoXCaja,
-              precioXCaja: item.precioXCaja,
-              campoExtra1: item.campoExtra1,
-              campoExtra2: item.campoExtra2,
-              campoExtra3: item.campoExtra3,
-              campoExtra4: item.campoExtra4,
-            };
-          }),
+          create: ofertaCliente.items.map(item => ({
+            productoId: item.productoId,
+            cantidad: item.cantidad,
+            cantidadCajas: item.cantidadCajas,
+            cantidadSacos: item.cantidadSacos,
+            pesoNeto: item.pesoNeto,
+            pesoBruto: item.pesoBruto,
+            // Copiar precio tal cual viene de oferta cliente
+            precioOriginal: item.precioUnitario,
+            precioAjustado: item.precioUnitario, // Inicialmente igual
+            subtotal: item.subtotal,
+            // Campos opcionales
+            pesoXSaco: item.pesoXSaco,
+            precioXSaco: item.precioXSaco,
+            pesoXCaja: item.pesoXCaja,
+            precioXCaja: item.precioXCaja,
+            campoExtra1: item.campoExtra1,
+            campoExtra2: item.campoExtra2,
+            campoExtra3: item.campoExtra3,
+            campoExtra4: item.campoExtra4,
+          })),
         },
       },
       include: {
@@ -383,9 +309,75 @@ export const OfertaImportadoraController = {
       },
     });
 
-    res.status(201).json(ofertaImportadora);
+    // Si se especificó un totalCifDeseado diferente, ajustar los precios
+    if (totalCifDeseado && totalCifDeseado !== cifCalculado && totalCifDeseado > 0) {
+      const totalFobDeseado = totalCifDeseado - flete - seguroFinal;
+      
+      if (totalFobDeseado > 0 && subtotalProductos > 0) {
+        const factor = totalFobDeseado / subtotalProductos;
+        
+        // Ajustar precios de todos los items
+        const items = ofertaImportadora.items;
+        let subtotalAcumulado = 0;
+        
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const cantidadParaCalculo = item.pesoNeto || item.cantidad;
+          
+          let nuevoPrecioAjustado: number;
+          let nuevoSubtotal: number;
+          
+          if (i < items.length - 1) {
+            nuevoPrecioAjustado = Math.round(item.precioOriginal * factor * 100) / 100;
+            nuevoSubtotal = Math.round(cantidadParaCalculo * nuevoPrecioAjustado * 100) / 100;
+            subtotalAcumulado += nuevoSubtotal;
+          } else {
+            // Último item absorbe diferencia de redondeo
+            nuevoSubtotal = Math.round((totalFobDeseado - subtotalAcumulado) * 100) / 100;
+            nuevoPrecioAjustado = cantidadParaCalculo > 0 
+              ? Math.round((nuevoSubtotal / cantidadParaCalculo) * 100) / 100
+              : 0;
+            subtotalAcumulado += nuevoSubtotal;
+          }
+          
+          await prisma.itemOfertaImportadora.update({
+            where: { id: item.id },
+            data: { 
+              precioAjustado: nuevoPrecioAjustado,
+              subtotal: nuevoSubtotal,
+            },
+          });
+        }
+        
+        // Actualizar totales de la oferta
+        await prisma.ofertaImportadora.update({
+          where: { id: ofertaImportadora.id },
+          data: {
+            subtotalProductos: subtotalAcumulado,
+            precioCIF: totalCifDeseado,
+          },
+        });
+      }
+    }
+
+    // Retornar la oferta actualizada
+    const ofertaFinal = await prisma.ofertaImportadora.findUnique({
+      where: { id: ofertaImportadora.id },
+      include: {
+        cliente: true,
+        ofertaCliente: true,
+        items: {
+          include: {
+            producto: { include: { unidadMedida: true } },
+          },
+        },
+      },
+    });
+
+    res.status(201).json(ofertaFinal);
   },
 
+  // Actualizar datos generales de la oferta (NO toca precios de items)
   async update(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     const validation = ofertaImportadoraSchema.partial().safeParse(req.body);
@@ -418,13 +410,8 @@ export const OfertaImportadoraController = {
       },
     });
     
-    // Recalcular si cambió flete, seguro o precio acordado
-    if (validation.data.flete !== undefined || 
-        validation.data.seguro !== undefined || 
-        validation.data.precioAcordado !== undefined ||
-        validation.data.tieneSeguro !== undefined) {
-      await recalcularOferta(id);
-    }
+    // Solo actualizar totales (CIF = subtotal + flete + seguro) sin tocar precios
+    await actualizarTotales(id);
 
     const oferta = await prisma.ofertaImportadora.findUnique({
       where: { id },
@@ -463,21 +450,34 @@ export const OfertaImportadoraController = {
       return;
     }
 
-    // Inicialmente, precio ajustado = precio original
     const cantidadParaCalculo = validation.data.pesoNeto || validation.data.cantidad;
-    const subtotal = cantidadParaCalculo * validation.data.precioOriginal;
+    const subtotal = cantidadParaCalculo * validation.data.precioUnitario;
 
     await prisma.itemOfertaImportadora.create({
       data: {
         ofertaImportadoraId: id,
-        ...validation.data,
-        precioAjustado: validation.data.precioOriginal,
+        productoId: validation.data.productoId,
+        cantidad: validation.data.cantidad,
+        cantidadCajas: validation.data.cantidadCajas,
+        cantidadSacos: validation.data.cantidadSacos,
+        pesoNeto: validation.data.pesoNeto,
+        pesoBruto: validation.data.pesoBruto,
+        precioOriginal: validation.data.precioUnitario,
+        precioAjustado: validation.data.precioUnitario, // Igual al original
         subtotal,
+        pesoXSaco: validation.data.pesoXSaco,
+        precioXSaco: validation.data.precioXSaco,
+        pesoXCaja: validation.data.pesoXCaja,
+        precioXCaja: validation.data.precioXCaja,
+        campoExtra1: validation.data.campoExtra1,
+        campoExtra2: validation.data.campoExtra2,
+        campoExtra3: validation.data.campoExtra3,
+        campoExtra4: validation.data.campoExtra4,
       },
     });
     
-    // Recalcular para ajustar precios
-    await recalcularOferta(id);
+    // Actualizar totales
+    await actualizarTotales(id);
     
     const oferta = await prisma.ofertaImportadora.findUnique({
       where: { id },
@@ -495,6 +495,7 @@ export const OfertaImportadoraController = {
     res.status(201).json(oferta);
   },
 
+  // Actualizar un item - solo cambia los campos enviados, NO recalcula precios ajustados
   async updateItem(req: Request, res: Response): Promise<void> {
     const { id, itemId } = req.params;
     const validation = itemSchema.partial().safeParse(req.body);
@@ -513,51 +514,50 @@ export const OfertaImportadoraController = {
       return;
     }
 
-    // Calcular el nuevo subtotal si cambió cantidad o precioOriginal
-    const cantidad = validation.data.cantidad ?? existingItem.cantidad;
-    const pesoNeto = validation.data.pesoNeto ?? existingItem.pesoNeto;
-    const precioOriginal = validation.data.precioOriginal ?? existingItem.precioOriginal;
-    let precioAjustado = existingItem.precioAjustado; // Mantener el precio ajustado actual
+    // Preparar datos de actualización
+    const updateData: Record<string, unknown> = {};
     
-    const cantidadParaCalculo = pesoNeto || cantidad;
+    // Campos que se pueden actualizar directamente
+    if (validation.data.productoId !== undefined) updateData.productoId = validation.data.productoId;
+    if (validation.data.cantidadCajas !== undefined) updateData.cantidadCajas = validation.data.cantidadCajas;
+    if (validation.data.cantidadSacos !== undefined) updateData.cantidadSacos = validation.data.cantidadSacos;
+    if (validation.data.pesoNeto !== undefined) updateData.pesoNeto = validation.data.pesoNeto;
+    if (validation.data.pesoBruto !== undefined) updateData.pesoBruto = validation.data.pesoBruto;
+    if (validation.data.pesoXSaco !== undefined) updateData.pesoXSaco = validation.data.pesoXSaco;
+    if (validation.data.precioXSaco !== undefined) updateData.precioXSaco = validation.data.precioXSaco;
+    if (validation.data.pesoXCaja !== undefined) updateData.pesoXCaja = validation.data.pesoXCaja;
+    if (validation.data.precioXCaja !== undefined) updateData.precioXCaja = validation.data.precioXCaja;
+    if (validation.data.campoExtra1 !== undefined) updateData.campoExtra1 = validation.data.campoExtra1;
+    if (validation.data.campoExtra2 !== undefined) updateData.campoExtra2 = validation.data.campoExtra2;
+    if (validation.data.campoExtra3 !== undefined) updateData.campoExtra3 = validation.data.campoExtra3;
+    if (validation.data.campoExtra4 !== undefined) updateData.campoExtra4 = validation.data.campoExtra4;
     
-    // Si cambió el precioOriginal, ajustar también el precioAjustado proporcionalmente
-    if (validation.data.precioOriginal !== undefined && validation.data.precioOriginal !== existingItem.precioOriginal) {
-      const ratio = existingItem.precioOriginal > 0 
-        ? existingItem.precioAjustado / existingItem.precioOriginal 
-        : 1;
-      precioAjustado = Math.round(validation.data.precioOriginal * ratio * 100) / 100;
+    // Cantidad: si cambia, recalcular subtotal con el precio ajustado existente
+    if (validation.data.cantidad !== undefined) {
+      updateData.cantidad = validation.data.cantidad;
     }
     
-    // Calcular subtotal con el precio ajustado
-    const subtotal = Math.round(cantidadParaCalculo * precioAjustado * 100) / 100;
+    // Precio unitario: si cambia, actualizar precioOriginal Y precioAjustado
+    if (validation.data.precioUnitario !== undefined) {
+      updateData.precioOriginal = validation.data.precioUnitario;
+      updateData.precioAjustado = validation.data.precioUnitario;
+    }
+    
+    // Recalcular subtotal con los valores finales
+    const cantidad = (updateData.cantidad as number) ?? existingItem.cantidad;
+    const pesoNeto = (updateData.pesoNeto as number) ?? existingItem.pesoNeto;
+    const precioAjustado = (updateData.precioAjustado as number) ?? existingItem.precioAjustado;
+    
+    const cantidadParaCalculo = pesoNeto || cantidad;
+    updateData.subtotal = Math.round(cantidadParaCalculo * precioAjustado * 100) / 100;
 
     await prisma.itemOfertaImportadora.update({
       where: { id: itemId },
-      data: {
-        ...validation.data,
-        precioAjustado,
-        subtotal,
-      },
+      data: updateData,
     });
     
-    // Solo actualizar los totales de la oferta (sin recalcular precios ajustados)
-    const ofertaItems = await prisma.itemOfertaImportadora.findMany({
-      where: { ofertaImportadoraId: id },
-    });
-    
-    const subtotalProductos = ofertaItems.reduce((acc, item) => acc + item.subtotal, 0);
-    const ofertaData = await prisma.ofertaImportadora.findUnique({ where: { id } });
-    const flete = ofertaData?.flete || 0;
-    const seguro = ofertaData?.tieneSeguro ? (ofertaData.seguro || 0) : 0;
-    
-    await prisma.ofertaImportadora.update({
-      where: { id },
-      data: {
-        subtotalProductos,
-        precioCIF: subtotalProductos + flete + seguro,
-      },
-    });
+    // Actualizar totales de la oferta
+    await actualizarTotales(id);
     
     const oferta = await prisma.ofertaImportadora.findUnique({
       where: { id },
@@ -582,34 +582,13 @@ export const OfertaImportadoraController = {
       where: { id: itemId },
     });
     
-    await recalcularOferta(id);
+    await actualizarTotales(id);
     
     res.status(204).send();
   },
 
-  // Recalcular precios manualmente
-  async recalcular(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    
-    await recalcularOferta(id);
-    
-    const oferta = await prisma.ofertaImportadora.findUnique({
-      where: { id },
-      include: {
-        cliente: true,
-        ofertaCliente: true,
-        items: {
-          include: {
-            producto: { include: { unidadMedida: true } },
-          },
-        },
-      },
-    });
-    
-    res.json(oferta);
-  },
-
-  // Ajustar precios para llegar a un total CIF deseado (sin tocar flete ni seguro)
+  // AJUSTAR AL TOTAL: Única función que modifica los precios ajustados
+  // Calcula el factor necesario para que FOB + Flete + Seguro = totalCifDeseado
   async adjustPrices(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     const { totalDeseado } = req.body;
@@ -629,19 +608,18 @@ export const OfertaImportadoraController = {
       return;
     }
 
-    // Flete y seguro actuales
     const flete = oferta.flete || 0;
     const seguro = oferta.tieneSeguro ? (oferta.seguro || 0) : 0;
 
-    // Total FOB deseado = Total CIF deseado - Flete - Seguro
+    // FOB deseado = CIF deseado - Flete - Seguro
     const totalFobDeseado = totalDeseado - flete - seguro;
 
     if (totalFobDeseado <= 0) {
-      res.status(400).json({ error: `El total deseado (${totalDeseado}) es menor que flete (${flete}) + seguro (${seguro})` });
+      res.status(400).json({ error: `El total CIF deseado (${totalDeseado}) es menor que flete (${flete}) + seguro (${seguro})` });
       return;
     }
 
-    // Calcular total FOB actual basado en precios ORIGINALES (para mantener proporciones)
+    // Calcular FOB actual basado en precios ORIGINALES (para mantener proporciones)
     const totalFobOriginal = oferta.items.reduce((sum, item) => {
       const cantidadParaCalculo = item.pesoNeto || item.cantidad;
       return sum + cantidadParaCalculo * item.precioOriginal;
@@ -652,13 +630,13 @@ export const OfertaImportadoraController = {
       return;
     }
 
-    // Calcular factor de ajuste
+    // Factor de ajuste
     const factor = totalFobDeseado / totalFobOriginal;
 
-    // Ordenar items para consistencia (ajustar el último para absorber redondeo)
+    // Ordenar items por fecha de creación para consistencia
     const itemsOrdenados = [...oferta.items].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     
-    // Actualizar precios ajustados y subtotales de cada item
+    // Actualizar precios ajustados de cada item
     let subtotalAcumulado = 0;
     for (let i = 0; i < itemsOrdenados.length; i++) {
       const item = itemsOrdenados[i];
@@ -673,7 +651,7 @@ export const OfertaImportadoraController = {
         nuevoSubtotal = Math.round(cantidadParaCalculo * nuevoPrecioAjustado * 100) / 100;
         subtotalAcumulado += nuevoSubtotal;
       } else {
-        // Para el último item, calcular para que el total sea exacto
+        // El último item absorbe la diferencia de redondeo para que el total sea exacto
         nuevoSubtotal = Math.round((totalFobDeseado - subtotalAcumulado) * 100) / 100;
         nuevoPrecioAjustado = cantidadParaCalculo > 0 
           ? Math.round((nuevoSubtotal / cantidadParaCalculo) * 100) / 100
@@ -689,16 +667,13 @@ export const OfertaImportadoraController = {
         },
       });
     }
-    
-    const subtotalProductos = subtotalAcumulado;
 
-    // Actualizar totales de la oferta Y el precio acordado (para que futuros recálculos lo respeten)
+    // Actualizar totales de la oferta
     await prisma.ofertaImportadora.update({
       where: { id },
       data: {
-        precioAcordado: totalDeseado, // Nuevo precio acordado = total CIF deseado
-        subtotalProductos,
-        precioCIF: totalDeseado,
+        subtotalProductos: subtotalAcumulado,
+        precioCIF: totalDeseado, // El CIF queda exactamente como se pidió
       },
     });
 
