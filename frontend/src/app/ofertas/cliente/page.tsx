@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save } from "lucide-react";
 import { ofertasClienteApi, ofertasGeneralesApi, clientesApi, productosApi, exportApi } from "@/lib/api";
 import type { OfertaCliente, OfertaGeneral, Cliente, Producto, ItemOfertaClienteInput } from "@/lib/api";
 
@@ -292,14 +292,18 @@ export default function OfertasClientePage(): React.ReactElement {
     setDetailDialogOpen(true);
   }
 
-  async function handleUpdateOferta(): Promise<void> {
+  async function handleUpdateOferta(closeAfter: boolean = false): Promise<void> {
     if (!selectedOferta) return;
     
     try {
       await ofertasClienteApi.update(selectedOferta.id, editFormData);
       toast.success("Oferta actualizada");
-      const updated = await ofertasClienteApi.getById(selectedOferta.id);
-      setSelectedOferta(updated);
+      if (closeAfter) {
+        setDetailDialogOpen(false);
+      } else {
+        const updated = await ofertasClienteApi.getById(selectedOferta.id);
+        setSelectedOferta(updated);
+      }
       loadData();
     } catch (error) {
       toast.error("Error al actualizar");
@@ -789,8 +793,30 @@ export default function OfertasClientePage(): React.ReactElement {
       {/* Detail/Edit Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="w-[95vw] max-w-[1000px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle>Editar Oferta: {selectedOferta?.numero}</DialogTitle>
+            <div className="flex gap-2 mr-6">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => selectedOferta && exportApi.downloadPdf("ofertas-cliente", selectedOferta.id)}
+              >
+                <FileDown className="h-4 w-4 mr-1" />
+                PDF
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => selectedOferta && exportApi.downloadExcel("ofertas-cliente", selectedOferta.id)}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-1" />
+                Excel
+              </Button>
+              <Button onClick={() => handleUpdateOferta(true)} size="sm" className="gap-2">
+                <Save className="h-4 w-4" />
+                Guardar y Cerrar
+              </Button>
+            </div>
           </DialogHeader>
 
           <div className="space-y-6">
