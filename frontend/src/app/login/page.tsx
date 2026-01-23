@@ -18,9 +18,13 @@ export default function LoginPage(): React.ReactElement {
   const [loading, setLoading] = useState(false);
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
   const [logoError, setLogoError] = useState(false);
+  const [loadingEmpresa, setLoadingEmpresa] = useState(true);
 
   useEffect(() => {
-    empresaApi.get().then(setEmpresa).catch(() => {});
+    empresaApi.get()
+      .then(setEmpresa)
+      .catch(() => {})
+      .finally(() => setLoadingEmpresa(false));
   }, []);
 
   // Construir URL del logo
@@ -51,8 +55,10 @@ export default function LoginPage(): React.ReactElement {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-gold-pale via-white to-brand-gold-pale/50 p-4">
       <Card className="w-full max-w-md shadow-xl border-brand-gold-pale">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto flex items-center justify-center">
-            {empresa?.logo && !logoError ? (
+          <div className="mx-auto flex items-center justify-center h-[70px]">
+            {loadingEmpresa ? (
+              <div className="w-[180px] h-[50px] bg-slate-200 animate-pulse rounded" />
+            ) : empresa?.logo && !logoError ? (
               <img
                 src={getLogoUrl() || ''}
                 alt="Logo"
@@ -67,8 +73,7 @@ export default function LoginPage(): React.ReactElement {
           </div>
           <div>
             <CardTitle className="text-2xl font-bold text-brand-black">
-              {empresa?.nombre || "ZAS BY JMC CORP"}
-            </CardTitle>
+              {loadingEmpresa ? <span className="inline-block w-40 h-6 bg-slate-200 animate-pulse rounded" /> : (empresa?.nombre || "ZAS BY JMC CORP")}</CardTitle>
             <CardDescription className="text-brand-black/60">
               Ingresa a tu cuenta para continuar
             </CardDescription>
