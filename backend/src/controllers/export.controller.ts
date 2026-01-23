@@ -651,12 +651,8 @@ function renderExcelTable(
     
     // Descripción con wrapText para textos largos
     dataRow.getCell(2).alignment = { wrapText: true, vertical: 'middle' };
-    // Ajustar altura de fila según longitud del texto
-    const descText = item.producto.nombre || '';
-    const descColWidth = widthsExcel[1] || 30;
-    const estimatedLines = Math.ceil(descText.length / (descColWidth * 1.5));
-    // Altura base 18 para dar espacio, más 14 por línea extra
-    dataRow.height = Math.max(18, estimatedLines * 15 + 4);
+    // Altura fija de 22 para todas las filas (da buen espaciado)
+    dataRow.height = 22;
     
     // Índices de las últimas 3 columnas (cantidad, precio, importe)
     const numCols = values.length;
