@@ -552,7 +552,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
               <TableRow>
                 <TableHead>Número</TableHead>
                 <TableHead>Desde Oferta</TableHead>
-                <TableHead>Importadora</TableHead>
+                <TableHead>Cliente</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead className="text-right">FOB</TableHead>
                 <TableHead className="text-right">Flete</TableHead>
@@ -668,7 +668,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             {/* Info básica */}
             <div className="grid grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg">
               <div>
-                <Label className="text-slate-500">Importadora</Label>
+                <Label className="text-slate-500">Cliente</Label>
                 <p className="font-medium">{selectedOferta?.cliente.nombre}</p>
               </div>
               <div>
