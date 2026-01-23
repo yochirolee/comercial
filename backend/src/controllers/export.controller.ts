@@ -1317,7 +1317,7 @@ export const ExportController = {
     const { yPos, totalImporte, tableLeft, tableWidth, lastColWidth } = renderPdfTable(doc, oferta.items, margin, true, false);
     doc.y = yPos + 5;
 
-    // TOTALES: FOB, FLETE, SEGURO, CIF (alineados con la tabla)
+    // TOTALES: FOB, FLETE, SEGURO (si tiene), CIF (alineados con la tabla)
     const seguro = oferta.tieneSeguro ? (oferta.seguro || 0) : 0;
     const totalCIF = totalImporte + (oferta.flete || 0) + seguro;
     
@@ -1326,8 +1326,11 @@ export const ExportController = {
     doc.moveDown(0.3);
     doc.text(`FLETE: $${formatCurrency(oferta.flete || 0)}`, margin, doc.y, { width: tableWidth, align: 'right' });
     doc.moveDown(0.3);
-    doc.text(`SEGURO: $${formatCurrency(seguro)}`, margin, doc.y, { width: tableWidth, align: 'right' });
-    doc.moveDown(0.3);
+    // Solo mostrar seguro si tiene seguro
+    if (oferta.tieneSeguro && seguro > 0) {
+      doc.text(`SEGURO: $${formatCurrency(seguro)}`, margin, doc.y, { width: tableWidth, align: 'right' });
+      doc.moveDown(0.3);
+    }
     doc.text(`TOTAL CIF: $${formatCurrency(totalCIF)}`, margin, doc.y, { width: tableWidth, align: 'right' });
     
     doc.moveDown(1.5);
@@ -1514,13 +1517,16 @@ export const ExportController = {
     row++;
 
     const seguro = oferta.tieneSeguro ? (oferta.seguro || 0) : 0;
-    worksheet.getCell(`${prevCol}${row}`).value = 'SEGURO:';
-    worksheet.getCell(`${prevCol}${row}`).font = { bold: true };
-    worksheet.getCell(`${prevCol}${row}`).alignment = { horizontal: 'right' };
-    worksheet.getCell(`${lastCol}${row}`).value = seguro;
-    worksheet.getCell(`${lastCol}${row}`).numFmt = '"$"#,##0.00';
-    worksheet.getCell(`${lastCol}${row}`).font = { bold: true };
-    row++;
+    // Solo mostrar seguro si tiene seguro
+    if (oferta.tieneSeguro && seguro > 0) {
+      worksheet.getCell(`${prevCol}${row}`).value = 'SEGURO:';
+      worksheet.getCell(`${prevCol}${row}`).font = { bold: true };
+      worksheet.getCell(`${prevCol}${row}`).alignment = { horizontal: 'right' };
+      worksheet.getCell(`${lastCol}${row}`).value = seguro;
+      worksheet.getCell(`${lastCol}${row}`).numFmt = '"$"#,##0.00';
+      worksheet.getCell(`${lastCol}${row}`).font = { bold: true };
+      row++;
+    }
 
     const totalCIF = totalImporte + (oferta.flete || 0) + seguro;
     worksheet.getCell(`${prevCol}${row}`).value = 'TOTAL CIF:';
