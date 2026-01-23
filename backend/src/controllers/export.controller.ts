@@ -650,7 +650,7 @@ function renderExcelTable(
     dataRow.getCell(1).alignment = { horizontal: 'center' };
     
     // Descripción con wrapText para textos largos
-    dataRow.getCell(2).alignment = { wrapText: true, vertical: 'top' };
+    dataRow.getCell(2).alignment = { wrapText: true, vertical: 'middle' };
     // Ajustar altura de fila según longitud del texto (aprox 15 caracteres por línea)
     const descText = item.producto.nombre || '';
     const descColWidth = widthsExcel[1] || 30;
