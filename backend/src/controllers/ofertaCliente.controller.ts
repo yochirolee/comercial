@@ -15,6 +15,7 @@ const itemSchema = z.object({
   precioXSaco: z.number().optional(),
   pesoXCaja: z.number().optional(),
   precioXCaja: z.number().optional(),
+  codigoArancelario: z.string().optional(), // Partida arancelaria
   campoExtra1: z.string().optional(),
   campoExtra2: z.string().optional(),
   campoExtra3: z.string().optional(),

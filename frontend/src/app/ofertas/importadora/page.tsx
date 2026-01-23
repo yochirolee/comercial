@@ -85,6 +85,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     precioXSaco: "",
     pesoXCaja: "",
     precioXCaja: "",
+    codigoArancelario: "",
   });
 
   async function loadData(): Promise<void> {
@@ -281,6 +282,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       precioXSaco: item.precioXSaco?.toString() || "",
       pesoXCaja: item.pesoXCaja?.toString() || "",
       precioXCaja: item.precioXCaja?.toString() || "",
+      codigoArancelario: item.codigoArancelario || "",
     });
     setEditItemDialogOpen(true);
   }
@@ -301,6 +303,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         precioXSaco: editItemForm.precioXSaco ? parseFloat(editItemForm.precioXSaco) : undefined,
         pesoXCaja: editItemForm.pesoXCaja ? parseFloat(editItemForm.pesoXCaja) : undefined,
         precioXCaja: editItemForm.precioXCaja ? parseFloat(editItemForm.precioXCaja) : undefined,
+        codigoArancelario: editItemForm.codigoArancelario || undefined,
       };
 
       const updated = await ofertasImportadoraApi.updateItem(selectedOferta.id, editingItemId, itemData);
@@ -993,6 +996,14 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   inputMode="decimal"
                   value={editItemForm.precioXCaja}
                   onChange={(e) => setEditItemForm(prev => ({ ...prev, precioXCaja: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label className="text-sm">Código Arancelario</Label>
+                <Input
+                  value={editItemForm.codigoArancelario}
+                  onChange={(e) => setEditItemForm(prev => ({ ...prev, codigoArancelario: e.target.value }))}
+                  placeholder="Ej: M1500CIULB"
                 />
               </div>
             </div>

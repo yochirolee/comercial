@@ -196,6 +196,7 @@ interface OptionalFields {
   cantidadCajas: boolean;
   pesoXCaja: boolean;
   precioXCaja: boolean;
+  codigoArancelario: boolean;
 }
 
 // Detectar qué campos opcionales tienen valores en los items
@@ -207,6 +208,7 @@ function detectOptionalFields(items: any[]): OptionalFields {
     cantidadCajas: false,
     pesoXCaja: false,
     precioXCaja: false,
+    codigoArancelario: false,
   };
 
   for (const item of items) {
@@ -216,6 +218,7 @@ function detectOptionalFields(items: any[]): OptionalFields {
     if (item.cantidadCajas !== null && item.cantidadCajas !== undefined) fields.cantidadCajas = true;
     if (item.pesoXCaja !== null && item.pesoXCaja !== undefined) fields.pesoXCaja = true;
     if (item.precioXCaja !== null && item.precioXCaja !== undefined) fields.precioXCaja = true;
+    if (item.codigoArancelario !== null && item.codigoArancelario !== undefined && item.codigoArancelario !== '') fields.codigoArancelario = true;
   }
 
   return fields;
@@ -243,6 +246,7 @@ function buildDynamicColumns(items: any[], unidadMedida?: string): DynamicColumn
   if (optionalFields.cantidadCajas) numOptionalCols++;
   if (optionalFields.pesoXCaja) numOptionalCols++;
   if (optionalFields.precioXCaja) numOptionalCols++;
+  if (optionalFields.codigoArancelario) numOptionalCols++;
   
   // Columnas base: ITEM, DESCRIPCION (ajustar ancho según columnas opcionales)
   const headers: string[] = ['ITEM', 'DESCRIPCION'];
@@ -282,6 +286,11 @@ function buildDynamicColumns(items: any[], unidadMedida?: string): DynamicColumn
     headers.push('PRECIO\nX CAJA');
     widthsPdf.push(55);
     widthsExcel.push(11);
+  }
+  if (optionalFields.codigoArancelario) {
+    headers.push('CÓDIGO\nARANCEL.');
+    widthsPdf.push(65);
+    widthsExcel.push(14);
   }
 
   // Columnas finales: usar unidad de medida del producto
@@ -416,6 +425,11 @@ function renderPdfTable(
     if (optionalFields.precioXCaja) {
       const val = item.precioXCaja != null ? `$${formatCurrency(item.precioXCaja)}` : '-';
       doc.text(val, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'right' });
+      xPos += widthsPdf[colIndex++];
+    }
+    if (optionalFields.codigoArancelario) {
+      const val = item.codigoArancelario || '-';
+      doc.text(val, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
       xPos += widthsPdf[colIndex++];
     }
     
@@ -621,6 +635,7 @@ function renderExcelTable(
     if (optionalFields.cantidadCajas) values.push(item.cantidadCajas ?? '-');
     if (optionalFields.pesoXCaja) values.push(item.pesoXCaja ?? '-');
     if (optionalFields.precioXCaja) values.push(item.precioXCaja ?? '-');
+    if (optionalFields.codigoArancelario) values.push(item.codigoArancelario ?? '-');
     
     values.push(item.cantidad, precioXLb, importe);
     

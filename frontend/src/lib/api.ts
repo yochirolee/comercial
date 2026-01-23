@@ -451,6 +451,7 @@ export interface ItemOfertaCliente {
   precioXSaco?: number;
   pesoXCaja?: number;
   precioXCaja?: number;
+  codigoArancelario?: string; // Partida arancelaria
 }
 
 export interface ItemOfertaClienteInput {
@@ -466,6 +467,7 @@ export interface ItemOfertaClienteInput {
   precioXSaco?: number;
   pesoXCaja?: number;
   precioXCaja?: number;
+  codigoArancelario?: string; // Partida arancelaria
 }
 
 // ==========================================
@@ -559,6 +561,7 @@ export interface ItemOfertaImportadora {
   precioXSaco?: number;
   pesoXCaja?: number;
   precioXCaja?: number;
+  codigoArancelario?: string; // Partida arancelaria
 }
 
 export interface ItemOfertaImportadoraInput {
@@ -575,6 +578,7 @@ export interface ItemOfertaImportadoraInput {
   precioXSaco?: number;
   pesoXCaja?: number;
   precioXCaja?: number;
+  codigoArancelario?: string; // Partida arancelaria
 }
 
 // ==========================================

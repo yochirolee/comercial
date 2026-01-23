@@ -73,6 +73,7 @@ export default function OfertasClientePage(): React.ReactElement {
     precioXSaco: "",
     pesoXCaja: "",
     precioXCaja: "",
+    codigoArancelario: "",
   });
 
   // Estado para agregar items a oferta existente
@@ -90,6 +91,7 @@ export default function OfertasClientePage(): React.ReactElement {
     precioXSaco: "",
     pesoXCaja: "",
     precioXCaja: "",
+    codigoArancelario: "",
   });
 
   // Estado para ajustar precios por total deseado
@@ -153,6 +155,7 @@ export default function OfertasClientePage(): React.ReactElement {
       precioXSaco: "",
       pesoXCaja: "",
       precioXCaja: "",
+      codigoArancelario: "",
     });
   }
 
@@ -194,6 +197,7 @@ export default function OfertasClientePage(): React.ReactElement {
       precioXSaco: itemFormStrings.precioXSaco ? parseFloat(itemFormStrings.precioXSaco) : undefined,
       pesoXCaja: itemFormStrings.pesoXCaja ? parseFloat(itemFormStrings.pesoXCaja) : undefined,
       precioXCaja: itemFormStrings.precioXCaja ? parseFloat(itemFormStrings.precioXCaja) : undefined,
+      codigoArancelario: itemFormStrings.codigoArancelario || undefined,
     };
   }
 
@@ -356,6 +360,7 @@ export default function OfertasClientePage(): React.ReactElement {
       precioXSaco: item.precioXSaco?.toString() || "",
       pesoXCaja: item.pesoXCaja?.toString() || "",
       precioXCaja: item.precioXCaja?.toString() || "",
+      codigoArancelario: item.codigoArancelario || "",
     });
     setEditItemDialogOpen(true);
   }
@@ -374,6 +379,7 @@ export default function OfertasClientePage(): React.ReactElement {
         precioXSaco: editItemFormStrings.precioXSaco ? parseFloat(editItemFormStrings.precioXSaco) : undefined,
         pesoXCaja: editItemFormStrings.pesoXCaja ? parseFloat(editItemFormStrings.pesoXCaja) : undefined,
         precioXCaja: editItemFormStrings.precioXCaja ? parseFloat(editItemFormStrings.precioXCaja) : undefined,
+        codigoArancelario: editItemFormStrings.codigoArancelario || undefined,
       };
       
       await ofertasClienteApi.updateItem(selectedOferta.id, editingItemId, updateData);
@@ -663,6 +669,14 @@ export default function OfertasClientePage(): React.ReactElement {
                           placeholder="-"
                           value={itemFormStrings.precioXCaja}
                           onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
+                        />
+                      </div>
+                      <div className="space-y-2 col-span-2">
+                        <Label className="text-xs">Código Arancelario</Label>
+                        <Input
+                          placeholder="Ej: M1500CIULB"
+                          value={itemFormStrings.codigoArancelario}
+                          onChange={(e) => setItemFormStrings((prev) => ({ ...prev, codigoArancelario: e.target.value }))}
                         />
                       </div>
                     </div>
@@ -1177,6 +1191,14 @@ export default function OfertasClientePage(): React.ReactElement {
                     onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
                   />
                 </div>
+              </div>
+              <div className="mt-3 space-y-1">
+                <Label className="text-xs">Código Arancelario</Label>
+                <Input
+                  placeholder="Ej: M1500CIULB"
+                  value={editItemFormStrings.codigoArancelario}
+                  onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, codigoArancelario: e.target.value }))}
+                />
               </div>
             </div>
             <div className="flex justify-end gap-2">

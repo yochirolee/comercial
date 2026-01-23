@@ -68,6 +68,7 @@ const itemSchema = z.object({
   precioXSaco: z.number().optional(),
   pesoXCaja: z.number().optional(),
   precioXCaja: z.number().optional(),
+  codigoArancelario: z.string().optional(), // Partida arancelaria
   campoExtra1: z.string().optional(),
   campoExtra2: z.string().optional(),
   campoExtra3: z.string().optional(),
@@ -301,6 +302,7 @@ export const OfertaImportadoraController = {
             precioXSaco: item.precioXSaco,
             pesoXCaja: item.pesoXCaja,
             precioXCaja: item.precioXCaja,
+            codigoArancelario: item.codigoArancelario,
             campoExtra1: item.campoExtra1,
             campoExtra2: item.campoExtra2,
             campoExtra3: item.campoExtra3,
@@ -537,6 +539,7 @@ export const OfertaImportadoraController = {
     if (validation.data.precioXSaco !== undefined) updateData.precioXSaco = validation.data.precioXSaco;
     if (validation.data.pesoXCaja !== undefined) updateData.pesoXCaja = validation.data.pesoXCaja;
     if (validation.data.precioXCaja !== undefined) updateData.precioXCaja = validation.data.precioXCaja;
+    if (validation.data.codigoArancelario !== undefined) updateData.codigoArancelario = validation.data.codigoArancelario;
     if (validation.data.campoExtra1 !== undefined) updateData.campoExtra1 = validation.data.campoExtra1;
     if (validation.data.campoExtra2 !== undefined) updateData.campoExtra2 = validation.data.campoExtra2;
     if (validation.data.campoExtra3 !== undefined) updateData.campoExtra3 = validation.data.campoExtra3;
