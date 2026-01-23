@@ -388,6 +388,11 @@ function renderPdfTable(
     xPos = tableLeft;
     let colIndex = 0;
     
+    // Calcular altura de la descripción para ajustar la fila
+    const descWidth = widthsPdf[1] - 6; // Columna de descripción es la segunda (índice 1)
+    const descHeight = doc.heightOfString(item.producto.nombre, { width: descWidth });
+    const rowHeight = Math.max(16, descHeight + 4); // Mínimo 16, o altura del texto + padding
+    
     // ITEM
     doc.text(String(itemNum), xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
     xPos += widthsPdf[colIndex++];
@@ -444,7 +449,7 @@ function renderPdfTable(
     // IMPORTE
     doc.text(`$${formatCurrency(importe)}`, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'right' });
     
-    yPos += 16;
+    yPos += rowHeight;
     itemNum++;
     
     if (yPos > 650) {
@@ -643,6 +648,16 @@ function renderExcelTable(
 
     // Formateo de celdas
     dataRow.getCell(1).alignment = { horizontal: 'center' };
+    
+    // Descripción con wrapText para textos largos
+    dataRow.getCell(2).alignment = { wrapText: true, vertical: 'top' };
+    // Ajustar altura de fila según longitud del texto (aprox 15 caracteres por línea)
+    const descText = item.producto.nombre || '';
+    const descColWidth = widthsExcel[1] || 30;
+    const estimatedLines = Math.ceil(descText.length / (descColWidth * 1.5));
+    if (estimatedLines > 1) {
+      dataRow.height = Math.max(15, estimatedLines * 14);
+    }
     
     // Índices de las últimas 3 columnas (cantidad, precio, importe)
     const numCols = values.length;
