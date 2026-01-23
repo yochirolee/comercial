@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,29 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import Link from "next/link";
 import { Package, Loader2 } from "lucide-react";
+import { empresaApi, Empresa } from "@/lib/api";
 
 export default function LoginPage(): React.ReactElement {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [logoError, setLogoError] = useState(false);
+
+  useEffect(() => {
+    empresaApi.get().then(setEmpresa).catch(() => {});
+  }, []);
+
+  // Construir URL del logo
+  function getLogoUrl(): string | null {
+    if (!empresa?.logo) return null;
+    // Si es URL completa (Cloudinary)
+    if (empresa.logo.startsWith('http')) return empresa.logo;
+    // Si es ruta local, construir URL del backend
+    const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:3001';
+    return `${apiBase}${empresa.logo.startsWith('/') ? '' : '/'}${empresa.logo}`;
+  }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -34,11 +51,24 @@ export default function LoginPage(): React.ReactElement {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-gold-pale via-white to-brand-gold-pale/50 p-4">
       <Card className="w-full max-w-md shadow-xl border-brand-gold-pale">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-brand-gold rounded-xl flex items-center justify-center">
-            <Package className="w-8 h-8 text-brand-black" />
+          <div className="mx-auto flex items-center justify-center">
+            {empresa?.logo && !logoError ? (
+              <img
+                src={getLogoUrl() || ''}
+                alt="Logo"
+                className="max-w-[200px] max-h-[70px] object-contain"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <div className="w-16 h-16 bg-brand-gold rounded-xl flex items-center justify-center">
+                <Package className="w-8 h-8 text-brand-black" />
+              </div>
+            )}
           </div>
           <div>
-            <CardTitle className="text-2xl font-bold text-brand-black">ZAS BY JMC CORP</CardTitle>
+            <CardTitle className="text-2xl font-bold text-brand-black">
+              {empresa?.nombre || "ZAS BY JMC CORP"}
+            </CardTitle>
             <CardDescription className="text-brand-black/60">
               Ingresa a tu cuenta para continuar
             </CardDescription>

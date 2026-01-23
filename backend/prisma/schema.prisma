@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ==========================================
@@ -206,7 +206,7 @@ model ItemOfertaCliente {
   precioXSaco      Float?
   pesoXCaja        Float?
   precioXCaja      Float?
-  codigoArancelario String?  // Partida arancelaria (ej: M1500CIULB)
+  codigoArancelario String?
   campoExtra1      String?
   campoExtra2      String?
   campoExtra3      String?
@@ -269,7 +269,7 @@ model ItemOfertaImportadora {
   precioXSaco          Float?
   pesoXCaja            Float?
   precioXCaja          Float?
-  codigoArancelario    String?  // Partida arancelaria (ej: M1500CIULB)
+  codigoArancelario    String?
   campoExtra1          String?
   campoExtra2          String?
   campoExtra3          String?
