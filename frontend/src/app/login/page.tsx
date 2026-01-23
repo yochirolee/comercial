@@ -55,9 +55,9 @@ export default function LoginPage(): React.ReactElement {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-gold-pale via-white to-brand-gold-pale/50 p-4">
       <Card className="w-full max-w-md shadow-xl border-brand-gold-pale">
         <CardHeader className="text-center space-y-4">
-          {!loadingEmpresa && (
-            <div className="mx-auto flex items-center justify-center">
-              {empresa?.logo && !logoError ? (
+          <div className="mx-auto flex items-center justify-center h-[70px]">
+            {!loadingEmpresa && (
+              empresa?.logo && !logoError ? (
                 <img
                   src={getLogoUrl() || ''}
                   alt="Logo"
@@ -68,9 +68,9 @@ export default function LoginPage(): React.ReactElement {
                 <div className="w-16 h-16 bg-brand-gold rounded-xl flex items-center justify-center">
                   <Package className="w-8 h-8 text-brand-black" />
                 </div>
-              )}
-            </div>
-          )}
+              )
+            )}
+          </div>
           <div>
             <CardTitle className="text-2xl font-bold text-brand-black">
               {empresa?.nombre || "ZAS BY JMC CORP"}
