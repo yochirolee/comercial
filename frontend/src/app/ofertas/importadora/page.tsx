@@ -329,7 +329,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     <div>
       <Header
         title="Ofertas a Importadora"
-        description="Crear ofertas CIF desde ofertas al cliente. Ajustar precios para llegar al total deseado."
+        description="Crear ofertas CIF desde ofertas al cliente."
         actions={
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>

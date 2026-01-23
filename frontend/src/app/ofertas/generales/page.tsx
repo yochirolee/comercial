@@ -487,7 +487,7 @@ export default function OfertasGeneralesPage(): React.ReactElement {
     <div>
       <Header
         title="Lista de Precios"
-        description="Ofertas generales sin cliente específico"
+        description="Ofertas generales"
         actions={
           <Button onClick={openNewDialog}>
             <Plus className="h-4 w-4 mr-2" />
