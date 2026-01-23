@@ -55,29 +55,32 @@ export default function LoginPage(): React.ReactElement {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-gold-pale via-white to-brand-gold-pale/50 p-4">
       <Card className="w-full max-w-md shadow-xl border-brand-gold-pale">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto flex items-center justify-center h-[70px]">
-            {loadingEmpresa ? (
-              <div className="w-[180px] h-[50px] bg-slate-200 animate-pulse rounded" />
-            ) : empresa?.logo && !logoError ? (
-              <img
-                src={getLogoUrl() || ''}
-                alt="Logo"
-                className="max-w-[200px] max-h-[70px] object-contain"
-                onError={() => setLogoError(true)}
-              />
-            ) : (
-              <div className="w-16 h-16 bg-brand-gold rounded-xl flex items-center justify-center">
-                <Package className="w-8 h-8 text-brand-black" />
+          {!loadingEmpresa && (
+            <>
+              <div className="mx-auto flex items-center justify-center">
+                {empresa?.logo && !logoError ? (
+                  <img
+                    src={getLogoUrl() || ''}
+                    alt="Logo"
+                    className="max-w-[200px] max-h-[70px] object-contain"
+                    onError={() => setLogoError(true)}
+                  />
+                ) : (
+                  <div className="w-16 h-16 bg-brand-gold rounded-xl flex items-center justify-center">
+                    <Package className="w-8 h-8 text-brand-black" />
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <div>
-            <CardTitle className="text-2xl font-bold text-brand-black">
-              {loadingEmpresa ? <span className="inline-block w-40 h-6 bg-slate-200 animate-pulse rounded" /> : (empresa?.nombre || "ZAS BY JMC CORP")}</CardTitle>
-            <CardDescription className="text-brand-black/60">
-              Ingresa a tu cuenta para continuar
-            </CardDescription>
-          </div>
+              <div>
+                <CardTitle className="text-2xl font-bold text-brand-black">
+                  {empresa?.nombre || "ZAS BY JMC CORP"}
+                </CardTitle>
+                <CardDescription className="text-brand-black/60">
+                  Ingresa a tu cuenta para continuar
+                </CardDescription>
+              </div>
+            </>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
