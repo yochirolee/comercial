@@ -2265,12 +2265,12 @@ export const ExportController = {
 
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
+      await addImageToExcel(workbook, worksheet, firmaPath, { col: 0.5, row: firmaStartRow - 1 }, { width: 100, height: 50 });
     }
 
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
+      await addImageToExcel(workbook, worksheet, cunoPath, { col: 1.2, row: firmaStartRow - 1 }, { width: 70, height: 70 });
     }
 
     row = firmaStartRow + 3;
@@ -2278,7 +2278,7 @@ export const ExportController = {
     // Firma empresa
     worksheet.mergeCells(`A${row}:B${row}`);
     worksheet.getCell(`A${row}`).value = '________________________________';
-    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'left' };
     
     // Firma cliente (si está configurado)
     if (factura.incluyeFirmaCliente) {
