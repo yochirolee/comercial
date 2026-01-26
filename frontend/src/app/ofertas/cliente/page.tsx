@@ -778,6 +778,10 @@ export default function OfertasClientePage(): React.ReactElement {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Firma Cliente */}
+            <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -786,7 +790,7 @@ export default function OfertasClientePage(): React.ReactElement {
                   onChange={(e) => setFormData((p) => ({ ...p, incluyeFirmaCliente: e.target.checked }))}
                   className="h-4 w-4 rounded border-gray-300"
                 />
-                <Label htmlFor="incluyeFirmaCliente" className="cursor-pointer">
+                <Label htmlFor="incluyeFirmaCliente" className="cursor-pointer font-medium text-amber-800">
                   Incluir firma del cliente en la oferta
                 </Label>
               </div>
@@ -896,6 +900,10 @@ export default function OfertasClientePage(): React.ReactElement {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Firma Cliente */}
+            <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -904,14 +912,9 @@ export default function OfertasClientePage(): React.ReactElement {
                   onChange={(e) => setEditFormData((p) => ({ ...p, incluyeFirmaCliente: e.target.checked }))}
                   className="h-4 w-4 rounded border-gray-300"
                 />
-                <Label htmlFor="editIncluyeFirmaCliente" className="cursor-pointer">
+                <Label htmlFor="editIncluyeFirmaCliente" className="cursor-pointer font-medium text-amber-800">
                   Incluir firma del cliente en la oferta
                 </Label>
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={() => handleUpdateOferta(false)} size="sm">
-                  Guardar Cambios
-                </Button>
               </div>
             </div>
 

@@ -200,7 +200,7 @@ export const facturasApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  createFromOferta: (data: FacturaFromOfertaInput) => fetchApi<Factura>('/facturas/desde-oferta', {
+  createFromOfertaCliente: (data: FacturaFromOfertaClienteInput) => fetchApi<Factura>('/facturas/desde-oferta-cliente', {
     method: 'POST',
     body: JSON.stringify(data),
   }),
@@ -223,6 +223,10 @@ export const facturasApi = {
   }),
   removeItem: (id: string, itemId: string) => fetchApi<void>(`/facturas/${id}/items/${itemId}`, {
     method: 'DELETE',
+  }),
+  adjustPrices: (id: string, totalDeseado: number) => fetchApi<Factura>(`/facturas/${id}/adjust-prices`, {
+    method: 'POST',
+    body: JSON.stringify({ totalDeseado }),
   }),
 };
 
@@ -593,10 +597,26 @@ export interface Factura {
   cliente: Cliente;
   observaciones?: string;
   estado: string;
+  // Costos
   subtotal: number;
+  flete: number;
+  seguro: number;
+  tieneSeguro: boolean;
   impuestos: number;
   descuento: number;
   total: number;
+  // Términos
+  codigoMincex?: string;
+  puertoEmbarque?: string;
+  origen?: string;
+  moneda?: string;
+  terminosPago?: string;
+  // Firmas
+  incluyeFirmaCliente: boolean;
+  firmaClienteNombre?: string;
+  firmaClienteCargo?: string;
+  firmaClienteEmpresa?: string;
+  // Origen
   tipoOfertaOrigen?: string;
   ofertaOrigenId?: string;
   items: ItemFactura[];
@@ -608,14 +628,46 @@ export interface FacturaInput {
   fechaVencimiento?: string;
   clienteId: string;
   observaciones?: string;
+  // Costos
+  flete?: number;
+  seguro?: number;
+  tieneSeguro?: boolean;
   impuestos?: number;
   descuento?: number;
+  // Términos
+  codigoMincex?: string;
+  puertoEmbarque?: string;
+  origen?: string;
+  moneda?: string;
+  terminosPago?: string;
+  // Firmas
+  incluyeFirmaCliente?: boolean;
+  firmaClienteNombre?: string;
+  firmaClienteCargo?: string;
+  firmaClienteEmpresa?: string;
 }
 
-export interface FacturaFromOfertaInput {
-  tipoOferta: 'cliente' | 'importadora';
-  ofertaId: string;
+export interface FacturaFromOfertaClienteInput {
+  ofertaClienteId: string;
   numeroFactura: string;
+  fecha?: string;
+  // Costos
+  flete?: number;
+  seguro?: number;
+  tieneSeguro?: boolean;
+  // Términos
+  codigoMincex?: string;
+  puertoEmbarque?: string;
+  origen?: string;
+  moneda?: string;
+  terminosPago?: string;
+  // Firmas
+  incluyeFirmaCliente?: boolean;
+  firmaClienteNombre?: string;
+  firmaClienteCargo?: string;
+  firmaClienteEmpresa?: string;
+  // Ajuste de precio
+  totalDeseado?: number;
 }
 
 export interface ItemFactura {
@@ -625,10 +677,16 @@ export interface ItemFactura {
   descripcion?: string;
   cantidad: number;
   cantidadCajas?: number;
+  cantidadSacos?: number;
   pesoNeto?: number;
   pesoBruto?: number;
   precioUnitario: number;
   subtotal: number;
+  pesoXSaco?: number;
+  precioXSaco?: number;
+  pesoXCaja?: number;
+  precioXCaja?: number;
+  codigoArancelario?: string;
 }
 
 export interface ItemFacturaInput {
@@ -636,7 +694,13 @@ export interface ItemFacturaInput {
   descripcion?: string;
   cantidad: number;
   cantidadCajas?: number;
+  cantidadSacos?: number;
   pesoNeto?: number;
   pesoBruto?: number;
   precioUnitario: number;
+  pesoXSaco?: number;
+  precioXSaco?: number;
+  pesoXCaja?: number;
+  precioXCaja?: number;
+  codigoArancelario?: string;
 }

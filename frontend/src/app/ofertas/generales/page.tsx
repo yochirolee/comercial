@@ -683,8 +683,8 @@ export default function OfertasGeneralesPage(): React.ReactElement {
 
       {/* Detail/Edit Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[900px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+          <DialogHeader className="pr-8">
             <DialogTitle className="flex items-center gap-2">
               Lista de Precios: {selectedOferta?.numero}
               {!editingOferta && (

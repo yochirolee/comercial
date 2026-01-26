@@ -12,8 +12,11 @@ facturaRouter.get('/:id', FacturaController.getById);
 // POST /api/facturas - Crear nueva factura
 facturaRouter.post('/', FacturaController.create);
 
-// POST /api/facturas/desde-oferta - Crear factura desde una oferta
-facturaRouter.post('/desde-oferta', FacturaController.createFromOferta);
+// POST /api/facturas/desde-oferta-cliente - Crear factura desde oferta cliente
+facturaRouter.post('/desde-oferta-cliente', FacturaController.createFromOfertaCliente);
+
+// POST /api/facturas/:id/adjust-prices - Ajustar precios para llegar a un total deseado
+facturaRouter.post('/:id/adjust-prices', FacturaController.adjustPrices);
 
 // PUT /api/facturas/:id - Actualizar factura
 facturaRouter.put('/:id', FacturaController.update);

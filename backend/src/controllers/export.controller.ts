@@ -288,9 +288,9 @@ function buildDynamicColumns(items: any[], unidadMedida?: string): DynamicColumn
     widthsExcel.push(11);
   }
   if (optionalFields.codigoArancelario) {
-    headers.push('CÓDIGO\nARANCEL.');
-    widthsPdf.push(65);
-    widthsExcel.push(14);
+    headers.push('PARTIDA\nARANCELARIA');
+    widthsPdf.push(75);
+    widthsExcel.push(16);
   }
 
   // Columnas finales: usar unidad de medida del producto
@@ -1645,7 +1645,7 @@ export const ExportController = {
   },
 
   // ==========================================
-  // FACTURAS (mantenemos funcionalidad existente)
+  // FACTURAS - PACKING LIST (nuevo formato)
   // ==========================================
   async facturaPdf(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
@@ -1667,8 +1667,20 @@ export const ExportController = {
       return;
     }
 
+    // Obtener número de oferta cliente si existe
+    let numeroOfertaCliente = factura.numero;
+    if (factura.tipoOfertaOrigen === 'cliente' && factura.ofertaOrigenId) {
+      const ofertaCliente = await prisma.ofertaCliente.findUnique({
+        where: { id: factura.ofertaOrigenId },
+        select: { numero: true },
+      });
+      if (ofertaCliente) {
+        numeroOfertaCliente = ofertaCliente.numero;
+      }
+    }
+
     const empresa = await getEmpresaInfo();
-    const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
+    const doc = new PDFDocument({ margin: 40, size: 'LETTER' });
     
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=factura-${factura.numero}.pdf`);
@@ -1676,85 +1688,278 @@ export const ExportController = {
     doc.pipe(res);
 
     const pageWidth = 612;
-    const margin = 50;
+    const margin = 40;
     const contentWidth = pageWidth - margin * 2;
 
-    doc.fontSize(18).font('Helvetica-Bold').text('FACTURA', { align: 'center' });
+    // TÍTULO: FACTURA - PACKING LIST {numero de oferta cliente}
+    doc.fontSize(16).font('Helvetica-Bold');
+    doc.text(`FACTURA- PACKING LIST ${numeroOfertaCliente}`, { align: 'center' });
     doc.moveDown(0.5);
 
+    // LOGO (si existe) a la izquierda
     const headerY = doc.y;
     const logoPath = getImagePath(empresa.logo);
-    
     if (logoPath) {
-      doc.image(logoPath, margin, headerY, { width: 120, height: 45 });
+      const logoData = await getImageForPdf(logoPath);
+      if (logoData) {
+        doc.image(logoData, margin, headerY, { width: 120, height: 45 });
+      }
     }
-    
-    doc.fontSize(14).font('Helvetica-Bold');
+
+    // DATOS DE EMPRESA (centrado)
+    doc.fontSize(12).font('Helvetica-Bold');
     doc.text(empresa.nombre, margin, headerY, { width: contentWidth, align: 'center' });
     
     doc.fontSize(10).font('Helvetica');
-    doc.text(empresa.direccion, margin, headerY + 18, { width: contentWidth, align: 'center' });
-    doc.text(`Tel: ${empresa.telefono} | Email: ${empresa.email}`, margin, headerY + 30, { 
-      width: contentWidth, 
-      align: 'center' 
+    doc.text(empresa.direccion, margin, headerY + 16, { width: contentWidth, align: 'center' });
+    doc.text(empresa.telefono, margin, headerY + 28, { width: contentWidth, align: 'center' });
+    doc.text(empresa.email, margin, headerY + 40, { width: contentWidth, align: 'center' });
+
+    doc.y = headerY + 60;
+    doc.moveDown(0.5);
+
+    // CODIGO MINCEX Y FECHA (sin borde)
+    const codigoMincex = factura.codigoMincex || empresa.codigoMincex;
+    doc.fontSize(10).font('Helvetica');
+    doc.text(`CODIGO MINCEX: ${codigoMincex}`, margin, doc.y);
+    doc.text(`FECHA: ${formatDate(new Date(factura.fecha))}`, margin, doc.y);
+
+    // CONSIGNADO A
+    doc.moveDown(0.3);
+    doc.font('Helvetica-Bold');
+    doc.text(`CONSIGNADO A: ${factura.cliente.nombreCompania || factura.cliente.nombre}`);
+    doc.font('Helvetica');
+    doc.text(`NIT ${factura.cliente.nit || ''}`);
+    doc.text(factura.cliente.direccion || '');
+    doc.moveDown(0.5);
+
+    // TABLA DE ITEMS
+    const tableTop = doc.y;
+    const unidadMedida = factura.items[0]?.producto?.unidadMedida?.abreviatura || 'KG';
+    
+    // Headers de tabla para factura (con PESO NETO y PESO BRUTO)
+    const facturaHeaders = ['PRODUCTO', 'UM'];
+    
+    // Detectar campos opcionales
+    const optionalFields = detectOptionalFields(factura.items);
+    
+    // Contar columnas opcionales para ajustar ancho de descripción
+    let numOptionalCols = 0;
+    if (optionalFields.cantidadSacos) numOptionalCols++;
+    if (optionalFields.pesoXSaco) numOptionalCols++;
+    if (optionalFields.precioXSaco) numOptionalCols++;
+    if (optionalFields.cantidadCajas) numOptionalCols++;
+    if (optionalFields.codigoArancelario) numOptionalCols++;
+    
+    // Ajustar ancho de PRODUCTO según columnas opcionales
+    const descWidthPdf = numOptionalCols >= 4 ? 100 : numOptionalCols >= 2 ? 140 : 180;
+    const facturaWidths = [descWidthPdf, 30];
+    
+    if (optionalFields.cantidadSacos) {
+      facturaHeaders.push('CANT.\nSACOS');
+      facturaWidths.push(40);
+    }
+    if (optionalFields.pesoXSaco) {
+      facturaHeaders.push('PESO\nX SACO');
+      facturaWidths.push(40);
+    }
+    if (optionalFields.precioXSaco) {
+      facturaHeaders.push('PRECIO\nX SACO');
+      facturaWidths.push(45);
+    }
+    if (optionalFields.cantidadCajas) {
+      facturaHeaders.push('CANT.\nCAJAS');
+      facturaWidths.push(40);
+    }
+    if (optionalFields.codigoArancelario) {
+      facturaHeaders.push('PARTIDA\nARANCELARIA');
+      facturaWidths.push(70);
+    }
+    
+    // Columnas finales fijas
+    facturaHeaders.push(`CANT.\n${unidadMedida}`, 'PESO\nNETO', 'PESO\nBRUTO', `PRECIO\n/${unidadMedida}`, 'IMPORTE');
+    facturaWidths.push(45, 45, 45, 50, 60);
+    
+    const tableWidth = facturaWidths.reduce((a, b) => a + b, 0);
+    const tableLeft = margin;
+    const HEADER_HEIGHT = 28;
+    
+    // Fondo gris para encabezados
+    doc.rect(tableLeft, tableTop, tableWidth, HEADER_HEIGHT).fill('#e8e8e8');
+    doc.fillColor('#000');
+    
+    // Encabezados
+    doc.font('Helvetica-Bold').fontSize(7);
+    let xPos = tableLeft;
+    const headerTextY = tableTop + 4;
+    
+    facturaHeaders.forEach((header, i) => {
+      doc.text(header, xPos + 2, headerTextY, { width: facturaWidths[i] - 4, align: 'center', lineGap: 1 });
+      xPos += facturaWidths[i];
     });
     
-    doc.y = headerY + 60;
-    doc.moveDown();
+    doc.moveTo(tableLeft, tableTop + HEADER_HEIGHT).lineTo(tableLeft + tableWidth, tableTop + HEADER_HEIGHT).stroke();
     
-    doc.fontSize(10).text('FACTURAR A:', { underline: true });
-    doc.text(`${factura.cliente.nombre} ${factura.cliente.apellidos || ''}`);
-    if (factura.cliente.direccion) doc.text(factura.cliente.direccion);
-    if (factura.cliente.nit) doc.text(`NIT: ${factura.cliente.nit}`);
-    doc.moveDown();
-    
-    doc.text(`Factura N°: ${factura.numero}`);
-    doc.text(`Fecha: ${formatDate(factura.fecha)}`);
-    if (factura.fechaVencimiento) {
-      doc.text(`Vencimiento: ${formatDate(factura.fechaVencimiento)}`);
-    }
-    doc.text(`Estado: ${factura.estado.toUpperCase()}`);
-    doc.moveDown();
-
-    const startX = 50;
-    let y = doc.y;
-    doc.fontSize(9);
-    doc.text('Descripción', startX, y, { width: 180 });
-    doc.text('Cant.', startX + 180, y, { width: 40 });
-    doc.text('Unidad', startX + 220, y, { width: 40 });
-    doc.text('P. Unit.', startX + 270, y, { width: 60, align: 'right' });
-    doc.text('Subtotal', startX + 350, y, { width: 70, align: 'right' });
-    
-    doc.moveTo(startX, doc.y + 5).lineTo(500, doc.y + 5).stroke();
-    doc.moveDown();
+    // Items
+    doc.font('Helvetica').fontSize(8);
+    let yPos = tableTop + HEADER_HEIGHT + 6;
+    let totalImporte = 0;
+    let totalPesoNeto = 0;
+    let totalPesoBruto = 0;
 
     for (const item of factura.items) {
-      y = doc.y;
-      const descripcion = item.descripcion || item.producto.nombre;
-      doc.text(descripcion, startX, y, { width: 180 });
-      doc.text(item.cantidad.toString(), startX + 180, y, { width: 40 });
-      doc.text(item.producto.unidadMedida.abreviatura, startX + 220, y, { width: 40 });
-      doc.text(`$${formatCurrency(item.precioUnitario)}`, startX + 270, y, { width: 60, align: 'right' });
-      doc.text(`$${formatCurrency(item.subtotal)}`, startX + 350, y, { width: 70, align: 'right' });
-      doc.moveDown(0.5);
+      const pesoNeto = item.pesoNeto || item.cantidad;
+      const pesoBruto = item.pesoBruto || pesoNeto;
+      const importe = item.subtotal;
+      totalImporte += importe;
+      totalPesoNeto += pesoNeto;
+      totalPesoBruto += pesoBruto;
+      
+      xPos = tableLeft;
+      
+      // Calcular altura de fila basada en la descripción
+      const descWidth = facturaWidths[0] - 6;
+      const descHeight = doc.heightOfString(item.producto.nombre, { width: descWidth });
+      const rowHeight = Math.max(16, descHeight + 4);
+      
+      // PRODUCTO
+      doc.text(item.producto.nombre, xPos + 2, yPos, { width: facturaWidths[0] - 4 });
+      xPos += facturaWidths[0];
+      
+      // UM
+      doc.text(item.producto.unidadMedida.abreviatura, xPos + 2, yPos, { width: facturaWidths[1] - 4, align: 'center' });
+      xPos += facturaWidths[1];
+      
+      let colIdx = 2;
+      
+      // Campos opcionales
+      if (optionalFields.cantidadSacos) {
+        doc.text(String(item.cantidadSacos ?? '-'), xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'center' });
+        xPos += facturaWidths[colIdx++];
+      }
+      if (optionalFields.pesoXSaco) {
+        doc.text(item.pesoXSaco ? formatCurrency(item.pesoXSaco) : '-', xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
+        xPos += facturaWidths[colIdx++];
+      }
+      if (optionalFields.precioXSaco) {
+        doc.text(item.precioXSaco ? `$${formatCurrency(item.precioXSaco)}` : '-', xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
+        xPos += facturaWidths[colIdx++];
+      }
+      if (optionalFields.cantidadCajas) {
+        doc.text(String(item.cantidadCajas ?? '-'), xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'center' });
+        xPos += facturaWidths[colIdx++];
+      }
+      if (optionalFields.codigoArancelario) {
+        doc.text(item.codigoArancelario || '-', xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'center' });
+        xPos += facturaWidths[colIdx++];
+      }
+      
+      // CANTIDAD
+      doc.text(formatCurrency(item.cantidad), xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
+      xPos += facturaWidths[colIdx++];
+      
+      // PESO NETO
+      doc.text(formatCurrency(pesoNeto), xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
+      xPos += facturaWidths[colIdx++];
+      
+      // PESO BRUTO
+      doc.text(formatCurrency(pesoBruto), xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
+      xPos += facturaWidths[colIdx++];
+      
+      // PRECIO
+      doc.text(`$${formatCurrency(item.precioUnitario)}`, xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
+      xPos += facturaWidths[colIdx++];
+      
+      // IMPORTE
+      doc.text(`$${formatCurrency(importe)}`, xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
+      
+      yPos += rowHeight;
+      
+      if (yPos > 650) {
+        doc.addPage();
+        yPos = 50;
+      }
     }
 
-    doc.moveTo(startX, doc.y + 5).lineTo(500, doc.y + 5).stroke();
-    doc.moveDown();
+    // Línea separadora
+    doc.moveTo(tableLeft, yPos).lineTo(tableLeft + tableWidth, yPos).stroke();
+    yPos += 10;
+
+    // TOTALES: COSTO FOB, FLETE, SEGURO, COSTO CFR
+    const flete = factura.flete || 0;
+    const seguro = factura.tieneSeguro ? (factura.seguro || 0) : 0;
+    const costoCFR = totalImporte + flete + seguro;
     
-    doc.text(`Subtotal: $${formatCurrency(factura.subtotal)}`, { align: 'right' });
-    if (factura.impuestos > 0) {
-      doc.text(`Impuestos: $${formatCurrency(factura.impuestos)}`, { align: 'right' });
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text(`COSTO FOB: $${formatCurrency(totalImporte)}`, margin, yPos, { width: tableWidth, align: 'right' });
+    yPos += 14;
+    doc.text(`FLETE: $${formatCurrency(flete)}`, margin, yPos, { width: tableWidth, align: 'right' });
+    yPos += 14;
+    if (factura.tieneSeguro && seguro > 0) {
+      doc.text(`SEGURO: $${formatCurrency(seguro)}`, margin, yPos, { width: tableWidth, align: 'right' });
+      yPos += 14;
     }
-    if (factura.descuento > 0) {
-      doc.text(`Descuento: $${formatCurrency(factura.descuento)}`, { align: 'right' });
-    }
-    doc.fontSize(14).text(`TOTAL: $${formatCurrency(factura.total)}`, { align: 'right' });
+    doc.text(`COSTO CFR: $${formatCurrency(costoCFR)}`, margin, yPos, { width: tableWidth, align: 'right' });
+    yPos += 20;
 
-    if (factura.observaciones) {
-      doc.moveDown();
-      doc.fontSize(10).text('Observaciones:', { underline: true });
-      doc.text(factura.observaciones);
+    // TÉRMINOS Y CONDICIONES
+    doc.font('Helvetica').fontSize(9);
+    doc.text(`TERMINOS Y CONDICIONES: ${factura.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE'}`, margin, yPos);
+    doc.text(`PUERTO DE EMBARQUE: ${factura.puertoEmbarque || 'NEW ORLEANS, LA'}`);
+    doc.text(`ORIGEN: ${factura.origen || 'ESTADOS UNIDOS'}`);
+    doc.text(`MONEDA: ${factura.moneda || 'USD'}`);
+
+    // FIRMAS
+    doc.moveDown(3);
+    
+    const firmaStartY = doc.y;
+    const firmaWidth = 180;
+    const firmaClienteX = pageWidth - margin - firmaWidth;
+
+    // Imagen de firma empresa
+    const firmaPath = getImagePath(empresa.firmaPresidente);
+    if (firmaPath) {
+      const firmaData = await getImageForPdf(firmaPath);
+      if (firmaData) {
+        doc.image(firmaData, margin + 40, firmaStartY, { width: 100, height: 45 });
+      }
+    }
+
+    // Cuño
+    const cunoPath = getImagePath(empresa.cunoEmpresa);
+    if (cunoPath) {
+      const cunoData = await getImageForPdf(cunoPath);
+      if (cunoData) {
+        doc.image(cunoData, margin + firmaWidth + 20, firmaStartY + 10, { width: 70, height: 70 });
+      }
+    }
+
+    // Líneas de firma
+    const firmaLineY = firmaStartY + 50;
+    doc.moveTo(margin, firmaLineY).lineTo(margin + firmaWidth, firmaLineY).stroke();
+    
+    if (factura.incluyeFirmaCliente) {
+      doc.moveTo(firmaClienteX, firmaLineY).lineTo(firmaClienteX + firmaWidth, firmaLineY).stroke();
+    }
+    
+    // Texto firma empresa
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text(empresa.representante, margin, firmaLineY + 5, { width: firmaWidth, align: 'center' });
+    doc.font('Helvetica').fontSize(9);
+    doc.text(empresa.cargoRepresentante, margin, firmaLineY + 18, { width: firmaWidth, align: 'center' });
+    doc.text(empresa.nombre, margin, firmaLineY + 30, { width: firmaWidth, align: 'center' });
+    
+    // Texto firma cliente
+    if (factura.incluyeFirmaCliente) {
+      const nombreCliente = factura.firmaClienteNombre || `${factura.cliente.nombre || ''} ${factura.cliente.apellidos || ''}`.trim();
+      const cargoCliente = factura.firmaClienteCargo || 'DIRECTOR';
+      const empresaCliente = factura.firmaClienteEmpresa || factura.cliente.nombreCompania || '';
+      
+      doc.font('Helvetica-Bold').fontSize(9);
+      doc.text(nombreCliente, firmaClienteX, firmaLineY + 5, { width: firmaWidth, align: 'center' });
+      doc.font('Helvetica').fontSize(9);
+      doc.text(cargoCliente, firmaClienteX, firmaLineY + 18, { width: firmaWidth, align: 'center' });
+      doc.text(empresaCliente, firmaClienteX, firmaLineY + 30, { width: firmaWidth, align: 'center' });
     }
 
     doc.end();
@@ -1780,88 +1985,349 @@ export const ExportController = {
       return;
     }
 
+    // Obtener número de oferta cliente si existe
+    let numeroOfertaCliente = factura.numero;
+    if (factura.tipoOfertaOrigen === 'cliente' && factura.ofertaOrigenId) {
+      const ofertaCliente = await prisma.ofertaCliente.findUnique({
+        where: { id: factura.ofertaOrigenId },
+        select: { numero: true },
+      });
+      if (ofertaCliente) {
+        numeroOfertaCliente = ofertaCliente.numero;
+      }
+    }
+
     const empresa = await getEmpresaInfo();
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Factura');
 
-    worksheet.mergeCells('A1:F1');
-    worksheet.getCell('A1').value = 'FACTURA';
-    worksheet.getCell('A1').font = { bold: true, size: 16 };
-    worksheet.getCell('A1').alignment = { horizontal: 'center' };
+    const unidadMedida = factura.items[0]?.producto?.unidadMedida?.abreviatura || 'KG';
+    const optionalFields = detectOptionalFields(factura.items);
+    
+    // Calcular número de columnas
+    let numCols = 7; // PRODUCTO, UM, CANT, PESO NETO, PESO BRUTO, PRECIO, IMPORTE
+    if (optionalFields.cantidadSacos) numCols++;
+    if (optionalFields.pesoXSaco) numCols++;
+    if (optionalFields.precioXSaco) numCols++;
+    if (optionalFields.cantidadCajas) numCols++;
+    if (optionalFields.codigoArancelario) numCols++;
+    
+    const lastCol = numCols <= 26 ? String.fromCharCode(64 + numCols) : 'A' + String.fromCharCode(64 + numCols - 26);
+    
+    let row = 1;
 
-    worksheet.getCell('A2').value = '[LOGO]';
-    worksheet.mergeCells('B2:F2');
-    worksheet.getCell('B2').value = empresa.nombre;
-    worksheet.getCell('B2').font = { bold: true, size: 14 };
-    worksheet.getCell('B2').alignment = { horizontal: 'center' };
+    // TÍTULO: FACTURA - PACKING LIST {numero de oferta cliente}
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = `FACTURA- PACKING LIST ${numeroOfertaCliente}`;
+    worksheet.getCell(`A${row}`).font = { bold: true, size: 14 };
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
+    worksheet.getRow(row).height = 22;
+    row++;
 
-    worksheet.mergeCells('B3:F3');
-    worksheet.getCell('B3').value = empresa.direccion;
-    worksheet.getCell('B3').alignment = { horizontal: 'center' };
+    // LOGO
+    const logoPath = getImagePath(empresa.logo);
+    if (logoPath) {
+      await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: row - 1 }, { width: 130, height: 45 });
+    }
 
-    worksheet.getCell('A5').value = 'Cliente:';
-    worksheet.getCell('B5').value = `${factura.cliente.nombre} ${factura.cliente.apellidos || ''}`;
-    worksheet.getCell('A6').value = 'NIT Cliente:';
-    worksheet.getCell('B6').value = factura.cliente.nit || '-';
-    worksheet.getCell('A7').value = 'Factura N°:';
-    worksheet.getCell('B7').value = factura.numero;
-    worksheet.getCell('A8').value = 'Fecha:';
-    worksheet.getCell('B8').value = formatDate(factura.fecha);
-    worksheet.getCell('A9').value = 'Estado:';
-    worksheet.getCell('B9').value = factura.estado.toUpperCase();
+    // DATOS DE EMPRESA (centrado en toda la fila)
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = empresa.nombre;
+    worksheet.getCell(`A${row}`).font = { bold: true, size: 12 };
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
+    row++;
 
-    const headerRow = worksheet.getRow(11);
-    headerRow.values = ['Código', 'Descripción', 'Cantidad', 'Unidad', 'P. Unitario', 'Subtotal'];
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = empresa.direccion;
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
+    row++;
+
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = empresa.telefono;
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
+    row++;
+
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = empresa.email;
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
+    row++;
+
+    row++; // Espacio
+
+    // CODIGO MINCEX (sin borde)
+    const codigoMincex = factura.codigoMincex || empresa.codigoMincex;
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = `CODIGO MINCEX: ${codigoMincex}`;
+    row++;
+
+    // FECHA (fila separada, sin borde)
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = `FECHA: ${formatDate(new Date(factura.fecha))}`;
+    row++;
+
+    // CONSIGNADO A
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = `CONSIGNADO A: ${factura.cliente.nombreCompania || factura.cliente.nombre}`;
+    row++;
+
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = `NIT ${factura.cliente.nit || ''}`;
+    row++;
+
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = factura.cliente.direccion || '';
+    row++;
+
+    row++; // Espacio
+
+    // ENCABEZADOS DE TABLA
+    const headers: string[] = ['PRODUCTO', 'UM'];
+    
+    // Contar columnas opcionales para ajustar ancho de descripción
+    let numOptionalCols = 0;
+    if (optionalFields.cantidadSacos) numOptionalCols++;
+    if (optionalFields.pesoXSaco) numOptionalCols++;
+    if (optionalFields.precioXSaco) numOptionalCols++;
+    if (optionalFields.cantidadCajas) numOptionalCols++;
+    if (optionalFields.codigoArancelario) numOptionalCols++;
+    
+    // Ajustar ancho de PRODUCTO según columnas opcionales
+    const descWidthExcel = numOptionalCols >= 4 ? 25 : numOptionalCols >= 2 ? 32 : 40;
+    const widths: number[] = [descWidthExcel, 8];
+    
+    if (optionalFields.cantidadSacos) {
+      headers.push('CANT SACOS');
+      widths.push(10);
+    }
+    if (optionalFields.pesoXSaco) {
+      headers.push('PESO X SACO');
+      widths.push(10);
+    }
+    if (optionalFields.precioXSaco) {
+      headers.push('PRECIO X SACO');
+      widths.push(12);
+    }
+    if (optionalFields.cantidadCajas) {
+      headers.push('CANT CAJAS');
+      widths.push(10);
+    }
+    if (optionalFields.codigoArancelario) {
+      headers.push('PARTIDA\nARANCELARIA');
+      widths.push(16);
+    }
+    
+    headers.push(`CANT ${unidadMedida}`, 'PESO NETO', 'PESO BRUTO', `PRECIO/${unidadMedida}`, 'IMPORTE');
+    widths.push(10, 10, 10, 12, 14);
+    
+    // Configurar anchos
+    worksheet.columns = widths.map(w => ({ width: w }));
+    
+    const headerRow = worksheet.getRow(row);
+    headerRow.values = headers;
     headerRow.font = { bold: true };
-    headerRow.eachCell(cell => {
+    headerRow.alignment = { horizontal: 'center', wrapText: true };
+    headerRow.eachCell((cell) => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+      cell.border = { 
+        top: { style: 'thin' }, 
+        bottom: { style: 'thin' }, 
+        left: { style: 'thin' }, 
+        right: { style: 'thin' } 
+      };
     });
+    row++;
 
-    let rowIndex = 12;
+    // ITEMS
+    let totalImporte = 0;
+    let totalPesoNeto = 0;
+    let totalPesoBruto = 0;
+
     for (const item of factura.items) {
-      const row = worksheet.getRow(rowIndex);
-      row.values = [
-        item.producto.codigo || '-',
-        item.descripcion || item.producto.nombre,
-        item.cantidad,
-        item.producto.unidadMedida.abreviatura,
-        item.precioUnitario,
-        item.subtotal,
-      ];
-      row.getCell(5).numFmt = '"$"#,##0.00';
-      row.getCell(6).numFmt = '"$"#,##0.00';
-      rowIndex++;
+      const pesoNeto = item.pesoNeto || item.cantidad;
+      const pesoBruto = item.pesoBruto || pesoNeto;
+      const importe = item.subtotal;
+      totalImporte += importe;
+      totalPesoNeto += pesoNeto;
+      totalPesoBruto += pesoBruto;
+
+      const values: (string | number)[] = [item.producto.nombre, item.producto.unidadMedida.abreviatura];
+      
+      if (optionalFields.cantidadSacos) values.push(item.cantidadSacos ?? '-');
+      if (optionalFields.pesoXSaco) values.push(item.pesoXSaco ?? '-');
+      if (optionalFields.precioXSaco) values.push(item.precioXSaco ?? '-');
+      if (optionalFields.cantidadCajas) values.push(item.cantidadCajas ?? '-');
+      if (optionalFields.codigoArancelario) values.push(item.codigoArancelario || '-');
+      
+      values.push(item.cantidad, pesoNeto, pesoBruto, item.precioUnitario, importe);
+      
+      const dataRow = worksheet.getRow(row);
+      dataRow.values = values;
+      
+      // Calcular altura basada en la longitud de la descripción
+      const descLength = item.producto.nombre.length;
+      const avgCharsPerLine = descWidthExcel * 1.2; // Aproximado más conservador
+      const numLines = Math.ceil(descLength / avgCharsPerLine);
+      dataRow.height = Math.max(24, numLines * 16 + 8); // Mayor altura con padding
+      
+      // Formatear celdas - descripción centrada verticalmente
+      dataRow.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+      dataRow.getCell(2).alignment = { horizontal: 'center' };
+      
+      // Últimas 5 columnas (cantidad, peso neto, peso bruto, precio, importe)
+      const lastCols = values.length;
+      dataRow.getCell(lastCols - 4).alignment = { horizontal: 'right' };
+      dataRow.getCell(lastCols - 4).numFmt = '#,##0.00';
+      dataRow.getCell(lastCols - 3).alignment = { horizontal: 'right' };
+      dataRow.getCell(lastCols - 3).numFmt = '#,##0.00';
+      dataRow.getCell(lastCols - 2).alignment = { horizontal: 'right' };
+      dataRow.getCell(lastCols - 2).numFmt = '#,##0.00';
+      dataRow.getCell(lastCols - 1).alignment = { horizontal: 'right' };
+      dataRow.getCell(lastCols - 1).numFmt = '"$"#,##0.00';
+      dataRow.getCell(lastCols).alignment = { horizontal: 'right' };
+      dataRow.getCell(lastCols).numFmt = '"$"#,##0.00';
+      
+      dataRow.eachCell((cell) => {
+        cell.border = { 
+          top: { style: 'thin' }, 
+          bottom: { style: 'thin' }, 
+          left: { style: 'thin' }, 
+          right: { style: 'thin' } 
+        };
+      });
+      
+      row++;
     }
 
-    rowIndex++;
-    worksheet.getCell(`E${rowIndex}`).value = 'Subtotal:';
-    worksheet.getCell(`F${rowIndex}`).value = factura.subtotal;
-    worksheet.getCell(`F${rowIndex}`).numFmt = '"$"#,##0.00';
-    
-    if (factura.impuestos > 0) {
-      rowIndex++;
-      worksheet.getCell(`E${rowIndex}`).value = 'Impuestos:';
-      worksheet.getCell(`F${rowIndex}`).value = factura.impuestos;
-      worksheet.getCell(`F${rowIndex}`).numFmt = '"$"#,##0.00';
-    }
-    
-    if (factura.descuento > 0) {
-      rowIndex++;
-      worksheet.getCell(`E${rowIndex}`).value = 'Descuento:';
-      worksheet.getCell(`F${rowIndex}`).value = factura.descuento;
-      worksheet.getCell(`F${rowIndex}`).numFmt = '"$"#,##0.00';
-    }
-    
-    rowIndex++;
-    worksheet.getCell(`E${rowIndex}`).value = 'TOTAL:';
-    worksheet.getCell(`E${rowIndex}`).font = { bold: true };
-    worksheet.getCell(`F${rowIndex}`).value = factura.total;
-    worksheet.getCell(`F${rowIndex}`).numFmt = '"$"#,##0.00';
-    worksheet.getCell(`F${rowIndex}`).font = { bold: true };
+    row++; // Espacio
 
-    worksheet.columns = [
-      { width: 12 }, { width: 35 }, { width: 10 }, { width: 10 }, { width: 15 }, { width: 15 },
-    ];
+    // TOTALES
+    const flete = factura.flete || 0;
+    const seguro = factura.tieneSeguro ? (factura.seguro || 0) : 0;
+    const costoCFR = totalImporte + flete + seguro;
+    
+    const prevCol = numCols - 1;
+    const importeCol = numCols;
+    
+    worksheet.getCell(row, prevCol).value = 'COSTO FOB:';
+    worksheet.getCell(row, prevCol).font = { bold: true };
+    worksheet.getCell(row, prevCol).alignment = { horizontal: 'right' };
+    worksheet.getCell(row, importeCol).value = totalImporte;
+    worksheet.getCell(row, importeCol).numFmt = '"$"#,##0.00';
+    worksheet.getCell(row, importeCol).font = { bold: true };
+    row++;
+
+    worksheet.getCell(row, prevCol).value = 'FLETE:';
+    worksheet.getCell(row, prevCol).font = { bold: true };
+    worksheet.getCell(row, prevCol).alignment = { horizontal: 'right' };
+    worksheet.getCell(row, importeCol).value = flete;
+    worksheet.getCell(row, importeCol).numFmt = '"$"#,##0.00';
+    worksheet.getCell(row, importeCol).font = { bold: true };
+    row++;
+
+    if (factura.tieneSeguro && seguro > 0) {
+      worksheet.getCell(row, prevCol).value = 'SEGURO:';
+      worksheet.getCell(row, prevCol).font = { bold: true };
+      worksheet.getCell(row, prevCol).alignment = { horizontal: 'right' };
+      worksheet.getCell(row, importeCol).value = seguro;
+      worksheet.getCell(row, importeCol).numFmt = '"$"#,##0.00';
+      worksheet.getCell(row, importeCol).font = { bold: true };
+      row++;
+    }
+
+    worksheet.getCell(row, prevCol).value = 'COSTO CFR:';
+    worksheet.getCell(row, prevCol).font = { bold: true };
+    worksheet.getCell(row, prevCol).alignment = { horizontal: 'right' };
+    worksheet.getCell(row, importeCol).value = costoCFR;
+    worksheet.getCell(row, importeCol).numFmt = '"$"#,##0.00';
+    worksheet.getCell(row, importeCol).font = { bold: true };
+    row += 2;
+
+    // TÉRMINOS Y CONDICIONES
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = `TERMINOS Y CONDICIONES: ${factura.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE'}`;
+    row++;
+
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = `PUERTO DE EMBARQUE: ${factura.puertoEmbarque || 'NEW ORLEANS, LA'}`;
+    row++;
+
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = `ORIGEN: ${factura.origen || 'ESTADOS UNIDOS'}`;
+    row++;
+
+    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+    worksheet.getCell(`A${row}`).value = `MONEDA: ${factura.moneda || 'USD'}`;
+    worksheet.getRow(row).height = 25;
+    row++;
+
+    // FIRMAS
+    const firmaStartRow = row + 2;
+
+    const firmaPath = getImagePath(empresa.firmaPresidente);
+    if (firmaPath) {
+      await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
+    }
+
+    const cunoPath = getImagePath(empresa.cunoEmpresa);
+    if (cunoPath) {
+      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
+    }
+
+    row = firmaStartRow + 3;
+
+    // Firma empresa
+    worksheet.mergeCells(`A${row}:B${row}`);
+    worksheet.getCell(`A${row}`).value = '________________________________';
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
+    
+    // Firma cliente (si está configurado)
+    if (factura.incluyeFirmaCliente) {
+      const firmaClienteCol = String.fromCharCode(64 + numCols - 1);
+      worksheet.mergeCells(`${firmaClienteCol}${row}:${lastCol}${row}`);
+      worksheet.getCell(`${firmaClienteCol}${row}`).value = '________________________________';
+      worksheet.getCell(`${firmaClienteCol}${row}`).alignment = { horizontal: 'center' };
+    }
+    row++;
+
+    worksheet.mergeCells(`A${row}:B${row}`);
+    worksheet.getCell(`A${row}`).value = empresa.representante;
+    worksheet.getCell(`A${row}`).font = { bold: true };
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
+    
+    if (factura.incluyeFirmaCliente) {
+      const firmaClienteCol = String.fromCharCode(64 + numCols - 1);
+      const nombreCliente = factura.firmaClienteNombre || `${factura.cliente.nombre || ''} ${factura.cliente.apellidos || ''}`.trim();
+      worksheet.mergeCells(`${firmaClienteCol}${row}:${lastCol}${row}`);
+      worksheet.getCell(`${firmaClienteCol}${row}`).value = nombreCliente;
+      worksheet.getCell(`${firmaClienteCol}${row}`).font = { bold: true };
+      worksheet.getCell(`${firmaClienteCol}${row}`).alignment = { horizontal: 'center' };
+    }
+    row++;
+
+    worksheet.mergeCells(`A${row}:B${row}`);
+    worksheet.getCell(`A${row}`).value = empresa.cargoRepresentante;
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
+    
+    if (factura.incluyeFirmaCliente) {
+      const firmaClienteCol = String.fromCharCode(64 + numCols - 1);
+      const cargoCliente = factura.firmaClienteCargo || 'DIRECTOR';
+      worksheet.mergeCells(`${firmaClienteCol}${row}:${lastCol}${row}`);
+      worksheet.getCell(`${firmaClienteCol}${row}`).value = cargoCliente;
+      worksheet.getCell(`${firmaClienteCol}${row}`).alignment = { horizontal: 'center' };
+    }
+    row++;
+
+    worksheet.mergeCells(`A${row}:B${row}`);
+    worksheet.getCell(`A${row}`).value = empresa.nombre;
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
+    
+    if (factura.incluyeFirmaCliente) {
+      const firmaClienteCol = String.fromCharCode(64 + numCols - 1);
+      const empresaCliente = factura.firmaClienteEmpresa || factura.cliente.nombreCompania || '';
+      worksheet.mergeCells(`${firmaClienteCol}${row}:${lastCol}${row}`);
+      worksheet.getCell(`${firmaClienteCol}${row}`).value = empresaCliente;
+      worksheet.getCell(`${firmaClienteCol}${row}`).alignment = { horizontal: 'center' };
+    }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=factura-${factura.numero}.xlsx`);

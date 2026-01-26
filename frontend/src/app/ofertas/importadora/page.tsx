@@ -426,17 +426,6 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-2">
-                      <input
-                        type="checkbox"
-                        id="incluyeFirma"
-                        checked={incluyeFirmaCliente}
-                        onChange={(e) => setIncluyeFirmaCliente(e.target.checked)}
-                      />
-                      <Label htmlFor="incluyeFirma" className="cursor-pointer">
-                        Incluir firma del cliente en la plantilla
-                      </Label>
-                    </div>
                   </div>
                 )}
 
@@ -477,6 +466,24 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                           placeholder="100% antes del embarque"
                         />
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Firma Cliente */}
+                {selectedOfertaCliente && (
+                  <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="incluyeFirma"
+                        checked={incluyeFirmaCliente}
+                        onChange={(e) => setIncluyeFirmaCliente(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <Label htmlFor="incluyeFirma" className="cursor-pointer font-medium text-amber-800">
+                        Incluir firma del cliente en la plantilla
+                      </Label>
                     </div>
                   </div>
                 )}
@@ -697,17 +704,6 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </Select>
               </div>
               <div>
-                <Label className="text-slate-500">Firma cliente</Label>
-                <div className="mt-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedOferta?.incluyeFirmaCliente !== false}
-                      onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, incluyeFirmaCliente: e.target.checked } : null)}
-                    />
-                    Incluir en plantilla
-                  </label>
-                </div>
               </div>
             </div>
 
@@ -816,6 +812,22 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                     placeholder="100% antes del embarque"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Firma Cliente */}
+            <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="editIncluyeFirmaImportadora"
+                  checked={selectedOferta?.incluyeFirmaCliente !== false}
+                  onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, incluyeFirmaCliente: e.target.checked } : null)}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="editIncluyeFirmaImportadora" className="cursor-pointer font-medium text-amber-800">
+                  Incluir firma del cliente en la plantilla
+                </Label>
               </div>
             </div>
 
