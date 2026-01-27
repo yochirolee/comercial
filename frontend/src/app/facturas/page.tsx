@@ -98,6 +98,7 @@ export default function FacturasPage(): React.ReactElement {
   // Form data for edit factura
   const [editFormData, setEditFormData] = useState({
     fecha: "",
+    estado: "pendiente",
     flete: "0",
     seguro: "0",
     tieneSeguro: false,
@@ -295,6 +296,7 @@ export default function FacturasPage(): React.ReactElement {
     setSelectedFactura(factura);
     setEditFormData({
       fecha: factura.fecha ? factura.fecha.split("T")[0] : "",
+      estado: factura.estado || "pendiente",
       flete: String(factura.flete || 0),
       seguro: String(factura.seguro || 0),
       tieneSeguro: factura.tieneSeguro || false,
@@ -318,6 +320,7 @@ export default function FacturasPage(): React.ReactElement {
     try {
       await facturasApi.update(selectedFactura.id, {
         fecha: editFormData.fecha || undefined,
+        estado: editFormData.estado || undefined,
         flete: parseFloat(editFormData.flete) || 0,
         seguro: parseFloat(editFormData.seguro) || 0,
         tieneSeguro: editFormData.tieneSeguro,
@@ -806,11 +809,20 @@ export default function FacturasPage(): React.ReactElement {
                 </div>
                 <div>
                   <Label className="text-slate-500">Estado</Label>
-                  <p>
-                    <Badge variant={estadoColors[selectedFactura.estado]}>
-                      {selectedFactura.estado}
-                    </Badge>
-                  </p>
+                  <Select
+                    value={editFormData.estado}
+                    onValueChange={(value) => setEditFormData((p) => ({ ...p, estado: value }))}
+                  >
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendiente">Pendiente</SelectItem>
+                      <SelectItem value="pagada">Pagada</SelectItem>
+                      <SelectItem value="vencida">Vencida</SelectItem>
+                      <SelectItem value="cancelada">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

@@ -17,6 +17,7 @@ model Usuario {
   telefono         String?
   email            String   @unique
   password         String
+  rol              String   @default("comercial") // "admin" o "comercial"
   activo           Boolean  @default(true)
   
   createdAt        DateTime @default(now())

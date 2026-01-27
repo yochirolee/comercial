@@ -11,6 +11,7 @@ interface Usuario {
   apellidos: string;
   telefono?: string;
   email: string;
+  rol: string;
   activo: boolean;
 }
 
@@ -21,6 +22,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -47,7 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
     if (storedToken && storedUser) {
       setToken(storedToken);
-      setUsuario(JSON.parse(storedUser));
+      const userData = JSON.parse(storedUser);
+      // Asegurar que el rol tenga un valor por defecto
+      if (!userData.rol) {
+        userData.rol = 'comercial';
+      }
+      setUsuario(userData);
       // Verificar que el token siga siendo válido
       verifyToken(storedToken);
     } else {
@@ -65,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
       if (response.ok) {
         const userData = await response.json();
+        // Asegurar que el rol tenga un valor por defecto
+        if (!userData.rol) {
+          userData.rol = 'comercial';
+        }
         setUsuario(userData);
         localStorage.setItem("zas_user", JSON.stringify(userData));
       } else {
@@ -94,6 +105,11 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
     const data = await response.json();
     
+    // Asegurar que el rol tenga un valor por defecto
+    if (!data.usuario.rol) {
+      data.usuario.rol = 'comercial';
+    }
+    
     setToken(data.token);
     setUsuario(data.usuario);
     localStorage.setItem("zas_token", data.token);
@@ -118,6 +134,11 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
 
     const data = await response.json();
     
+    // Asegurar que el rol tenga un valor por defecto
+    if (!data.usuario.rol) {
+      data.usuario.rol = 'comercial';
+    }
+    
     setToken(data.token);
     setUsuario(data.usuario);
     localStorage.setItem("zas_token", data.token);
@@ -134,6 +155,33 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
     router.push("/login");
   }
 
+  async function refreshUser(): Promise<void> {
+    const storedToken = localStorage.getItem("zas_token");
+    if (storedToken) {
+      try {
+        const response = await fetch(`${API_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${storedToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const userData = await response.json();
+          // Asegurar que el rol tenga un valor por defecto y esté normalizado
+          if (!userData.rol) {
+            userData.rol = 'comercial';
+          } else {
+            userData.rol = userData.rol.trim().toLowerCase();
+          }
+          setUsuario(userData);
+          localStorage.setItem("zas_user", JSON.stringify(userData));
+        }
+      } catch (error) {
+        console.error("Error al refrescar usuario:", error);
+      }
+    }
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -143,6 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }): React.React
         login,
         register,
         logout,
+        refreshUser,
         isAuthenticated: !!token && !!usuario,
       }}
     >

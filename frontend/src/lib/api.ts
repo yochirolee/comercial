@@ -1,12 +1,20 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+  
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options?.headers,
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_URL}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
     ...options,
+    headers,
   });
 
   if (!response.ok) {
@@ -21,6 +29,38 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
   return response.json();
 }
+
+// ==========================================
+// AUTH / USUARIO
+// ==========================================
+export interface Usuario {
+  id: string;
+  nombre: string;
+  apellidos: string;
+  telefono?: string;
+  email: string;
+  rol: string;
+  activo: boolean;
+}
+
+export interface UsuarioUpdateInput {
+  nombre?: string;
+  apellidos?: string;
+  telefono?: string;
+  rol?: 'admin' | 'comercial';
+}
+
+export const authApi = {
+  getMe: () => fetchApi<Usuario>('/auth/me'),
+  updateProfile: (data: UsuarioUpdateInput) => fetchApi<Usuario>('/auth/profile', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  changePassword: (data: { currentPassword: string; newPassword: string }) => fetchApi<void>('/auth/change-password', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+};
 
 // ==========================================
 // EMPRESA
@@ -630,6 +670,7 @@ export interface FacturaInput {
   numero: string;
   fecha?: string;
   fechaVencimiento?: string;
+  estado?: string;
   clienteId: string;
   observaciones?: string;
   // Costos

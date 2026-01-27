@@ -62,6 +62,7 @@ export const AuthController = {
         apellidos: true,
         telefono: true,
         email: true,
+        rol: true,
         activo: true,
         createdAt: true,
       },
@@ -129,6 +130,7 @@ export const AuthController = {
         apellidos: usuario.apellidos,
         telefono: usuario.telefono,
         email: usuario.email,
+        rol: usuario.rol || 'comercial', // Default a 'comercial' si no existe
         activo: usuario.activo,
       },
       token,
@@ -146,6 +148,7 @@ export const AuthController = {
         apellidos: true,
         telefono: true,
         email: true,
+        rol: true,
         activo: true,
         createdAt: true,
       },
@@ -156,7 +159,10 @@ export const AuthController = {
       return;
     }
 
-    res.json(usuario);
+    res.json({
+      ...usuario,
+      rol: usuario.rol ? usuario.rol.trim().toLowerCase() : 'comercial', // Normalizar y default a 'comercial' si no existe
+    });
   },
 
   async updateProfile(req: Request, res: Response): Promise<void> {
@@ -166,6 +172,7 @@ export const AuthController = {
       nombre: z.string().min(1).optional(),
       apellidos: z.string().min(1).optional(),
       telefono: z.string().optional(),
+      rol: z.enum(['admin', 'comercial']).optional(),
     });
 
     const validation = updateSchema.safeParse(req.body);
@@ -175,20 +182,30 @@ export const AuthController = {
       return;
     }
 
+    // Normalizar el rol a lowercase si viene
+    const dataToUpdate = validation.data;
+    if (dataToUpdate.rol) {
+      dataToUpdate.rol = dataToUpdate.rol.toLowerCase() as 'admin' | 'comercial';
+    }
+
     const usuario = await prisma.usuario.update({
       where: { id: userId },
-      data: validation.data,
+      data: dataToUpdate,
       select: {
         id: true,
         nombre: true,
         apellidos: true,
         telefono: true,
         email: true,
+        rol: true,
         activo: true,
       },
     });
 
-    res.json(usuario);
+    res.json({
+      ...usuario,
+      rol: usuario.rol ? usuario.rol.trim().toLowerCase() : 'comercial', // Normalizar y default a 'comercial' si no existe
+    });
   },
 
   async changePassword(req: Request, res: Response): Promise<void> {

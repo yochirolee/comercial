@@ -15,6 +15,7 @@ import {
   ClipboardList,
   LogOut,
   User,
+  Settings,
 } from "lucide-react";
 
 const navigation = [
@@ -32,6 +33,7 @@ const navigation = [
     ]
   },
   { name: "Facturas", href: "/facturas", icon: Receipt },
+  { name: "Configuración", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar(): React.ReactElement {
