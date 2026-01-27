@@ -285,9 +285,14 @@ export const FacturaController = {
     // Preparar items con precios ajustados
     const itemsData = itemsOrigen.map((item, index) => {
       // Si viene de oferta importadora, usar precioAjustado; sino usar precioUnitario
-      const precioBase = ofertaImportadora 
-        ? (item.precioAjustado || (item as any).precioUnitario || 0)
-        : (item.precioUnitario || 0);
+      let precioBase = 0;
+      if (ofertaImportadora) {
+        // Item de oferta importadora tiene precioAjustado
+        precioBase = (item as any).precioAjustado || 0;
+      } else {
+        // Item de oferta cliente tiene precioUnitario
+        precioBase = (item as any).precioUnitario || 0;
+      }
       
       let precioAjustado = Math.round(precioBase * factor * 1000) / 1000; // Redondear a 3 decimales
       const cantidadParaCalculo = (item.pesoNeto || item.cantidad);
@@ -412,7 +417,11 @@ export const FacturaController = {
           },
         },
         cliente: true,
-        ofertaCliente: true,
+        ofertaCliente: {
+          include: {
+            cliente: true,
+          },
+        },
       },
     });
 
