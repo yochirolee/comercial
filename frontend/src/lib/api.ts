@@ -3,10 +3,15 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
 async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
   
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options?.headers,
   };
+  
+  // Copiar headers existentes si los hay
+  if (options?.headers) {
+    const existingHeaders = options.headers as Record<string, string>;
+    Object.assign(headers, existingHeaders);
+  }
   
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
