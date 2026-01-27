@@ -697,6 +697,7 @@ export default function FacturasPage(): React.ReactElement {
                 <TableHead>Fecha</TableHead>
                 <TableHead className="text-right">FOB</TableHead>
                 <TableHead className="text-right">Flete</TableHead>
+                <TableHead className="text-right">Seguro</TableHead>
                 <TableHead className="text-right">Total CFR</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="w-48">Acciones</TableHead>
@@ -705,11 +706,11 @@ export default function FacturasPage(): React.ReactElement {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">Cargando...</TableCell>
+                  <TableCell colSpan={9} className="text-center py-8">Cargando...</TableCell>
                 </TableRow>
               ) : facturas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                  <TableCell colSpan={9} className="text-center py-8 text-slate-500">
                     No hay facturas
                   </TableCell>
                 </TableRow>
@@ -721,6 +722,9 @@ export default function FacturasPage(): React.ReactElement {
                     <TableCell>{formatDate(factura.fecha)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(factura.subtotal)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(factura.flete)}</TableCell>
+                    <TableCell className="text-right">
+                      {factura.tieneSeguro && factura.seguro ? formatCurrency(factura.seguro) : ""}
+                    </TableCell>
                     <TableCell className="text-right font-bold">{formatCurrency(factura.total)}</TableCell>
                     <TableCell>
                       <Badge variant={estadoColors[factura.estado]}>{factura.estado}</Badge>
