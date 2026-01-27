@@ -321,6 +321,15 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     return new Intl.NumberFormat("es-ES", { style: "currency", currency: "USD" }).format(value);
   }
 
+  function formatCurrencyUnitPrice(value: number): string {
+    return new Intl.NumberFormat("es-ES", { 
+      style: "currency", 
+      currency: "USD",
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
+    }).format(value);
+  }
+
   function formatDate(date: string): string {
     return new Date(date).toLocaleDateString("es-ES");
   }
@@ -884,9 +893,16 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                             <ArrowRight className="h-4 w-4 text-slate-400 mx-auto" />
                           </TableCell>
                           <TableCell className="text-right font-medium text-emerald-600">
-                            {formatCurrency(item.precioAjustado)}
+                            {formatCurrencyUnitPrice(item.precioAjustado)}
                           </TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            {(() => {
+                              const cantidad = item.pesoNeto || item.cantidad;
+                              const precioRedondeado = Math.round(item.precioAjustado * 1000) / 1000;
+                              const cantidadRedondeada = Math.round(cantidad * 100) / 100;
+                              return formatCurrency(precioRedondeado * cantidadRedondeada);
+                            })()}
+                          </TableCell>
                           <TableCell>
                             <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
                               <Pencil className="h-4 w-4" />
@@ -905,7 +921,16 @@ export default function OfertasImportadoraPage(): React.ReactElement {
               <div className="w-80 space-y-2 text-sm p-4 bg-emerald-50 rounded-lg">
                 <div className="flex justify-between">
                   <span>FOB (productos):</span>
-                  <span className="font-medium">{formatCurrency(selectedOferta?.subtotalProductos || 0)}</span>
+                  <span className="font-medium">
+                    {formatCurrency(
+                      (selectedOferta?.items || []).reduce((sum, item) => {
+                        const cantidad = item.pesoNeto || item.cantidad;
+                        const precioRedondeado = Math.round(item.precioAjustado * 1000) / 1000;
+                        const cantidadRedondeada = Math.round(cantidad * 100) / 100;
+                        return sum + (precioRedondeado * cantidadRedondeada);
+                      }, 0)
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>+ Flete:</span>
@@ -920,7 +945,16 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 <Separator />
                 <div className="flex justify-between text-lg font-bold text-emerald-700">
                   <span>= CIF Total:</span>
-                  <span>{formatCurrency(selectedOferta?.precioCIF || 0)}</span>
+                  <span>
+                    {formatCurrency(
+                      (selectedOferta?.items || []).reduce((sum, item) => {
+                        const cantidad = item.pesoNeto || item.cantidad;
+                        const precioRedondeado = Math.round(item.precioAjustado * 1000) / 1000;
+                        const cantidadRedondeada = Math.round(cantidad * 100) / 100;
+                        return sum + (precioRedondeado * cantidadRedondeada);
+                      }, 0) + (selectedOferta?.flete || 0) + (selectedOferta?.tieneSeguro ? (selectedOferta?.seguro || 0) : 0)
+                    )}
+                  </span>
                 </div>
               </div>
             </div>

@@ -70,6 +70,29 @@ const fromOfertaClienteSchema = z.object({
   totalDeseado: z.number().optional(),
 });
 
+const fromOfertaImportadoraSchema = z.object({
+  ofertaImportadoraId: z.string().min(1, 'ID de oferta importadora es requerido'),
+  numeroFactura: z.string().min(1, 'Número de factura es requerido'),
+  fecha: z.string().optional(),
+  // Costos adicionales (opcionales, se toman de la oferta si no se envían)
+  flete: z.number().min(0).optional(),
+  seguro: z.number().min(0).optional(),
+  tieneSeguro: z.boolean().optional(),
+  // Términos (opcionales, si no se envían se toman de la oferta)
+  codigoMincex: z.string().optional(),
+  puertoEmbarque: z.string().optional(),
+  origen: z.string().optional(),
+  moneda: z.string().optional(),
+  terminosPago: z.string().optional(),
+  // Firma cliente
+  incluyeFirmaCliente: z.boolean().optional(),
+  firmaClienteNombre: z.string().optional(),
+  firmaClienteCargo: z.string().optional(),
+  firmaClienteEmpresa: z.string().optional(),
+  // Total deseado para ajustar precios
+  totalDeseado: z.number().optional(),
+});
+
 async function calcularTotales(facturaId: string): Promise<void> {
   const factura = await prisma.factura.findUnique({
     where: { id: facturaId },
@@ -222,8 +245,30 @@ export const FacturaController = {
       return;
     }
 
-    // Calcular subtotal de productos
-    const subtotalProductos = ofertaCliente.items.reduce((acc, item) => acc + item.subtotal, 0);
+    // Buscar oferta importadora relacionada (tiene precios ajustados)
+    const ofertaImportadora = await prisma.ofertaImportadora.findFirst({
+      where: { ofertaClienteId },
+      include: {
+        items: {
+          include: {
+            producto: {
+              include: { unidadMedida: true },
+            },
+          },
+        },
+      },
+    });
+
+    // Usar items de oferta importadora si existe (tienen precios ajustados), sino usar oferta cliente
+    const itemsOrigen = ofertaImportadora?.items || ofertaCliente.items;
+    const subtotalProductos = itemsOrigen.reduce((acc, item) => {
+      // Para oferta importadora, usar subtotal; para oferta cliente, calcular
+      if (ofertaImportadora) {
+        return acc + (item.subtotal || 0);
+      } else {
+        return acc + (item.subtotal || 0);
+      }
+    }, 0);
     const seguroFinal = tieneSeguro ? seguro : 0;
     
     // Calcular factor de ajuste si hay total deseado
@@ -238,9 +283,15 @@ export const FacturaController = {
     }
 
     // Preparar items con precios ajustados
-    const itemsData = ofertaCliente.items.map((item, index) => {
-      let precioAjustado = item.precioUnitario * factor;
-      let subtotal = item.cantidad * precioAjustado;
+    const itemsData = itemsOrigen.map((item, index) => {
+      // Si viene de oferta importadora, usar precioAjustado; sino usar precioUnitario
+      const precioBase = ofertaImportadora 
+        ? (item.precioAjustado || (item as any).precioUnitario || 0)
+        : (item.precioUnitario || 0);
+      
+      let precioAjustado = Math.round(precioBase * factor * 1000) / 1000; // Redondear a 3 decimales
+      const cantidadParaCalculo = (item.pesoNeto || item.cantidad);
+      let subtotal = Math.round(cantidadParaCalculo * precioAjustado * 100) / 100; // Redondear subtotal a 2 decimales
       
       return {
         productoId: item.productoId,
@@ -268,9 +319,9 @@ export const FacturaController = {
       
       if (Math.abs(diferencia) > 0.001) {
         const lastItem = itemsData[itemsData.length - 1];
-        lastItem.subtotal += diferencia;
+        lastItem.subtotal = Math.round((lastItem.subtotal + diferencia) * 100) / 100;
         if (lastItem.cantidad > 0) {
-          lastItem.precioUnitario = lastItem.subtotal / lastItem.cantidad;
+          lastItem.precioUnitario = Math.round((lastItem.subtotal / lastItem.cantidad) * 1000) / 1000; // Redondear a 3 decimales
         }
       }
     }
@@ -281,8 +332,8 @@ export const FacturaController = {
         numero: numeroFactura,
         fecha: fecha ? new Date(fecha) : new Date(),
         clienteId: ofertaCliente.clienteId,
-        tipoOfertaOrigen: 'cliente',
-        ofertaOrigenId: ofertaClienteId,
+        tipoOfertaOrigen: ofertaImportadora ? 'importadora' : 'cliente',
+        ofertaOrigenId: ofertaImportadora ? ofertaImportadora.id : ofertaClienteId,
         flete,
         seguro,
         tieneSeguro,
@@ -295,6 +346,172 @@ export const FacturaController = {
         firmaClienteNombre,
         firmaClienteCargo,
         firmaClienteEmpresa,
+        items: {
+          create: itemsData,
+        },
+      },
+      include: includeFactura,
+    });
+
+    await calcularTotales(factura.id);
+
+    const facturaActualizada = await prisma.factura.findUnique({
+      where: { id: factura.id },
+      include: includeFactura,
+    });
+    
+    res.status(201).json(facturaActualizada);
+  },
+
+  async createFromOfertaImportadora(req: Request, res: Response): Promise<void> {
+    const validation = fromOfertaImportadoraSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      res.status(400).json({ error: validation.error.errors });
+      return;
+    }
+
+    const { 
+      ofertaImportadoraId, 
+      numeroFactura,
+      fecha, 
+      flete,
+      seguro,
+      tieneSeguro,
+      totalDeseado,
+      codigoMincex,
+      puertoEmbarque,
+      origen,
+      moneda,
+      terminosPago,
+      incluyeFirmaCliente = false,
+      firmaClienteNombre,
+      firmaClienteCargo,
+      firmaClienteEmpresa,
+    } = validation.data;
+
+    // Verificar número único
+    const existingFactura = await prisma.factura.findUnique({
+      where: { numero: numeroFactura },
+    });
+    
+    if (existingFactura) {
+      res.status(400).json({ error: 'Ya existe una factura con ese número' });
+      return;
+    }
+
+    // Obtener oferta importadora con items
+    const ofertaImportadora = await prisma.ofertaImportadora.findUnique({
+      where: { id: ofertaImportadoraId },
+      include: {
+        items: {
+          include: {
+            producto: {
+              include: { unidadMedida: true },
+            },
+          },
+        },
+        cliente: true,
+        ofertaCliente: true,
+      },
+    });
+
+    if (!ofertaImportadora) {
+      res.status(404).json({ error: 'Oferta importadora no encontrada' });
+      return;
+    }
+
+    // Usar valores de la oferta importadora si no se proporcionaron
+    const fleteFinal = flete !== undefined ? flete : (ofertaImportadora.flete || 0);
+    const seguroFinal = tieneSeguro !== undefined 
+      ? (tieneSeguro ? (seguro !== undefined ? seguro : (ofertaImportadora.seguro || 0)) : 0)
+      : (ofertaImportadora.tieneSeguro ? (ofertaImportadora.seguro || 0) : 0);
+
+    // Calcular subtotal de productos desde items de oferta importadora
+    const subtotalProductos = ofertaImportadora.items.reduce((acc, item) => {
+      return acc + (item.subtotal || 0);
+    }, 0);
+    
+    // Calcular factor de ajuste si hay total deseado
+    let factor = 1;
+    if (totalDeseado && totalDeseado > 0) {
+      const subtotalDeseado = totalDeseado - fleteFinal - seguroFinal;
+      if (subtotalProductos > 0) {
+        factor = subtotalDeseado / subtotalProductos;
+      }
+    }
+
+    // Preparar items con precios ajustados
+    const itemsData = ofertaImportadora.items.map((item) => {
+      const precioBase = item.precioAjustado || 0;
+      let precioAjustado = Math.round(precioBase * factor * 1000) / 1000; // Redondear a 3 decimales
+      const cantidadParaCalculo = (item.pesoNeto || item.cantidad);
+      let subtotal = Math.round(cantidadParaCalculo * precioAjustado * 100) / 100; // Redondear subtotal a 2 decimales
+      
+      return {
+        productoId: item.productoId,
+        descripcion: item.producto.nombre,
+        cantidad: item.cantidad,
+        cantidadCajas: item.cantidadCajas,
+        cantidadSacos: item.cantidadSacos,
+        pesoNeto: item.pesoNeto || item.cantidad,
+        pesoBruto: item.pesoBruto,
+        precioUnitario: precioAjustado,
+        subtotal,
+        pesoXSaco: item.pesoXSaco,
+        precioXSaco: item.precioXSaco,
+        pesoXCaja: item.pesoXCaja,
+        precioXCaja: item.precioXCaja,
+        codigoArancelario: item.codigoArancelario,
+      };
+    });
+
+    // Ajuste exacto: distribuir diferencia al último item
+    if (totalDeseado && totalDeseado > 0 && itemsData.length > 0) {
+      const subtotalCalculado = itemsData.reduce((acc, item) => acc + item.subtotal, 0);
+      const subtotalDeseado = totalDeseado - fleteFinal - seguroFinal;
+      const diferencia = subtotalDeseado - subtotalCalculado;
+      
+      if (Math.abs(diferencia) > 0.001) {
+        const lastItem = itemsData[itemsData.length - 1];
+        lastItem.subtotal = Math.round((lastItem.subtotal + diferencia) * 100) / 100;
+        if (lastItem.cantidad > 0) {
+          lastItem.precioUnitario = Math.round((lastItem.subtotal / lastItem.cantidad) * 1000) / 1000;
+        }
+      }
+    }
+
+    // Obtener datos de firma del cliente desde oferta cliente si existe
+    const ofertaCliente = ofertaImportadora.ofertaCliente;
+    const nombreCliente = firmaClienteNombre || 
+      (ofertaCliente ? `${ofertaCliente.cliente.nombre || ""} ${ofertaCliente.cliente.apellidos || ""}`.trim() : 
+       `${ofertaImportadora.cliente.nombre || ""} ${ofertaImportadora.cliente.apellidos || ""}`.trim());
+    const cargoCliente = firmaClienteCargo || "DIRECTOR";
+    const empresaCliente = firmaClienteEmpresa || 
+      (ofertaCliente?.cliente.nombreCompania || ofertaImportadora.cliente.nombreCompania || "");
+
+    // Crear factura con items
+    const factura = await prisma.factura.create({
+      data: {
+        numero: numeroFactura,
+        fecha: fecha ? new Date(fecha) : new Date(),
+        clienteId: ofertaImportadora.clienteId,
+        tipoOfertaOrigen: 'importadora',
+        ofertaOrigenId: ofertaImportadoraId,
+        flete: fleteFinal,
+        seguro: seguroFinal,
+        tieneSeguro: tieneSeguro !== undefined ? tieneSeguro : ofertaImportadora.tieneSeguro,
+        codigoMincex: codigoMincex || ofertaImportadora.codigoMincex,
+        puertoEmbarque: puertoEmbarque || ofertaImportadora.puertoEmbarque,
+        origen: origen || ofertaImportadora.origen,
+        moneda: moneda || ofertaImportadora.moneda,
+        terminosPago: terminosPago || ofertaImportadora.terminosPago,
+        incluyeFirmaCliente: incluyeFirmaCliente !== undefined 
+          ? incluyeFirmaCliente 
+          : (ofertaImportadora.incluyeFirmaCliente || false),
+        firmaClienteNombre: incluyeFirmaCliente ? nombreCliente : undefined,
+        firmaClienteCargo: incluyeFirmaCliente ? cargoCliente : undefined,
+        firmaClienteEmpresa: incluyeFirmaCliente ? empresaCliente : undefined,
         items: {
           create: itemsData,
         },

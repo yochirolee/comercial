@@ -340,14 +340,14 @@ export const OfertaImportadoraController = {
           let nuevoSubtotal: number;
           
           if (i < items.length - 1) {
-            nuevoPrecioAjustado = Math.round(item.precioOriginal * factor * 100) / 100;
+            nuevoPrecioAjustado = Math.round(item.precioOriginal * factor * 1000) / 1000;
             nuevoSubtotal = Math.round(cantidadParaCalculo * nuevoPrecioAjustado * 100) / 100;
             subtotalAcumulado += nuevoSubtotal;
           } else {
             // Último item absorbe diferencia de redondeo
             nuevoSubtotal = Math.round((totalFobDeseado - subtotalAcumulado) * 100) / 100;
             nuevoPrecioAjustado = cantidadParaCalculo > 0 
-              ? Math.round((nuevoSubtotal / cantidadParaCalculo) * 100) / 100
+              ? Math.round((nuevoSubtotal / cantidadParaCalculo) * 1000) / 1000
               : 0;
             subtotalAcumulado += nuevoSubtotal;
           }
@@ -675,15 +675,15 @@ export const OfertaImportadoraController = {
       let nuevoSubtotal: number;
       
       if (i < itemsOrdenados.length - 1) {
-        // Para todos excepto el último, aplicar factor con redondeo
-        nuevoPrecioAjustado = Math.round(item.precioOriginal * factor * 100) / 100;
+        // Para todos excepto el último, aplicar factor con redondeo a 3 decimales para precio
+        nuevoPrecioAjustado = Math.round(item.precioOriginal * factor * 1000) / 1000;
         nuevoSubtotal = Math.round(cantidadParaCalculo * nuevoPrecioAjustado * 100) / 100;
         subtotalAcumulado += nuevoSubtotal;
       } else {
         // El último item absorbe la diferencia de redondeo para que el total sea exacto
         nuevoSubtotal = Math.round((totalFobDeseado - subtotalAcumulado) * 100) / 100;
         nuevoPrecioAjustado = cantidadParaCalculo > 0 
-          ? Math.round((nuevoSubtotal / cantidadParaCalculo) * 100) / 100
+          ? Math.round((nuevoSubtotal / cantidadParaCalculo) * 1000) / 1000
           : 0;
         subtotalAcumulado += nuevoSubtotal;
       }

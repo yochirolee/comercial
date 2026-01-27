@@ -204,6 +204,10 @@ export const facturasApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  createFromOfertaImportadora: (data: FacturaFromOfertaImportadoraInput) => fetchApi<Factura>('/facturas/desde-oferta-importadora', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
   update: (id: string, data: Partial<FacturaInput>) => fetchApi<Factura>(`/facturas/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data),
@@ -649,6 +653,29 @@ export interface FacturaInput {
 
 export interface FacturaFromOfertaClienteInput {
   ofertaClienteId: string;
+  numeroFactura: string;
+  fecha?: string;
+  // Costos
+  flete?: number;
+  seguro?: number;
+  tieneSeguro?: boolean;
+  // Términos
+  codigoMincex?: string;
+  puertoEmbarque?: string;
+  origen?: string;
+  moneda?: string;
+  terminosPago?: string;
+  // Firmas
+  incluyeFirmaCliente?: boolean;
+  firmaClienteNombre?: string;
+  firmaClienteCargo?: string;
+  firmaClienteEmpresa?: string;
+  // Ajuste de precio
+  totalDeseado?: number;
+}
+
+export interface FacturaFromOfertaImportadoraInput {
+  ofertaImportadoraId: string;
   numeroFactura: string;
   fecha?: string;
   // Costos

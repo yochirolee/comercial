@@ -117,6 +117,13 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+function formatCurrencyUnitPrice(value: number): string {
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  }).format(value);
+}
+
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('es-ES', {
     year: 'numeric',
@@ -443,7 +450,7 @@ function renderPdfTable(
     xPos += widthsPdf[colIndex++];
     
     // PRECIO X LB
-    doc.text(`$${formatCurrency(precioXLb)}`, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'right' });
+    doc.text(`$${formatCurrencyUnitPrice(precioXLb)}`, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'right' });
     xPos += widthsPdf[colIndex++];
     
     // IMPORTE
@@ -663,7 +670,7 @@ function renderExcelTable(
     dataRow.getCell(numCols - 2).alignment = { horizontal: 'right' };
     dataRow.getCell(numCols - 2).numFmt = '#,##0.00';
     dataRow.getCell(numCols - 1).alignment = { horizontal: 'right' };
-    dataRow.getCell(numCols - 1).numFmt = '"$"#,##0.00';
+    dataRow.getCell(numCols - 1).numFmt = '"$"#,##0.000';
     dataRow.getCell(numCols).alignment = { horizontal: 'right' };
     dataRow.getCell(numCols).numFmt = '"$"#,##0.00';
     
@@ -1867,7 +1874,7 @@ export const ExportController = {
       xPos += facturaWidths[colIdx++];
       
       // PRECIO
-      doc.text(`$${formatCurrency(item.precioUnitario)}`, xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
+      doc.text(`$${formatCurrencyUnitPrice(item.precioUnitario)}`, xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
       xPos += facturaWidths[colIdx++];
       
       // IMPORTE
@@ -2182,7 +2189,7 @@ export const ExportController = {
       dataRow.getCell(lastCols - 2).alignment = { horizontal: 'right' };
       dataRow.getCell(lastCols - 2).numFmt = '#,##0.00';
       dataRow.getCell(lastCols - 1).alignment = { horizontal: 'right' };
-      dataRow.getCell(lastCols - 1).numFmt = '"$"#,##0.00';
+      dataRow.getCell(lastCols - 1).numFmt = '"$"#,##0.000';
       dataRow.getCell(lastCols).alignment = { horizontal: 'right' };
       dataRow.getCell(lastCols).numFmt = '"$"#,##0.00';
       
@@ -2265,12 +2272,12 @@ export const ExportController = {
 
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      await addImageToExcel(workbook, worksheet, firmaPath, { col: 0.5, row: firmaStartRow - 1 }, { width: 100, height: 50 });
+      await addImageToExcel(workbook, worksheet, firmaPath, { col: 0.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
     }
 
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      await addImageToExcel(workbook, worksheet, cunoPath, { col: 1.2, row: firmaStartRow - 1 }, { width: 70, height: 70 });
+      await addImageToExcel(workbook, worksheet, cunoPath, { col: 1.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
     }
 
     row = firmaStartRow + 3;
@@ -2278,7 +2285,7 @@ export const ExportController = {
     // Firma empresa
     worksheet.mergeCells(`A${row}:B${row}`);
     worksheet.getCell(`A${row}`).value = '________________________________';
-    worksheet.getCell(`A${row}`).alignment = { horizontal: 'left' };
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
     
     // Firma cliente (si está configurado)
     if (factura.incluyeFirmaCliente) {

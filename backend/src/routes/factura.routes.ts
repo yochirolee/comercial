@@ -15,6 +15,9 @@ facturaRouter.post('/', FacturaController.create);
 // POST /api/facturas/desde-oferta-cliente - Crear factura desde oferta cliente
 facturaRouter.post('/desde-oferta-cliente', FacturaController.createFromOfertaCliente);
 
+// POST /api/facturas/desde-oferta-importadora - Crear factura desde oferta importadora
+facturaRouter.post('/desde-oferta-importadora', FacturaController.createFromOfertaImportadora);
+
 // POST /api/facturas/:id/adjust-prices - Ajustar precios para llegar a un total deseado
 facturaRouter.post('/:id/adjust-prices', FacturaController.adjustPrices);
 

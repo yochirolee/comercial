@@ -56,6 +56,7 @@ import type {
   OfertaCliente,
   OfertaImportadora,
   FacturaFromOfertaClienteInput,
+  FacturaFromOfertaImportadoraInput,
 } from "@/lib/api";
 
 export default function FacturasPage(): React.ReactElement {
@@ -72,7 +73,7 @@ export default function FacturasPage(): React.ReactElement {
 
   // Selected data
   const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null);
-  const [selectedOfertaClienteId, setSelectedOfertaClienteId] = useState("");
+  const [selectedOfertaImportadoraId, setSelectedOfertaImportadoraId] = useState("");
   const [editingItemId, setEditingItemId] = useState("");
 
   // Form data for new factura
@@ -137,7 +138,7 @@ export default function FacturasPage(): React.ReactElement {
       ]);
       setFacturas(facturasData);
       setOfertasCliente(ocData.filter((o) => o.estado === "aceptada" || o.estado === "pendiente"));
-      setOfertasImportadora(oiData);
+      setOfertasImportadora(oiData.filter((o) => o.estado === "aceptada" || o.estado === "pendiente"));
     } catch (error) {
       toast.error("Error al cargar datos");
       console.error(error);
@@ -154,18 +155,27 @@ export default function FacturasPage(): React.ReactElement {
     return new Intl.NumberFormat("es-ES", { style: "currency", currency: "USD" }).format(value);
   }
 
+  function formatCurrencyUnitPrice(value: number): string {
+    return new Intl.NumberFormat("es-ES", { 
+      style: "currency", 
+      currency: "USD",
+      minimumFractionDigits: 3,
+      maximumFractionDigits: 3
+    }).format(value);
+  }
+
   function formatDate(date: string): string {
     return new Date(date).toLocaleDateString("es-ES");
   }
 
-  // Get selected oferta cliente
-  function getSelectedOfertaCliente(): OfertaCliente | undefined {
-    return ofertasCliente.find((o) => o.id === selectedOfertaClienteId);
+  // Get selected oferta importadora
+  function getSelectedOfertaImportadora(): OfertaImportadora | undefined {
+    return ofertasImportadora.find((o) => o.id === selectedOfertaImportadoraId);
   }
 
   // Open new dialog
   function openNewDialog(): void {
-    setSelectedOfertaClienteId("");
+    setSelectedOfertaImportadoraId("");
     setNewFormData({
       numeroFactura: "",
       fecha: new Date().toISOString().split("T")[0],
@@ -186,48 +196,48 @@ export default function FacturasPage(): React.ReactElement {
     setNewDialogOpen(true);
   }
 
-  // Handle oferta cliente selection
-  function handleSelectOfertaCliente(ofertaId: string): void {
-    setSelectedOfertaClienteId(ofertaId);
-    const oferta = ofertasCliente.find((o) => o.id === ofertaId);
+  // Handle oferta importadora selection
+  function handleSelectOfertaImportadora(ofertaId: string): void {
+    setSelectedOfertaImportadoraId(ofertaId);
+    const oferta = ofertasImportadora.find((o) => o.id === ofertaId);
     if (oferta) {
       // Precargar número de factura basado en oferta
       const numeroFac = `FAC-${oferta.numero}`;
       
-      // Precargar firma del cliente desde la oferta
-      const nombreCliente = `${oferta.cliente.nombre || ""} ${oferta.cliente.apellidos || ""}`.trim();
-      
-      // Buscar oferta importadora relacionada para cargar flete y seguro
-      const ofertaImportadora = ofertasImportadora.find((oi) => oi.ofertaClienteId === ofertaId);
+      // Obtener datos del cliente desde oferta cliente si existe
+      const ofertaCliente = ofertasCliente.find((oc) => oc.id === oferta.ofertaClienteId);
+      const nombreCliente = ofertaCliente 
+        ? `${ofertaCliente.cliente.nombre || ""} ${ofertaCliente.cliente.apellidos || ""}`.trim()
+        : `${oferta.cliente.nombre || ""} ${oferta.cliente.apellidos || ""}`.trim();
       
       setNewFormData((prev) => ({
         ...prev,
         numeroFactura: numeroFac,
-        // Términos de la oferta
+        // Términos de la oferta importadora
         codigoMincex: oferta.codigoMincex || "",
         puertoEmbarque: oferta.puertoEmbarque || "NEW ORLEANS, LA",
         origen: oferta.origen || "ESTADOS UNIDOS",
         moneda: oferta.moneda || "USD",
         terminosPago: oferta.terminosPago || "PAGO 100% ANTES DEL EMBARQUE",
-        // Flete y seguro desde oferta importadora (si existe)
-        flete: ofertaImportadora?.flete?.toString() || "0",
-        tieneSeguro: ofertaImportadora?.tieneSeguro || false,
-        seguro: ofertaImportadora?.seguro?.toString() || "0",
-        // Firma del cliente (precargada de la oferta)
+        // Flete y seguro desde oferta importadora
+        flete: oferta.flete?.toString() || "0",
+        tieneSeguro: oferta.tieneSeguro || false,
+        seguro: oferta.seguro?.toString() || "0",
+        // Firma del cliente
         incluyeFirmaCliente: oferta.incluyeFirmaCliente || false,
         firmaClienteNombre: nombreCliente,
         firmaClienteCargo: "DIRECTOR",
-        firmaClienteEmpresa: oferta.cliente.nombreCompania || "",
+        firmaClienteEmpresa: ofertaCliente?.cliente.nombreCompania || oferta.cliente.nombreCompania || "",
       }));
     }
   }
 
   // Calculate totals for creation dialog
   function getCalculatedTotals(): { subtotal: number; cifTotal: number } {
-    const oferta = getSelectedOfertaCliente();
+    const oferta = getSelectedOfertaImportadora();
     if (!oferta) return { subtotal: 0, cifTotal: 0 };
     
-    const subtotal = oferta.total || 0;
+    const subtotal = oferta.subtotalProductos || 0;
     const flete = parseFloat(newFormData.flete) || 0;
     const seguro = newFormData.tieneSeguro ? (parseFloat(newFormData.seguro) || 0) : 0;
     const cifTotal = subtotal + flete + seguro;
@@ -238,8 +248,8 @@ export default function FacturasPage(): React.ReactElement {
   // Submit new factura
   async function handleSubmitNew(e: React.FormEvent): Promise<void> {
     e.preventDefault();
-    if (!selectedOfertaClienteId) {
-      toast.error("Seleccione una oferta cliente");
+    if (!selectedOfertaImportadoraId) {
+      toast.error("Seleccione una oferta a importadora");
       return;
     }
 
@@ -248,8 +258,8 @@ export default function FacturasPage(): React.ReactElement {
       const { cifTotal } = getCalculatedTotals();
       const totalDeseado = parseFloat(newFormData.totalDeseado) || 0;
       
-      const data: FacturaFromOfertaClienteInput = {
-        ofertaClienteId: selectedOfertaClienteId,
+      const data: FacturaFromOfertaImportadoraInput = {
+        ofertaImportadoraId: selectedOfertaImportadoraId,
         numeroFactura: newFormData.numeroFactura,
         fecha: newFormData.fecha || undefined,
         flete: parseFloat(newFormData.flete) || 0,
@@ -268,7 +278,7 @@ export default function FacturasPage(): React.ReactElement {
         totalDeseado: totalDeseado > 0 && totalDeseado !== cifTotal ? totalDeseado : undefined,
       };
 
-      await facturasApi.createFromOfertaCliente(data);
+      await facturasApi.createFromOfertaImportadora(data);
       toast.success("Factura creada exitosamente");
       setNewDialogOpen(false);
       loadData();
@@ -444,7 +454,7 @@ export default function FacturasPage(): React.ReactElement {
     <div>
       <Header
         title="Facturas"
-        description="Crear facturas desde ofertas a cliente."
+        description="Crear facturas desde ofertas a importadora."
         actions={
           <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
             <DialogTrigger asChild>
@@ -457,25 +467,25 @@ export default function FacturasPage(): React.ReactElement {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Receipt className="h-5 w-5" />
-                  Nueva Factura desde Oferta Cliente
+                  Nueva Factura desde Oferta a Importadora
                 </DialogTitle>
               </DialogHeader>
 
               <form onSubmit={handleSubmitNew} className="space-y-6">
-                {/* Oferta Cliente */}
+                {/* Oferta Importadora */}
                 <div className="space-y-2">
-                  <Label>Oferta Cliente *</Label>
+                  <Label>Oferta a Importadora *</Label>
                   <Select
-                    value={selectedOfertaClienteId}
-                    onValueChange={handleSelectOfertaCliente}
+                    value={selectedOfertaImportadoraId}
+                    onValueChange={handleSelectOfertaImportadora}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Seleccionar oferta" />
                     </SelectTrigger>
                     <SelectContent>
-                      {ofertasCliente.map((o) => (
+                      {ofertasImportadora.map((o) => (
                         <SelectItem key={o.id} value={o.id}>
-                          {o.numero} - {o.cliente.nombre} ({formatCurrency(o.total)})
+                          {o.numero} - {o.cliente.nombre} (CIF: {formatCurrency(o.precioCIF)})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -493,7 +503,7 @@ export default function FacturasPage(): React.ReactElement {
                   />
                 </div>
 
-                {selectedOfertaClienteId && (
+                {selectedOfertaImportadoraId && (
                   <>
                     {/* Costos de envío y Total */}
                     <div className="grid grid-cols-2 gap-4">
@@ -667,7 +677,7 @@ export default function FacturasPage(): React.ReactElement {
                   <Button type="button" variant="outline" onClick={() => setNewDialogOpen(false)}>
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={saving || !selectedOfertaClienteId}>
+                  <Button type="submit" disabled={saving || !selectedOfertaImportadoraId}>
                     {saving ? "Creando..." : "Crear Factura"}
                   </Button>
                 </div>
@@ -842,27 +852,6 @@ export default function FacturasPage(): React.ReactElement {
                 {/* Ajustar al total */}
                 <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-3">
                   <h4 className="font-medium text-emerald-800">Ajustar al Total CFR</h4>
-                  <div className="text-sm space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">FOB (Productos):</span>
-                      <span>{formatCurrency(selectedFactura.subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">+ Flete:</span>
-                      <span>{formatCurrency(parseFloat(editFormData.flete) || 0)}</span>
-                    </div>
-                    {editFormData.tieneSeguro && (
-                      <div className="flex justify-between">
-                        <span className="text-slate-500">+ Seguro:</span>
-                        <span>{formatCurrency(parseFloat(editFormData.seguro) || 0)}</span>
-                      </div>
-                    )}
-                    <Separator className="my-2" />
-                    <div className="flex justify-between font-bold text-emerald-800">
-                      <span>Total CFR Actual:</span>
-                      <span>{formatCurrency(selectedFactura.total)}</span>
-                    </div>
-                  </div>
                   <p className="text-xs text-slate-600">
                     Si quieres que el CFR sea un valor específico, escríbelo aquí. Los precios de los productos se ajustarán.
                   </p>
@@ -1007,8 +996,14 @@ export default function FacturasPage(): React.ReactElement {
                         <TableCell className="text-right">{item.cantidad.toFixed(2)}</TableCell>
                         <TableCell className="text-right">{(item.pesoNeto || item.cantidad).toFixed(2)}</TableCell>
                         <TableCell className="text-right">{(item.pesoBruto || "-")}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.precioUnitario)}</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
+                        <TableCell className="text-right">{formatCurrencyUnitPrice(item.precioUnitario)}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {(() => {
+                            const precioRedondeado = Math.round(item.precioUnitario * 1000) / 1000;
+                            const cantidadRedondeada = Math.round(item.cantidad * 100) / 100;
+                            return formatCurrency(precioRedondeado * cantidadRedondeada);
+                          })()}
+                        </TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
                             <Pencil className="h-4 w-4" />
@@ -1018,6 +1013,31 @@ export default function FacturasPage(): React.ReactElement {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+
+              {/* Resumen totales */}
+              <div className="flex justify-end">
+                <div className="w-80 space-y-2 text-sm p-4 bg-emerald-50 rounded-lg">
+                  <div className="flex justify-between">
+                    <span>FOB (productos):</span>
+                    <span className="font-medium">{formatCurrency(selectedFactura.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>+ Flete:</span>
+                    <span>{formatCurrency(parseFloat(editFormData.flete) || 0)}</span>
+                  </div>
+                  {editFormData.tieneSeguro && (
+                    <div className="flex justify-between">
+                      <span>+ Seguro:</span>
+                      <span>{formatCurrency(parseFloat(editFormData.seguro) || 0)}</span>
+                    </div>
+                  )}
+                  <Separator />
+                  <div className="flex justify-between text-lg font-bold text-emerald-700">
+                    <span>= CFR Total:</span>
+                    <span>{formatCurrency(selectedFactura.total)}</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
