@@ -16,9 +16,18 @@ import {
   LogOut,
   User,
   Settings,
+  UserCog,
 } from "lucide-react";
 
-const navigation = [
+interface NavItem {
+  name: string;
+  href?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children?: { name: string; href: string; icon: React.ComponentType<{ className?: string }>; adminOnly?: boolean }[];
+  adminOnly?: boolean;
+}
+
+const navigation: NavItem[] = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Empresa", href: "/empresa", icon: Building2 },
   { name: "Clientes", href: "/clientes", icon: Users },
@@ -33,7 +42,14 @@ const navigation = [
     ]
   },
   { name: "Facturas", href: "/facturas", icon: Receipt },
-  { name: "Configuración", href: "/settings", icon: Settings },
+  { 
+    name: "Configuración", 
+    icon: Settings,
+    children: [
+      { name: "Mi Perfil", href: "/settings", icon: User },
+      { name: "Usuarios", href: "/settings/usuarios", icon: UserCog, adminOnly: true },
+    ]
+  },
 ];
 
 export function Sidebar(): React.ReactElement {
@@ -54,6 +70,13 @@ export function Sidebar(): React.ReactElement {
       <nav className="flex-1 p-4 space-y-1">
         {navigation.map((item) => {
           if (item.children) {
+            // Filtrar children según permisos de admin
+            const visibleChildren = item.children.filter(
+              (child) => !child.adminOnly || usuario?.rol === "admin"
+            );
+
+            if (visibleChildren.length === 0) return null;
+
             return (
               <div key={item.name} className="space-y-1">
                 <div className="flex items-center gap-3 px-3 py-2 text-gray-500 text-sm font-medium uppercase tracking-wider">
@@ -61,7 +84,7 @@ export function Sidebar(): React.ReactElement {
                   {item.name}
                 </div>
                 <div className="ml-4 space-y-1">
-                  {item.children.map((child) => {
+                  {visibleChildren.map((child) => {
                     const isActive = pathname === child.href;
                     return (
                       <Link
@@ -88,7 +111,7 @@ export function Sidebar(): React.ReactElement {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={item.href!}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200",
                 isActive

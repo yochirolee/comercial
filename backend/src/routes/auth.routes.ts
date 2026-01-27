@@ -20,6 +20,7 @@ router.put('/change-password', authMiddleware, AuthController.changePassword);
 router.get('/users', authMiddleware, adminMiddleware, AuthController.getAllUsers);
 router.put('/users/:id/role', authMiddleware, adminMiddleware, AuthController.updateUserRole);
 router.put('/users/:id/toggle-active', authMiddleware, adminMiddleware, AuthController.toggleUserActive);
+router.delete('/users/:id', authMiddleware, adminMiddleware, AuthController.deleteUser);
 
 export default router;
 

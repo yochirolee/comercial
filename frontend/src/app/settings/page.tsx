@@ -11,8 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi, type UsuarioUpdateInput } from "@/lib/api";
-import { Save, User, Shield, Users, ChevronRight } from "lucide-react";
-import Link from "next/link";
+import { Save, User, Shield } from "lucide-react";
 
 export default function SettingsPage(): React.ReactElement {
   const { usuario, token, refreshUser } = useAuth();
@@ -77,8 +76,8 @@ export default function SettingsPage(): React.ReactElement {
   return (
     <div>
       <Header
-        title="Configuración"
-        description="Gestiona tu información personal y preferencias"
+        title="Mi Perfil"
+        description="Gestiona tu información personal"
       />
 
       <div className="p-8">
@@ -164,37 +163,6 @@ export default function SettingsPage(): React.ReactElement {
               </p>
             </CardContent>
           </Card>
-
-          {/* Sección de Administración (solo para admins) */}
-          {usuario.rol === "admin" && (
-            <Card className="border-amber-200 bg-amber-50/50">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-amber-800">
-                  <Users className="h-5 w-5" />
-                  Administración
-                </CardTitle>
-                <CardDescription>
-                  Opciones disponibles solo para administradores.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link href="/settings/usuarios">
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-white hover:bg-amber-50 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-amber-100">
-                        <Users className="h-5 w-5 text-amber-700" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-slate-900">Gestión de Usuarios</p>
-                        <p className="text-sm text-slate-500">Administra usuarios y asigna roles</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-slate-400" />
-                  </div>
-                </Link>
-              </CardContent>
-            </Card>
-          )}
 
           <div className="flex justify-end gap-2">
             <Button type="submit" disabled={loading}>

@@ -13,19 +13,36 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi, type Usuario } from "@/lib/api";
-import { Users, Shield, ShieldOff, UserCheck, UserX, Loader2, ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { Users, Trash2, Loader2 } from "lucide-react";
 
 export default function UsuariosPage(): React.ReactElement {
-  const { usuario: currentUser } = useAuth();
+  const { usuario: currentUser, refreshUser } = useAuth();
   const router = useRouter();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<Usuario | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Verificar que el usuario es admin
   useEffect(() => {
@@ -54,20 +71,25 @@ export default function UsuariosPage(): React.ReactElement {
     }
   }
 
-  async function handleToggleRole(user: Usuario): Promise<void> {
-    if (user.id === currentUser?.id) {
-      toast.error("No puedes cambiar tu propio rol");
-      return;
-    }
+  async function handleRoleChange(user: Usuario, newRole: string): Promise<void> {
+    if (newRole === user.rol) return;
 
     setUpdating(user.id);
     try {
-      const newRole = user.rol === "admin" ? "comercial" : "admin";
-      const updated = await authApi.updateUserRole(user.id, newRole);
+      const updated = await authApi.updateUserRole(user.id, newRole as "admin" | "comercial");
       setUsuarios((prev) =>
         prev.map((u) => (u.id === user.id ? updated : u))
       );
-      toast.success(`Rol actualizado a ${newRole}`);
+      toast.success(`Rol de ${user.nombre} actualizado a ${newRole === "admin" ? "Administrador" : "Comercial"}`);
+      
+      // Si el usuario cambió su propio rol, actualizar el contexto
+      if (user.id === currentUser?.id) {
+        await refreshUser();
+        // Si ya no es admin, redirigir
+        if (newRole !== "admin") {
+          router.push("/settings");
+        }
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al actualizar rol");
     } finally {
@@ -75,23 +97,29 @@ export default function UsuariosPage(): React.ReactElement {
     }
   }
 
-  async function handleToggleActive(user: Usuario): Promise<void> {
+  function openDeleteDialog(user: Usuario): void {
     if (user.id === currentUser?.id) {
-      toast.error("No puedes desactivar tu propia cuenta");
+      toast.error("No puedes eliminar tu propia cuenta");
       return;
     }
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  }
 
-    setUpdating(user.id);
+  async function handleDeleteUser(): Promise<void> {
+    if (!userToDelete) return;
+
+    setDeleting(true);
     try {
-      const updated = await authApi.toggleUserActive(user.id);
-      setUsuarios((prev) =>
-        prev.map((u) => (u.id === user.id ? updated : u))
-      );
-      toast.success(updated.activo ? "Usuario activado" : "Usuario desactivado");
+      await authApi.deleteUser(userToDelete.id);
+      setUsuarios((prev) => prev.filter((u) => u.id !== userToDelete.id));
+      toast.success(`Usuario ${userToDelete.nombre} eliminado`);
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Error al actualizar estado");
+      toast.error(error instanceof Error ? error.message : "Error al eliminar usuario");
     } finally {
-      setUpdating(null);
+      setDeleting(false);
     }
   }
 
@@ -111,15 +139,6 @@ export default function UsuariosPage(): React.ReactElement {
       />
 
       <div className="p-8">
-        <div className="mb-6">
-          <Link href="/settings">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver a Configuración
-            </Button>
-          </Link>
-        </div>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -127,7 +146,7 @@ export default function UsuariosPage(): React.ReactElement {
               Usuarios del Sistema
             </CardTitle>
             <CardDescription>
-              Gestiona los roles y estado de los usuarios. Los administradores tienen acceso completo.
+              Gestiona los roles de los usuarios. Puedes cambiar el rol de cualquier usuario incluyendo el tuyo.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -149,16 +168,18 @@ export default function UsuariosPage(): React.ReactElement {
                 </TableHeader>
                 <TableBody>
                   {usuarios.map((user) => (
-                    <TableRow key={user.id} className={!user.activo ? "opacity-50" : ""}>
+                    <TableRow key={user.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm font-medium">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                            user.rol === "admin" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-700"
+                          }`}>
                             {user.nombre.charAt(0)}{user.apellidos.charAt(0)}
                           </div>
                           <div>
                             <p className="font-medium">{user.nombre} {user.apellidos}</p>
                             {user.id === currentUser?.id && (
-                              <span className="text-xs text-amber-600">(Tú)</span>
+                              <span className="text-xs text-amber-600 font-medium">(Tú)</span>
                             )}
                           </div>
                         </div>
@@ -166,9 +187,33 @@ export default function UsuariosPage(): React.ReactElement {
                       <TableCell className="text-slate-600">{user.email}</TableCell>
                       <TableCell className="text-slate-600">{user.telefono || "-"}</TableCell>
                       <TableCell>
-                        <Badge variant={user.rol === "admin" ? "default" : "secondary"}>
-                          {user.rol === "admin" ? "Admin" : "Comercial"}
-                        </Badge>
+                        <Select
+                          value={user.rol}
+                          onValueChange={(value) => handleRoleChange(user, value)}
+                          disabled={updating === user.id}
+                        >
+                          <SelectTrigger className="w-[140px]">
+                            {updating === user.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <SelectValue />
+                            )}
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">
+                              <span className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                Administrador
+                              </span>
+                            </SelectItem>
+                            <SelectItem value="comercial">
+                              <span className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                Comercial
+                              </span>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell>
                         <Badge variant={user.activo ? "outline" : "destructive"}>
@@ -176,38 +221,16 @@ export default function UsuariosPage(): React.ReactElement {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleRole(user)}
-                            disabled={updating === user.id || user.id === currentUser?.id}
-                            title={user.rol === "admin" ? "Cambiar a Comercial" : "Cambiar a Admin"}
-                          >
-                            {updating === user.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : user.rol === "admin" ? (
-                              <ShieldOff className="h-4 w-4" />
-                            ) : (
-                              <Shield className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleActive(user)}
-                            disabled={updating === user.id || user.id === currentUser?.id}
-                            title={user.activo ? "Desactivar usuario" : "Activar usuario"}
-                          >
-                            {updating === user.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : user.activo ? (
-                              <UserX className="h-4 w-4" />
-                            ) : (
-                              <UserCheck className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openDeleteDialog(user)}
+                          disabled={user.id === currentUser?.id}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          title="Eliminar usuario"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -217,6 +240,34 @@ export default function UsuariosPage(): React.ReactElement {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog de confirmación para eliminar */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar Usuario</DialogTitle>
+            <DialogDescription>
+              ¿Estás seguro de que deseas eliminar a <strong>{userToDelete?.nombre} {userToDelete?.apellidos}</strong>?
+              Esta acción no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteUser} disabled={deleting}>
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Eliminando...
+                </>
+              ) : (
+                "Eliminar"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

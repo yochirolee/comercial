@@ -75,6 +75,9 @@ export const authApi = {
   toggleUserActive: (id: string) => fetchApi<Usuario>(`/auth/users/${id}/toggle-active`, {
     method: 'PUT',
   }),
+  deleteUser: (id: string) => fetchApi<void>(`/auth/users/${id}`, {
+    method: 'DELETE',
+  }),
 };
 
 // ==========================================

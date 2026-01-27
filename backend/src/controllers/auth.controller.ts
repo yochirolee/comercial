@@ -473,5 +473,37 @@ export const AuthController = {
 
     res.json(usuarioActualizado);
   },
+
+  async deleteUser(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const currentUserId = (req as any).userId;
+
+    // No permitir que un usuario se elimine a sí mismo
+    if (id === currentUserId) {
+      res.status(400).json({ error: 'No puedes eliminar tu propia cuenta' });
+      return;
+    }
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { id },
+    });
+
+    if (!usuario) {
+      res.status(404).json({ error: 'Usuario no encontrado' });
+      return;
+    }
+
+    // Eliminar tokens de reset password asociados
+    await prisma.passwordResetToken.deleteMany({
+      where: { usuarioId: id },
+    });
+
+    // Eliminar usuario
+    await prisma.usuario.delete({
+      where: { id },
+    });
+
+    res.status(204).send();
+  },
 };
 
