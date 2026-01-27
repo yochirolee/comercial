@@ -11,7 +11,8 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi, type UsuarioUpdateInput } from "@/lib/api";
-import { Save, User, Shield } from "lucide-react";
+import { Save, User, Shield, Users, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 export default function SettingsPage(): React.ReactElement {
   const { usuario, token, refreshUser } = useAuth();
@@ -20,32 +21,17 @@ export default function SettingsPage(): React.ReactElement {
     nombre: "",
     apellidos: "",
     telefono: "",
-    rol: "comercial" as "admin" | "comercial",
   });
 
   useEffect(() => {
     if (usuario) {
-      // Normalizar el rol: trim y lowercase para asegurar consistencia
-      let rolNormalizado = usuario.rol 
-        ? String(usuario.rol).trim().toLowerCase() 
-        : "comercial";
-      
-      // Asegurar que sea uno de los valores válidos
-      if (rolNormalizado !== "admin" && rolNormalizado !== "comercial") {
-        rolNormalizado = "comercial";
-      }
-      
-      const rolValido = rolNormalizado as "admin" | "comercial";
-      
-      // Actualizar formData con todos los valores del usuario
       setFormData({
         nombre: usuario.nombre || "",
         apellidos: usuario.apellidos || "",
         telefono: usuario.telefono || "",
-        rol: rolValido,
       });
     }
-  }, [usuario?.id, usuario?.rol]); // Depender específicamente del id y rol para detectar cambios
+  }, [usuario?.id]);
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -60,7 +46,6 @@ export default function SettingsPage(): React.ReactElement {
         nombre: formData.nombre,
         apellidos: formData.apellidos,
         telefono: formData.telefono || undefined,
-        rol: formData.rol.trim().toLowerCase() as "admin" | "comercial", // Asegurar lowercase
       };
 
       await authApi.updateProfile(updateData);
@@ -154,40 +139,62 @@ export default function SettingsPage(): React.ReactElement {
             </CardContent>
           </Card>
 
-          {/* Rol */}
+          {/* Información del Rol (solo lectura) */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
                 Rol de Usuario
               </CardTitle>
-              <CardDescription>
-                Selecciona tu rol en el sistema. Los administradores tienen acceso completo.
-              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <Label htmlFor="rol">Rol *</Label>
-                <select
-                  id="rol"
-                  value={formData.rol}
-                  onChange={(e) => {
-                    const normalizedValue = e.target.value.trim().toLowerCase() as "admin" | "comercial";
-                    setFormData((p) => ({ ...p, rol: normalizedValue }));
-                  }}
-                  className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value="admin">Admin - Acceso completo al sistema</option>
-                  <option value="comercial">Comercial - Acceso completo (por ahora)</option>
-                </select>
-                <p className="text-xs text-slate-500">
-                  {formData.rol === "admin" 
-                    ? "Tienes acceso completo a todas las funcionalidades del sistema."
-                    : "Tienes acceso completo. Las restricciones se implementarán más adelante."}
-                </p>
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  usuario.rol === "admin" 
+                    ? "bg-amber-100 text-amber-800" 
+                    : "bg-blue-100 text-blue-800"
+                }`}>
+                  {usuario.rol === "admin" ? "Administrador" : "Comercial"}
+                </span>
               </div>
+              <p className="text-xs text-slate-500 mt-2">
+                {usuario.rol === "admin" 
+                  ? "Tienes acceso completo a todas las funcionalidades del sistema."
+                  : "Tienes acceso a las funcionalidades comerciales del sistema."}
+              </p>
             </CardContent>
           </Card>
+
+          {/* Sección de Administración (solo para admins) */}
+          {usuario.rol === "admin" && (
+            <Card className="border-amber-200 bg-amber-50/50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-amber-800">
+                  <Users className="h-5 w-5" />
+                  Administración
+                </CardTitle>
+                <CardDescription>
+                  Opciones disponibles solo para administradores.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link href="/settings/usuarios">
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-white hover:bg-amber-50 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-amber-100">
+                        <Users className="h-5 w-5 text-amber-700" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-900">Gestión de Usuarios</p>
+                        <p className="text-sm text-slate-500">Administra usuarios y asigna roles</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-slate-400" />
+                  </div>
+                </Link>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button type="submit" disabled={loading}>

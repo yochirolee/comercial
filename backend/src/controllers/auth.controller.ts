@@ -378,5 +378,100 @@ export const AuthController = {
 
     res.json({ valid: true });
   },
+
+  // ==========================================
+  // GESTIÓN DE USUARIOS (Solo Admin)
+  // ==========================================
+
+  async getAllUsers(req: Request, res: Response): Promise<void> {
+    const usuarios = await prisma.usuario.findMany({
+      select: {
+        id: true,
+        nombre: true,
+        apellidos: true,
+        email: true,
+        telefono: true,
+        rol: true,
+        activo: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Normalizar el rol para cada usuario
+    const usuariosNormalizados = usuarios.map(u => ({
+      ...u,
+      rol: u.rol ? u.rol.trim().toLowerCase() : 'comercial',
+    }));
+
+    res.json(usuariosNormalizados);
+  },
+
+  async updateUserRole(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { rol } = req.body;
+
+    if (!['admin', 'comercial'].includes(rol)) {
+      res.status(400).json({ error: 'Rol inválido. Debe ser "admin" o "comercial".' });
+      return;
+    }
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { id },
+    });
+
+    if (!usuario) {
+      res.status(404).json({ error: 'Usuario no encontrado' });
+      return;
+    }
+
+    const usuarioActualizado = await prisma.usuario.update({
+      where: { id },
+      data: { rol: rol.trim().toLowerCase() },
+      select: {
+        id: true,
+        nombre: true,
+        apellidos: true,
+        email: true,
+        telefono: true,
+        rol: true,
+        activo: true,
+      },
+    });
+
+    res.json({
+      ...usuarioActualizado,
+      rol: usuarioActualizado.rol ? usuarioActualizado.rol.trim().toLowerCase() : 'comercial',
+    });
+  },
+
+  async toggleUserActive(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+
+    const usuario = await prisma.usuario.findUnique({
+      where: { id },
+    });
+
+    if (!usuario) {
+      res.status(404).json({ error: 'Usuario no encontrado' });
+      return;
+    }
+
+    const usuarioActualizado = await prisma.usuario.update({
+      where: { id },
+      data: { activo: !usuario.activo },
+      select: {
+        id: true,
+        nombre: true,
+        apellidos: true,
+        email: true,
+        telefono: true,
+        rol: true,
+        activo: true,
+      },
+    });
+
+    res.json(usuarioActualizado);
+  },
 };
 

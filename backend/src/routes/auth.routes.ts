@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller.js';
-import { authMiddleware } from '../middleware/auth.middleware.js';
+import { authMiddleware, adminMiddleware } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
@@ -15,6 +15,11 @@ router.get('/verify-reset-token/:token', AuthController.verifyResetToken);
 router.get('/me', authMiddleware, AuthController.me);
 router.put('/profile', authMiddleware, AuthController.updateProfile);
 router.put('/change-password', authMiddleware, AuthController.changePassword);
+
+// Rutas de administración (solo admin)
+router.get('/users', authMiddleware, adminMiddleware, AuthController.getAllUsers);
+router.put('/users/:id/role', authMiddleware, adminMiddleware, AuthController.updateUserRole);
+router.put('/users/:id/toggle-active', authMiddleware, adminMiddleware, AuthController.toggleUserActive);
 
 export default router;
 

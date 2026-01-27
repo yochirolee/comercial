@@ -46,6 +46,7 @@ export interface Usuario {
   email: string;
   rol: string;
   activo: boolean;
+  createdAt?: string;
 }
 
 export interface UsuarioUpdateInput {
@@ -64,6 +65,15 @@ export const authApi = {
   changePassword: (data: { currentPassword: string; newPassword: string }) => fetchApi<void>('/auth/change-password', {
     method: 'PUT',
     body: JSON.stringify(data),
+  }),
+  // Admin endpoints
+  getAllUsers: () => fetchApi<Usuario[]>('/auth/users'),
+  updateUserRole: (id: string, rol: 'admin' | 'comercial') => fetchApi<Usuario>(`/auth/users/${id}/role`, {
+    method: 'PUT',
+    body: JSON.stringify({ rol }),
+  }),
+  toggleUserActive: (id: string) => fetchApi<Usuario>(`/auth/users/${id}/toggle-active`, {
+    method: 'PUT',
   }),
 };
 
