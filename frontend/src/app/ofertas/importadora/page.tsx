@@ -600,7 +600,9 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                         </Badge>
                       ) : "-"}
                     </TableCell>
-                    <TableCell>{oferta.cliente.nombre}</TableCell>
+                    <TableCell>
+                      {`${oferta.cliente.nombre || ""} ${oferta.cliente.apellidos || ""}`.trim()}
+                    </TableCell>
                     <TableCell>{formatDate(oferta.fecha)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(oferta.subtotalProductos)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(oferta.flete)}</TableCell>
@@ -685,7 +687,9 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             <div className="grid grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg">
               <div>
                 <Label className="text-slate-500">Cliente</Label>
-                <p className="font-medium">{selectedOferta?.cliente.nombre}</p>
+                <p className="font-medium">
+                  {`${selectedOferta?.cliente.nombre || ""} ${selectedOferta?.cliente.apellidos || ""}`.trim()}
+                </p>
               </div>
               <div>
                 <Label className="text-slate-500">Número</Label>
