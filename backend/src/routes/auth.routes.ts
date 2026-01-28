@@ -18,6 +18,7 @@ router.put('/change-password', authMiddleware, AuthController.changePassword);
 
 // Rutas de administración (solo admin)
 router.get('/users', authMiddleware, adminMiddleware, AuthController.getAllUsers);
+router.post('/users', authMiddleware, adminMiddleware, AuthController.createUser);
 router.put('/users/:id/role', authMiddleware, adminMiddleware, AuthController.updateUserRole);
 router.put('/users/:id/toggle-active', authMiddleware, adminMiddleware, AuthController.toggleUserActive);
 router.delete('/users/:id', authMiddleware, adminMiddleware, AuthController.deleteUser);

@@ -32,7 +32,9 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { authApi, type Usuario } from "@/lib/api";
-import { Users, Trash2, Loader2 } from "lucide-react";
+import { Users, Trash2, Loader2, Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function UsuariosPage(): React.ReactElement {
   const { usuario: currentUser, refreshUser } = useAuth();
@@ -43,6 +45,18 @@ export default function UsuariosPage(): React.ReactElement {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<Usuario | null>(null);
   const [deleting, setDeleting] = useState(false);
+  
+  // Estado para crear usuario
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newUser, setNewUser] = useState({
+    nombre: "",
+    apellidos: "",
+    email: "",
+    telefono: "",
+    password: "",
+    rol: "comercial" as "admin" | "comercial",
+  });
 
   // Verificar que el usuario es admin
   useEffect(() => {
@@ -123,6 +137,35 @@ export default function UsuariosPage(): React.ReactElement {
     }
   }
 
+  async function handleCreateUser(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    
+    if (!newUser.nombre || !newUser.apellidos || !newUser.email || !newUser.password) {
+      toast.error("Por favor completa todos los campos requeridos");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const created = await authApi.createUser(newUser);
+      setUsuarios((prev) => [...prev, created]);
+      toast.success(`Usuario ${created.nombre} creado exitosamente`);
+      setCreateDialogOpen(false);
+      setNewUser({
+        nombre: "",
+        apellidos: "",
+        email: "",
+        telefono: "",
+        password: "",
+        rol: "comercial",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al crear usuario");
+    } finally {
+      setCreating(false);
+    }
+  }
+
   if (!currentUser || currentUser.rol !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -140,14 +183,20 @@ export default function UsuariosPage(): React.ReactElement {
 
       <div className="p-8">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Usuarios del Sistema
-            </CardTitle>
-            <CardDescription>
-              Gestiona los roles de los usuarios. Puedes cambiar el rol de cualquier usuario incluyendo el tuyo.
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Usuarios del Sistema
+              </CardTitle>
+              <CardDescription>
+                Gestiona los roles de los usuarios. Puedes cambiar el rol de cualquier usuario incluyendo el tuyo.
+              </CardDescription>
+            </div>
+            <Button onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Usuario
+            </Button>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -266,6 +315,113 @@ export default function UsuariosPage(): React.ReactElement {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para crear nuevo usuario */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+            <DialogDescription>
+              Completa los datos para crear un nuevo usuario en el sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateUser} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nombre">Nombre *</Label>
+                <Input
+                  id="nombre"
+                  value={newUser.nombre}
+                  onChange={(e) => setNewUser({ ...newUser, nombre: e.target.value })}
+                  placeholder="Juan"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="apellidos">Apellidos *</Label>
+                <Input
+                  id="apellidos"
+                  value={newUser.apellidos}
+                  onChange={(e) => setNewUser({ ...newUser, apellidos: e.target.value })}
+                  placeholder="Pérez"
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Correo electrónico *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={newUser.email}
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                placeholder="usuario@empresa.com"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="telefono">Teléfono</Label>
+              <Input
+                id="telefono"
+                value={newUser.telefono}
+                onChange={(e) => setNewUser({ ...newUser, telefono: e.target.value })}
+                placeholder="+1 234 567 8900"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={newUser.password}
+                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rol">Rol</Label>
+              <Select
+                value={newUser.rol}
+                onValueChange={(value) => setNewUser({ ...newUser, rol: value as "admin" | "comercial" })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="comercial">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                      Comercial
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="admin">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      Administrador
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)} disabled={creating}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={creating}>
+                {creating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creando...
+                  </>
+                ) : (
+                  "Crear Usuario"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

@@ -505,5 +505,65 @@ export const AuthController = {
 
     res.status(204).send();
   },
+
+  async createUser(req: Request, res: Response): Promise<void> {
+    const createUserSchema = z.object({
+      nombre: z.string().min(1, 'Nombre es requerido'),
+      apellidos: z.string().min(1, 'Apellidos es requerido'),
+      telefono: z.string().optional(),
+      email: z.string().email('Email inválido'),
+      password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+      rol: z.enum(['admin', 'comercial']).optional().default('comercial'),
+    });
+
+    const validation = createUserSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      res.status(400).json({ error: validation.error.errors });
+      return;
+    }
+
+    const { nombre, apellidos, telefono, email, password, rol } = validation.data;
+
+    // Verificar si el email ya existe
+    const existingUser = await prisma.usuario.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      res.status(400).json({ error: 'El email ya está registrado' });
+      return;
+    }
+
+    // Hashear la contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Crear usuario
+    const usuario = await prisma.usuario.create({
+      data: {
+        nombre,
+        apellidos,
+        telefono,
+        email,
+        password: hashedPassword,
+        rol: rol.toLowerCase(),
+      },
+      select: {
+        id: true,
+        nombre: true,
+        apellidos: true,
+        telefono: true,
+        email: true,
+        rol: true,
+        activo: true,
+        createdAt: true,
+      },
+    });
+
+    res.status(201).json({
+      ...usuario,
+      rol: usuario.rol ? usuario.rol.trim().toLowerCase() : 'comercial',
+    });
+  },
 };
 

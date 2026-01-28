@@ -56,6 +56,15 @@ export interface UsuarioUpdateInput {
   rol?: 'admin' | 'comercial';
 }
 
+export interface UsuarioCreateInput {
+  nombre: string;
+  apellidos: string;
+  email: string;
+  telefono?: string;
+  password: string;
+  rol?: 'admin' | 'comercial';
+}
+
 export const authApi = {
   getMe: () => fetchApi<Usuario>('/auth/me'),
   updateProfile: (data: UsuarioUpdateInput) => fetchApi<Usuario>('/auth/profile', {
@@ -77,6 +86,10 @@ export const authApi = {
   }),
   deleteUser: (id: string) => fetchApi<void>(`/auth/users/${id}`, {
     method: 'DELETE',
+  }),
+  createUser: (data: UsuarioCreateInput) => fetchApi<Usuario>('/auth/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
   }),
 };
 

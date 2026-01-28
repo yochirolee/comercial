@@ -122,12 +122,6 @@ export default function LoginPage(): React.ReactElement {
               )}
             </Button>
           </form>
-          <div className="mt-6 text-center text-sm">
-            <span className="text-brand-black/60">¿No tienes cuenta? </span>
-            <Link href="/registro" className="text-brand-gold hover:text-brand-gold-hover font-medium">
-              Regístrate
-            </Link>
-          </div>
         </CardContent>
       </Card>
     </div>
