@@ -208,15 +208,16 @@ export default function EmpresaPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Email(s)</Label>
                   <Input
                     id="email"
                     name="email"
-                    type="email"
+                    type="text"
                     value={empresa.email}
                     onChange={handleChange}
-                    placeholder="info@zasbyjmc.com"
+                    placeholder="email1@empresa.com, email2@empresa.com"
                   />
+                  <p className="text-xs text-slate-500">Puedes agregar varios emails separados por coma</p>
                 </div>
 
                 <div className="space-y-2">
