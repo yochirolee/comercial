@@ -379,7 +379,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 {selectedOfertaCliente && (
                   <div className="p-4 bg-slate-50 rounded-lg border">
                     <h4 className="font-medium mb-2">📋 Datos de la Oferta Cliente</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                       <div className="text-slate-600">Cliente:</div>
                       <div className="font-medium">{selectedOfertaCliente.cliente.nombre}</div>
                       <div className="text-slate-600">Productos:</div>
@@ -405,7 +405,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
                     <h4 className="font-medium text-blue-800">Costos de Envío</h4>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="space-y-2">
                         <Label>Flete ($)</Label>
                         <Input
@@ -442,7 +442,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 {selectedOfertaCliente && (
                   <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
                     <h4 className="font-medium text-slate-700">Términos</h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-sm">Puerto de Embarque</Label>
                         <Input
@@ -561,7 +561,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       />
 
       {/* Tabla de ofertas */}
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <div className="bg-white rounded-lg border shadow-sm">
           <Table>
             <TableHeader>
@@ -684,7 +684,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
           <div className="space-y-4">
             {/* Info básica */}
-            <div className="grid grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg">
+            <div className="grid grid-cols-2 sm:grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg">
               <div>
                 <Label className="text-slate-500">Cliente</Label>
                 <p className="font-medium">
@@ -721,11 +721,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             </div>
 
             {/* Flete, Seguro y Ajuste */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Costos de envío */}
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3">
                 <h4 className="font-medium text-blue-800">Costos de Envío</h4>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-sm">Flete ($)</Label>
                     <Input
@@ -788,7 +788,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             {/* Términos */}
             <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
               <h4 className="font-medium text-slate-700">Términos</h4>
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
                   <Label className="text-sm">Puerto Embarque</Label>
                   <Input
@@ -974,7 +974,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
           </DialogHeader>
           <form onSubmit={handleUpdateItem} className="space-y-4">
             {/* Cantidad y Precio */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label>Cantidad (LBS/KG)</Label>
                 <Input
@@ -999,7 +999,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
               <Label className="text-sm font-medium text-slate-500">Campos Informativos</Label>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm">Cant. Cajas</Label>
                 <Input

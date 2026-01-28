@@ -135,14 +135,14 @@ export default function ClientesPage() {
                 Nuevo Cliente
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-full max-w-2xl">
+            <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Editar Cliente" : "Nuevo Cliente"}
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="nombre">Nombre *</Label>
                     <Input
@@ -163,7 +163,7 @@ export default function ClientesPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="contacto">Persona de Contacto (para firma)</Label>
+                    <Label htmlFor="contacto">Persona de Contacto</Label>
                     <Input
                       id="contacto"
                       name="contacto"
@@ -173,7 +173,7 @@ export default function ClientesPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="nombreCompania">Nombre de la Compañía</Label>
+                    <Label htmlFor="nombreCompania">Compañía</Label>
                     <Input
                       id="nombreCompania"
                       name="nombreCompania"
@@ -182,7 +182,7 @@ export default function ClientesPage() {
                       placeholder="PISOS DEL VALLE"
                     />
                   </div>
-                  <div className="col-span-2 space-y-2">
+                  <div className="sm:col-span-2 space-y-2">
                     <Label htmlFor="direccion">Dirección</Label>
                     <Input
                       id="direccion"
@@ -220,7 +220,7 @@ export default function ClientesPage() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -238,9 +238,9 @@ export default function ClientesPage() {
         }
       />
 
-      <div className="p-8">
-        <div className="mb-6 flex gap-4">
-          <div className="relative flex-1 max-w-sm">
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-4 sm:mb-6">
+          <div className="relative w-full sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               placeholder="Buscar clientes..."
@@ -251,28 +251,64 @@ export default function ClientesPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border shadow-sm">
+        {/* Vista móvil: Cards */}
+        <div className="block sm:hidden space-y-3">
+          {loading ? (
+            <div className="text-center py-8 text-slate-500">Cargando...</div>
+          ) : clientes.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">No hay clientes</div>
+          ) : (
+            clientes.map((cliente) => (
+              <div key={cliente.id} className="bg-white rounded-lg border shadow-sm p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="font-medium text-sm">{cliente.nombre} {cliente.apellidos}</p>
+                    {cliente.nombreCompania && (
+                      <p className="text-xs text-slate-500">{cliente.nombreCompania}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(cliente)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(cliente.id)}>
+                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="text-xs text-slate-600 space-y-1">
+                  {cliente.telefono && <p>📞 {cliente.telefono}</p>}
+                  {cliente.email && <p>✉️ {cliente.email}</p>}
+                  {cliente.nit && <p>NIT: {cliente.nit}</p>}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Vista desktop: Tabla */}
+        <div className="hidden sm:block bg-white rounded-lg border shadow-sm overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Compañía</TableHead>
-                <TableHead>NIT</TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead className="hidden md:table-cell">NIT</TableHead>
+                <TableHead className="hidden lg:table-cell">Teléfono</TableHead>
+                <TableHead className="hidden lg:table-cell">Email</TableHead>
                 <TableHead className="w-24">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : clientes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-slate-500">
+                  <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                     No hay clientes
                   </TableCell>
                 </TableRow>
@@ -283,9 +319,9 @@ export default function ClientesPage() {
                       {cliente.nombre} {cliente.apellidos}
                     </TableCell>
                     <TableCell>{cliente.nombreCompania || "-"}</TableCell>
-                    <TableCell>{cliente.nit || "-"}</TableCell>
-                    <TableCell>{cliente.telefono || "-"}</TableCell>
-                    <TableCell>{cliente.email || "-"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{cliente.nit || "-"}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{cliente.telefono || "-"}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{cliente.email || "-"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         <Button

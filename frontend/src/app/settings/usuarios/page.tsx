@@ -181,110 +181,173 @@ export default function UsuariosPage(): React.ReactElement {
         description="Administra los usuarios del sistema y sus roles"
       />
 
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 sm:p-6">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                 Usuarios del Sistema
               </CardTitle>
-              <CardDescription>
-                Gestiona los roles de los usuarios. Puedes cambiar el rol de cualquier usuario incluyendo el tuyo.
+              <CardDescription className="text-xs sm:text-sm mt-1">
+                Gestiona los roles de los usuarios.
               </CardDescription>
             </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
+            <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Usuario
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 sm:p-6">
             {loading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Usuario</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Teléfono</TableHead>
-                    <TableHead>Rol</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <>
+                {/* Vista móvil: Cards */}
+                <div className="block md:hidden space-y-3">
                   {usuarios.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
+                    <div key={user.id} className="border rounded-lg p-3 space-y-3">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
                             user.rol === "admin" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-700"
                           }`}>
                             {user.nombre.charAt(0)}{user.apellidos.charAt(0)}
                           </div>
                           <div>
-                            <p className="font-medium">{user.nombre} {user.apellidos}</p>
+                            <p className="font-medium text-sm">{user.nombre} {user.apellidos}</p>
                             {user.id === currentUser?.id && (
                               <span className="text-xs text-amber-600 font-medium">(Tú)</span>
                             )}
                           </div>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-slate-600">{user.email}</TableCell>
-                      <TableCell className="text-slate-600">{user.telefono || "-"}</TableCell>
-                      <TableCell>
-                        <Select
-                          value={user.rol}
-                          onValueChange={(value) => handleRoleChange(user, value)}
-                          disabled={updating === user.id}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            {updating === user.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <SelectValue />
-                            )}
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="admin">
-                              <span className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                                Administrador
-                              </span>
-                            </SelectItem>
-                            <SelectItem value="comercial">
-                              <span className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                Comercial
-                              </span>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.activo ? "outline" : "destructive"}>
-                          {user.activo ? "Activo" : "Inactivo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => openDeleteDialog(user)}
                           disabled={user.id === currentUser?.id}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          title="Eliminar usuario"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
-                      </TableCell>
-                    </TableRow>
+                      </div>
+                      <div className="text-xs text-slate-500 space-y-1">
+                        <p>✉️ {user.email}</p>
+                        {user.telefono && <p>📞 {user.telefono}</p>}
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <Select
+                          value={user.rol}
+                          onValueChange={(value) => handleRoleChange(user, value)}
+                          disabled={updating === user.id}
+                        >
+                          <SelectTrigger className="w-full h-8 text-xs">
+                            {updating === user.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <SelectValue />
+                            )}
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Administrador</SelectItem>
+                            <SelectItem value="comercial">Comercial</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Badge variant={user.activo ? "outline" : "destructive"} className="text-xs shrink-0">
+                          {user.activo ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+
+                {/* Vista desktop: Tabla */}
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Usuario</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead className="hidden lg:table-cell">Teléfono</TableHead>
+                        <TableHead>Rol</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {usuarios.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                user.rol === "admin" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-700"
+                              }`}>
+                                {user.nombre.charAt(0)}{user.apellidos.charAt(0)}
+                              </div>
+                              <div>
+                                <p className="font-medium">{user.nombre} {user.apellidos}</p>
+                                {user.id === currentUser?.id && (
+                                  <span className="text-xs text-amber-600 font-medium">(Tú)</span>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-600">{user.email}</TableCell>
+                          <TableCell className="text-slate-600 hidden lg:table-cell">{user.telefono || "-"}</TableCell>
+                          <TableCell>
+                            <Select
+                              value={user.rol}
+                              onValueChange={(value) => handleRoleChange(user, value)}
+                              disabled={updating === user.id}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                {updating === user.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <SelectValue />
+                                )}
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="admin">
+                                  <span className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                    Administrador
+                                  </span>
+                                </SelectItem>
+                                <SelectItem value="comercial">
+                                  <span className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                    Comercial
+                                  </span>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={user.activo ? "outline" : "destructive"}>
+                              {user.activo ? "Activo" : "Inactivo"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDeleteDialog(user)}
+                              disabled={user.id === currentUser?.id}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              title="Eliminar usuario"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -292,7 +355,7 @@ export default function UsuariosPage(): React.ReactElement {
 
       {/* Dialog de confirmación para eliminar */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[95vw] max-w-md">
           <DialogHeader>
             <DialogTitle>Eliminar Usuario</DialogTitle>
             <DialogDescription>
@@ -300,11 +363,11 @@ export default function UsuariosPage(): React.ReactElement {
               Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting} className="w-full sm:w-auto">
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={handleDeleteUser} disabled={deleting}>
+            <Button variant="destructive" onClick={handleDeleteUser} disabled={deleting} className="w-full sm:w-auto">
               {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -320,15 +383,15 @@ export default function UsuariosPage(): React.ReactElement {
 
       {/* Dialog para crear nuevo usuario */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="w-[95vw] max-w-[425px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Crear Nuevo Usuario</DialogTitle>
-            <DialogDescription>
-              Completa los datos para crear un nuevo usuario en el sistema.
+            <DialogDescription className="text-xs sm:text-sm">
+              Completa los datos para crear un nuevo usuario.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreateUser} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleCreateUser} className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="nombre">Nombre *</Label>
                 <Input
@@ -406,11 +469,11 @@ export default function UsuariosPage(): React.ReactElement {
                 </SelectContent>
               </Select>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)} disabled={creating}>
+            <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
+              <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)} disabled={creating} className="w-full sm:w-auto">
                 Cancelar
               </Button>
-              <Button type="submit" disabled={creating}>
+              <Button type="submit" disabled={creating} className="w-full sm:w-auto">
                 {creating ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

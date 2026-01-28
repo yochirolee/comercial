@@ -175,14 +175,14 @@ export default function ProductosPage() {
                 Nuevo Producto
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Editar Producto" : "Nuevo Producto"}
                 </DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="codigo">Código</Label>
                     <Input
@@ -203,7 +203,7 @@ export default function ProductosPage() {
                       required
                     />
                   </div>
-                  <div className="col-span-2 space-y-2">
+                  <div className="sm:col-span-2 space-y-2">
                     <Label htmlFor="descripcion">Descripción</Label>
                     <Input
                       id="descripcion"
@@ -222,7 +222,6 @@ export default function ProductosPage() {
                       value={precioString}
                       onChange={(e) => {
                         const val = e.target.value;
-                        // Permitir vacío, números y punto decimal
                         if (val === "" || /^[0-9]*\.?[0-9]*$/.test(val)) {
                           setPrecioString(val);
                         }
@@ -250,7 +249,7 @@ export default function ProductosPage() {
                     </Select>
                   </div>
                 </div>
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -268,9 +267,9 @@ export default function ProductosPage() {
         }
       />
 
-      <div className="p-8">
-        <div className="mb-6 flex gap-4">
-          <div className="relative flex-1 max-w-sm">
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-4 sm:mb-6">
+          <div className="relative w-full sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               placeholder="Buscar productos..."
@@ -281,15 +280,55 @@ export default function ProductosPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border shadow-sm">
+        {/* Vista móvil: Cards */}
+        <div className="block sm:hidden space-y-3">
+          {loading ? (
+            <div className="text-center py-8 text-slate-500">Cargando...</div>
+          ) : productos.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">No hay productos</div>
+          ) : (
+            productos.map((producto) => (
+              <div key={producto.id} className="bg-white rounded-lg border shadow-sm p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{producto.nombre}</p>
+                    <p className="text-xs text-slate-500 font-mono">{producto.codigo || "Sin código"}</p>
+                  </div>
+                  <div className="flex gap-1 ml-2">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(producto)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    {producto.activo && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(producto.id)}>
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-semibold text-green-600">{formatCurrency(producto.precioBase)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">{producto.unidadMedida.abreviatura}</span>
+                    <Badge variant={producto.activo ? "default" : "secondary"} className="text-xs">
+                      {producto.activo ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Vista desktop: Tabla */}
+        <div className="hidden sm:block bg-white rounded-lg border shadow-sm overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Código</TableHead>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Precio Base</TableHead>
-                <TableHead>Unidad</TableHead>
-                <TableHead>Estado</TableHead>
+                <TableHead className="hidden md:table-cell">Unidad</TableHead>
+                <TableHead className="hidden lg:table-cell">Estado</TableHead>
                 <TableHead className="w-24">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -314,8 +353,8 @@ export default function ProductosPage() {
                     </TableCell>
                     <TableCell className="font-medium">{producto.nombre}</TableCell>
                     <TableCell>{formatCurrency(producto.precioBase)}</TableCell>
-                    <TableCell>{producto.unidadMedida.abreviatura}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">{producto.unidadMedida.abreviatura}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <Badge variant={producto.activo ? "default" : "secondary"}>
                         {producto.activo ? "Activo" : "Inactivo"}
                       </Badge>

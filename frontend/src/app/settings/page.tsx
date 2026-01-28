@@ -80,21 +80,21 @@ export default function SettingsPage(): React.ReactElement {
         description="Gestiona tu información personal"
       />
 
-      <div className="p-8">
-        <form onSubmit={handleSubmit} className="max-w-2xl space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8">
+        <form onSubmit={handleSubmit} className="max-w-2xl space-y-4 sm:space-y-6">
           {/* Información Personal */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <User className="h-4 w-4 sm:h-5 sm:w-5" />
                 Información Personal
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
                 Actualiza tu información personal. Todos los campos son editables.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent className="space-y-3 sm:space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="nombre">Nombre *</Label>
                   <Input

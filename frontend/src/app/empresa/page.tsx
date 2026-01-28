@@ -151,7 +151,7 @@ export default function EmpresaPage() {
         description="Configura la información de tu empresa"
       />
       
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
         <Card className="max-w-3xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -160,8 +160,8 @@ export default function EmpresaPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="nombre">Nombre de la Empresa *</Label>
                   <Input
@@ -185,7 +185,7 @@ export default function EmpresaPage() {
                   />
                 </div>
 
-                <div className="md:col-span-2 space-y-2">
+                <div className="sm:col-span-2 space-y-2">
                   <Label htmlFor="direccion">Dirección</Label>
                   <Input
                     id="direccion"
@@ -242,7 +242,7 @@ export default function EmpresaPage() {
                   />
                 </div>
 
-                <div className="md:col-span-2 space-y-2">
+                <div className="sm:col-span-2 space-y-2">
                   <Label htmlFor="codigoMincex">Código MINCEX</Label>
                   <Input
                     id="codigoMincex"
@@ -266,7 +266,7 @@ export default function EmpresaPage() {
                   Estas imágenes aparecerán en los PDF y Excel de ofertas y facturas
                 </p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {/* Logo */}
                   <div className="space-y-3">
                     <Label className="flex items-center gap-2">

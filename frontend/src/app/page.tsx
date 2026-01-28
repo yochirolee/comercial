@@ -113,20 +113,20 @@ export default function Dashboard(): React.ReactElement {
         description="Resumen general del sistema"
       />
       
-      <div className="p-8 bg-gray-50 min-h-screen">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           {cards.map((card) => (
             <Card key={card.title} className="hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
+                <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
                   {card.title}
                 </CardTitle>
-                <div className={`p-2 rounded-lg ${card.bgColor}`}>
-                  <card.icon className={`h-5 w-5 ${card.color}`} />
+                <div className={`p-1.5 sm:p-2 rounded-lg ${card.bgColor}`}>
+                  <card.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${card.color}`} />
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-gray-900">
+              <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0 lg:p-6 lg:pt-0">
+                <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                   {loading ? "..." : card.value}
                 </div>
               </CardContent>
@@ -134,53 +134,53 @@ export default function Dashboard(): React.ReactElement {
           ))}
         </div>
 
-        <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="mt-4 sm:mt-6 lg:mt-8 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Acciones Rápidas</CardTitle>
+            <CardHeader className="p-3 sm:p-4 lg:p-6">
+              <CardTitle className="text-base sm:text-lg">Acciones Rápidas</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-4">
+            <CardContent className="grid grid-cols-2 gap-2 sm:gap-4 p-3 pt-0 sm:p-4 sm:pt-0 lg:p-6 lg:pt-0">
               <a 
                 href="/clientes" 
-                className="p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors text-center border border-gray-200 hover:border-blue-300"
+                className="p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors text-center border border-gray-200 hover:border-blue-300"
               >
-                <Users className="h-8 w-8 mx-auto mb-2 text-blue-600" />
-                <span className="text-sm font-medium text-gray-700">Nuevo Cliente</span>
+                <Users className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 sm:mb-2 text-blue-600" />
+                <span className="text-xs sm:text-sm font-medium text-gray-700">Nuevo Cliente</span>
               </a>
               <a 
                 href="/productos" 
-                className="p-4 bg-gray-50 rounded-lg hover:bg-emerald-50 transition-colors text-center border border-gray-200 hover:border-emerald-300"
+                className="p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-emerald-50 transition-colors text-center border border-gray-200 hover:border-emerald-300"
               >
-                <Package className="h-8 w-8 mx-auto mb-2 text-emerald-600" />
-                <span className="text-sm font-medium text-gray-700">Nuevo Producto</span>
+                <Package className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 sm:mb-2 text-emerald-600" />
+                <span className="text-xs sm:text-sm font-medium text-gray-700">Nuevo Producto</span>
               </a>
               <a 
                 href="/ofertas/cliente" 
-                className="p-4 bg-gray-50 rounded-lg hover:bg-[#F3B450]/20 transition-colors text-center border border-gray-200 hover:border-[#F3B450]"
+                className="p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-[#F3B450]/20 transition-colors text-center border border-gray-200 hover:border-[#F3B450]"
               >
-                <FileText className="h-8 w-8 mx-auto mb-2 text-[#F3B450]" />
-                <span className="text-sm font-medium text-gray-700">Nueva Oferta</span>
+                <FileText className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 sm:mb-2 text-[#F3B450]" />
+                <span className="text-xs sm:text-sm font-medium text-gray-700">Nueva Oferta</span>
               </a>
               <a 
                 href="/facturas" 
-                className="p-4 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors text-center border border-gray-200 hover:border-purple-300"
+                className="p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-purple-50 transition-colors text-center border border-gray-200 hover:border-purple-300"
               >
-                <Receipt className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                <span className="text-sm font-medium text-gray-700">Nueva Factura</span>
+                <Receipt className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-1 sm:mb-2 text-purple-600" />
+                <span className="text-xs sm:text-sm font-medium text-gray-700">Nueva Factura</span>
               </a>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Información</CardTitle>
+            <CardHeader className="p-3 sm:p-4 lg:p-6">
+              <CardTitle className="text-base sm:text-lg">Información</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm text-gray-600">
+            <CardContent className="space-y-3 sm:space-y-4 text-xs sm:text-sm text-gray-600 p-3 pt-0 sm:p-4 sm:pt-0 lg:p-6 lg:pt-0">
               <p>
                 <strong className="text-[#F3B450]">ZAS by JMC Corp.</strong> te permite gestionar tus ofertas y facturas
                 de manera eficiente.
               </p>
-              <ul className="list-disc list-inside space-y-2">
+              <ul className="list-disc list-inside space-y-1 sm:space-y-2">
                 <li>Crea ofertas generales (lista de precios)</li>
                 <li>Ofertas personalizadas para clientes</li>
                 <li>Ofertas CIF para importadoras en Cuba</li>

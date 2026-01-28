@@ -381,13 +381,13 @@ export default function OfertasGeneralesPage(): React.ReactElement {
 
   // Función inline para renderizar el formulario de item (evita re-crear componente)
   const renderItemForm = (onAdd: () => void, onCancel: () => void) => (
-    <div className="bg-slate-50 rounded-lg p-4 space-y-4">
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label>Producto *</Label>
+    <div className="bg-slate-50 rounded p-1.5 sm:p-2 space-y-1.5 sm:space-y-2">
+      <div className="grid grid-cols-3 gap-1 sm:gap-2">
+        <div className="space-y-0.5">
+          <Label className="text-[9px] sm:text-xs">Producto *</Label>
           <Select value={itemFormStrings.productoId} onValueChange={handleSelectProduct}>
-            <SelectTrigger>
-              <SelectValue placeholder="Seleccionar producto" />
+            <SelectTrigger className="h-7 sm:h-9 text-[10px] sm:text-sm px-1 sm:px-3">
+              <SelectValue placeholder="Sel." />
             </SelectTrigger>
             <SelectContent>
               {productos.map((p) => (
@@ -398,86 +398,95 @@ export default function OfertasGeneralesPage(): React.ReactElement {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>Cantidad *</Label>
+        <div className="space-y-0.5">
+          <Label className="text-[9px] sm:text-xs">Cant. *</Label>
           <Input
             placeholder="0"
             value={itemFormStrings.cantidad}
             onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidad: e.target.value }))}
+            className="h-7 sm:h-9 text-[10px] sm:text-xs px-1 sm:px-2"
           />
         </div>
-        <div className="space-y-2">
-          <Label>Precio Unitario *</Label>
+        <div className="space-y-0.5">
+          <Label className="text-[9px] sm:text-xs">Precio *</Label>
           <Input
             placeholder="0.00"
             value={itemFormStrings.precioUnitario}
             onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioUnitario: e.target.value }))}
+            className="h-7 sm:h-9 text-[10px] sm:text-xs px-1 sm:px-2"
           />
         </div>
       </div>
 
       {/* Campos informativos opcionales */}
-      <div className="border-t pt-4">
-        <p className="text-sm text-slate-500 mb-3">Campos informativos (opcionales)</p>
-        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs">Cant. Sacos</Label>
+      <div className="border-t pt-1">
+        <p className="text-[9px] text-slate-500 mb-0.5">Opcionales</p>
+        <div className="grid grid-cols-6 gap-0.5 sm:gap-1">
+          <div className="space-y-0.5">
+            <Label className="text-[8px] sm:text-[10px]">Sacos</Label>
             <Input
               placeholder="-"
               value={itemFormStrings.cantidadSacos}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
+              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Peso x Saco</Label>
+          <div className="space-y-0.5">
+            <Label className="text-[8px] sm:text-[10px]">Peso/S</Label>
             <Input
               placeholder="-"
               value={itemFormStrings.pesoXSaco}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
+              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Precio x Saco</Label>
+          <div className="space-y-0.5">
+            <Label className="text-[8px] sm:text-[10px]">$/S</Label>
             <Input
               placeholder="-"
               value={itemFormStrings.precioXSaco}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXSaco: e.target.value }))}
+              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Cant. Cajas</Label>
+          <div className="space-y-0.5">
+            <Label className="text-[8px] sm:text-[10px]">Cajas</Label>
             <Input
               placeholder="-"
               value={itemFormStrings.cantidadCajas}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
+              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Peso x Caja</Label>
+          <div className="space-y-0.5">
+            <Label className="text-[8px] sm:text-[10px]">Peso/C</Label>
             <Input
               placeholder="-"
               value={itemFormStrings.pesoXCaja}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
+              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Precio x Caja</Label>
+          <div className="space-y-0.5">
+            <Label className="text-[8px] sm:text-[10px]">$/C</Label>
             <Input
               placeholder="-"
               value={itemFormStrings.precioXCaja}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
+              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
             />
           </div>
         </div>
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
-          Cancelar
+      <div className="flex justify-end gap-1">
+        <Button type="button" variant="outline" size="sm" onClick={onCancel} className="h-6 sm:h-7 text-[9px] sm:text-xs px-1.5 sm:px-2">
+          <X className="h-3 w-3 sm:hidden" />
+          <span className="hidden sm:inline">Cancelar</span>
         </Button>
-        <Button type="button" size="sm" onClick={onAdd}>
-          <Plus className="h-4 w-4 mr-2" />
-          Agregar
+        <Button type="button" size="sm" onClick={onAdd} className="h-6 sm:h-7 text-[9px] sm:text-xs px-1.5 sm:px-2">
+          <Plus className="h-3 w-3" />
+          <span className="hidden sm:inline sm:ml-1">Agregar</span>
         </Button>
       </div>
     </div>
@@ -496,8 +505,8 @@ export default function OfertasGeneralesPage(): React.ReactElement {
         }
       />
 
-      <div className="p-8">
-        <div className="bg-white rounded-lg border shadow-sm">
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="bg-white rounded-lg border shadow-sm overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -566,45 +575,48 @@ export default function OfertasGeneralesPage(): React.ReactElement {
 
       {/* Create Dialog - Todo en un paso */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[900px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[96vw] sm:w-[90vw] max-w-[900px] max-h-[90vh] overflow-y-auto p-2 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Nueva Lista de Precios</DialogTitle>
+            <DialogTitle className="text-sm sm:text-lg">Nueva Lista de Precios</DialogTitle>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-4">
             {/* Información básica */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="numero">Número *</Label>
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
+              <div className="space-y-0.5 sm:space-y-1">
+                <Label htmlFor="numero" className="text-[10px] sm:text-xs">Número *</Label>
                 <Input
                   id="numero"
                   value={formData.numero}
                   onChange={(e) => setFormData((prev) => ({ ...prev, numero: e.target.value }))}
                   required
+                  className="h-7 sm:h-10 text-xs sm:text-sm px-2"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="observaciones">Observaciones</Label>
+              <div className="space-y-0.5 sm:space-y-1">
+                <Label htmlFor="observaciones" className="text-[10px] sm:text-xs">Observ.</Label>
                 <Input
                   id="observaciones"
                   value={formData.observaciones}
                   onChange={(e) => setFormData((prev) => ({ ...prev, observaciones: e.target.value }))}
+                  className="h-7 sm:h-10 text-xs sm:text-sm px-2"
                 />
               </div>
             </div>
 
             {/* Sección de productos */}
-            <div className="border rounded-lg p-4 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-semibold">Productos</h3>
+            <div className="border rounded p-1.5 sm:p-4 space-y-1.5 sm:space-y-3">
+              <div className="flex justify-between items-center gap-1">
+                <h3 className="font-semibold text-[10px] sm:text-base">Productos</h3>
                 <Button
                   type="button"
                   size="sm"
                   variant={showAddItem ? "secondary" : "default"}
                   onClick={() => { setShowAddItem(!showAddItem); resetItemForm(); }}
+                  className="h-6 px-1.5 text-[10px]"
                 >
-                  {showAddItem ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                  {showAddItem ? "Cancelar" : "Agregar Producto"}
+                  {showAddItem ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                  <span className="hidden sm:inline sm:ml-1">{showAddItem ? "Cancelar" : "Agregar"}</span>
                 </Button>
               </div>
 
@@ -614,44 +626,44 @@ export default function OfertasGeneralesPage(): React.ReactElement {
               )}
 
               {/* Lista de items temporales */}
-              <Table>
+              <div className="overflow-x-auto -mx-1.5 sm:mx-0">
+              <Table className="text-[10px] sm:text-sm">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Producto</TableHead>
-                    <TableHead>UM</TableHead>
-                    <TableHead className="text-right">Sacos</TableHead>
-                    <TableHead className="text-right">Cantidad</TableHead>
-                    <TableHead className="text-right">Precio</TableHead>
-                    <TableHead className="text-right">Importe</TableHead>
-                    <TableHead className="w-16"></TableHead>
+                    <TableHead className="px-1 sm:px-4">Producto</TableHead>
+                    <TableHead className="px-1 sm:px-4 hidden sm:table-cell">UM</TableHead>
+                    <TableHead className="px-1 sm:px-4 text-right">Cant.</TableHead>
+                    <TableHead className="px-1 sm:px-4 text-right">Precio</TableHead>
+                    <TableHead className="px-1 sm:px-4 text-right">Total</TableHead>
+                    <TableHead className="w-8 sm:w-12 px-1"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {itemsTemp.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-4 text-slate-500">
-                        No hay productos agregados
+                      <TableCell colSpan={6} className="text-center py-2 sm:py-4 text-slate-500 text-[10px] sm:text-sm">
+                        No hay productos
                       </TableCell>
                     </TableRow>
                   ) : (
                     itemsTemp.map((item) => (
                       <TableRow key={item.tempId}>
-                        <TableCell>{item.producto?.nombre}</TableCell>
-                        <TableCell>{item.producto?.unidadMedida.abreviatura}</TableCell>
-                        <TableCell className="text-right">{item.cantidadSacos || item.cantidadCajas || "-"}</TableCell>
-                        <TableCell className="text-right">{item.cantidad}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.precioUnitario)}</TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="px-1 sm:px-4 max-w-[80px] sm:max-w-none truncate">{item.producto?.nombre}</TableCell>
+                        <TableCell className="px-1 sm:px-4 hidden sm:table-cell">{item.producto?.unidadMedida.abreviatura}</TableCell>
+                        <TableCell className="px-1 sm:px-4 text-right">{item.cantidad}</TableCell>
+                        <TableCell className="px-1 sm:px-4 text-right">{formatCurrency(item.precioUnitario)}</TableCell>
+                        <TableCell className="px-1 sm:px-4 text-right font-medium">
                           {formatCurrency(item.cantidad * item.precioUnitario)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-1 sm:px-4">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
                             onClick={() => removeItemFromList(item.tempId)}
+                            className="h-6 w-6 sm:h-8 sm:w-8"
                           >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -659,22 +671,23 @@ export default function OfertasGeneralesPage(): React.ReactElement {
                   )}
                 </TableBody>
               </Table>
+              </div>
 
               {itemsTemp.length > 0 && (
-                <div className="flex justify-end">
-                  <div className="text-lg font-bold">
+                <div className="flex justify-end px-1 sm:px-0">
+                  <div className="text-xs sm:text-lg font-bold">
                     Total: {formatCurrency(totalTemp)}
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+            <div className="flex justify-end gap-1.5 sm:gap-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="h-7 sm:h-9 text-[10px] sm:text-sm px-2 sm:px-4">
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving || itemsTemp.length === 0}>
-                {saving ? "Guardando..." : "Crear Lista de Precios"}
+              <Button type="submit" disabled={saving || itemsTemp.length === 0} className="h-7 sm:h-9 text-[10px] sm:text-sm px-2 sm:px-4">
+                {saving ? "..." : "Crear"}
               </Button>
             </div>
           </form>
@@ -683,10 +696,10 @@ export default function OfertasGeneralesPage(): React.ReactElement {
 
       {/* Detail/Edit Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="w-[90vw] max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
-          <DialogHeader className="pr-8">
-            <DialogTitle className="flex items-center gap-2">
-              Lista de Precios: {selectedOferta?.numero}
+        <DialogContent className="w-[95vw] max-w-6xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <span className="truncate">Lista: {selectedOferta?.numero}</span>
               {!editingOferta && (
                 <Button variant="ghost" size="icon" onClick={() => setEditingOferta(true)}>
                   <Pencil className="h-4 w-4" />
@@ -699,7 +712,7 @@ export default function OfertasGeneralesPage(): React.ReactElement {
             {/* Información básica - editable */}
             {editingOferta ? (
               <div className="bg-slate-50 rounded-lg p-4 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label>Número</Label>
                     <Input
@@ -741,16 +754,17 @@ export default function OfertasGeneralesPage(): React.ReactElement {
             )}
 
             {/* Sección de productos */}
-            <div className="border rounded-lg p-4 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-semibold">Productos</h3>
+            <div className="border rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <h3 className="font-semibold text-sm sm:text-base">Productos</h3>
                 <Button
                   size="sm"
                   variant={showAddItemToExisting ? "secondary" : "default"}
                   onClick={() => { setShowAddItemToExisting(!showAddItemToExisting); resetItemForm(); }}
+                  className="w-full sm:w-auto"
                 >
                   {showAddItemToExisting ? <X className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                  {showAddItemToExisting ? "Cancelar" : "Agregar Producto"}
+                  {showAddItemToExisting ? "Cancelar" : "Agregar"}
                 </Button>
               </div>
 
@@ -759,6 +773,7 @@ export default function OfertasGeneralesPage(): React.ReactElement {
                 () => { setShowAddItemToExisting(false); resetItemForm(); }
               )}
 
+              <div className="overflow-x-auto -mx-4 px-4">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -814,6 +829,7 @@ export default function OfertasGeneralesPage(): React.ReactElement {
                   )}
                 </TableBody>
               </Table>
+              </div>
 
               {selectedOferta && selectedOferta.items.length > 0 && (
                 <div className="space-y-4">
@@ -884,7 +900,7 @@ export default function OfertasGeneralesPage(): React.ReactElement {
             <DialogTitle>Editar Producto</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdateItem} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label>Cantidad *</Label>
                 <Input
@@ -905,7 +921,7 @@ export default function OfertasGeneralesPage(): React.ReactElement {
             {/* Campos informativos opcionales */}
             <div className="border-t pt-4">
               <p className="text-sm text-slate-500 mb-3">Campos informativos (opcionales)</p>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-xs">Cant. Sacos</Label>
                   <Input

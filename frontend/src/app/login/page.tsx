@@ -53,7 +53,7 @@ export default function LoginPage(): React.ReactElement {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-gold-pale via-white to-brand-gold-pale/50 p-4">
-      <Card className="w-full max-w-md shadow-xl border-brand-gold-pale">
+      <Card className="w-full max-w-md shadow-xl border-brand-gold-pale mx-2">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto flex items-center justify-center h-[70px]">
             {!loadingEmpresa && (

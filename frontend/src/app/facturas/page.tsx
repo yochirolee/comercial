@@ -466,7 +466,7 @@ export default function FacturasPage(): React.ReactElement {
                 Nueva Factura
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Receipt className="h-5 w-5" />
@@ -509,7 +509,7 @@ export default function FacturasPage(): React.ReactElement {
                 {selectedOfertaImportadoraId && (
                   <>
                     {/* Costos de envío y Total */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
                         <h4 className="font-medium text-blue-800 flex items-center gap-2">
                           <Ship className="h-4 w-4" />
@@ -594,40 +594,40 @@ export default function FacturasPage(): React.ReactElement {
                     </div>
 
                     {/* Términos */}
-                    <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
-                      <h4 className="font-medium text-slate-700">Términos</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-slate-500">Fecha</Label>
+                    <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-3">
+                      <h4 className="font-medium text-slate-700 text-sm sm:text-base">Términos</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-slate-500 text-xs sm:text-sm">Fecha</Label>
                           <Input
                             type="date"
                             value={newFormData.fecha}
                             onChange={(e) => setNewFormData((p) => ({ ...p, fecha: e.target.value }))}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-slate-500">Puerto de Embarque</Label>
+                        <div className="space-y-1">
+                          <Label className="text-slate-500 text-xs sm:text-sm">Puerto de Embarque</Label>
                           <Input
                             value={newFormData.puertoEmbarque}
                             onChange={(e) => setNewFormData((p) => ({ ...p, puertoEmbarque: e.target.value }))}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-slate-500">Origen</Label>
+                        <div className="space-y-1">
+                          <Label className="text-slate-500 text-xs sm:text-sm">Origen</Label>
                           <Input
                             value={newFormData.origen}
                             onChange={(e) => setNewFormData((p) => ({ ...p, origen: e.target.value }))}
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-slate-500">Moneda</Label>
+                        <div className="space-y-1">
+                          <Label className="text-slate-500 text-xs sm:text-sm">Moneda</Label>
                           <Input
                             value={newFormData.moneda}
                             onChange={(e) => setNewFormData((p) => ({ ...p, moneda: e.target.value }))}
                           />
                         </div>
-                        <div className="space-y-2 col-span-2">
-                          <Label className="text-slate-500">Términos de Pago</Label>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-slate-500 text-xs sm:text-sm">Términos de Pago</Label>
                           <Input
                             value={newFormData.terminosPago}
                             onChange={(e) => setNewFormData((p) => ({ ...p, terminosPago: e.target.value }))}
@@ -637,9 +637,9 @@ export default function FacturasPage(): React.ReactElement {
                     </div>
 
                     {/* Firma Cliente */}
-                    <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 space-y-3">
+                    <div className="p-3 sm:p-4 bg-amber-50 rounded-lg border border-amber-200 space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-amber-800">Firma del Cliente</h4>
+                        <h4 className="font-medium text-amber-800 text-sm sm:text-base">Firma del Cliente</h4>
                         <Checkbox
                           checked={newFormData.incluyeFirmaCliente}
                           onCheckedChange={(checked) => 
@@ -648,23 +648,23 @@ export default function FacturasPage(): React.ReactElement {
                         />
                       </div>
                       {newFormData.incluyeFirmaCliente && (
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="space-y-2">
-                            <Label>Nombre</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs sm:text-sm">Nombre</Label>
                             <Input
                               value={newFormData.firmaClienteNombre}
                               onChange={(e) => setNewFormData((p) => ({ ...p, firmaClienteNombre: e.target.value }))}
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label>Cargo</Label>
+                          <div className="space-y-1">
+                            <Label className="text-xs sm:text-sm">Cargo</Label>
                             <Input
                               value={newFormData.firmaClienteCargo}
                               onChange={(e) => setNewFormData((p) => ({ ...p, firmaClienteCargo: e.target.value }))}
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label>Empresa</Label>
+                          <div className="space-y-1">
+                            <Label className="text-xs sm:text-sm">Empresa</Label>
                             <Input
                               value={newFormData.firmaClienteEmpresa}
                               onChange={(e) => setNewFormData((p) => ({ ...p, firmaClienteEmpresa: e.target.value }))}
@@ -676,11 +676,11 @@ export default function FacturasPage(): React.ReactElement {
                   </>
                 )}
 
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setNewDialogOpen(false)}>
+                <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setNewDialogOpen(false)} className="w-full sm:w-auto">
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={saving || !selectedOfertaImportadoraId}>
+                  <Button type="submit" disabled={saving || !selectedOfertaImportadoraId} className="w-full sm:w-auto">
                     {saving ? "Creando..." : "Crear Factura"}
                   </Button>
                 </div>
@@ -690,8 +690,8 @@ export default function FacturasPage(): React.ReactElement {
         }
       />
 
-      <div className="p-8">
-        <div className="bg-white rounded-lg border shadow-sm">
+      <div className="p-4 sm:p-6 lg:p-8">
+        <div className="bg-white rounded-lg border shadow-sm overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -766,7 +766,7 @@ export default function FacturasPage(): React.ReactElement {
 
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-6xl w-[90vw] max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <DialogContent className="w-[95vw] max-w-6xl max-h-[90vh] overflow-auto">
           <DialogHeader className="flex flex-row items-center justify-between pr-8">
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
@@ -979,6 +979,7 @@ export default function FacturasPage(): React.ReactElement {
               {/* Productos */}
               <div>
                 <h3 className="font-semibold mb-2">Productos</h3>
+                <div className="overflow-x-auto -mx-4 px-4">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1029,6 +1030,7 @@ export default function FacturasPage(): React.ReactElement {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               </div>
 
               {/* Resumen totales */}

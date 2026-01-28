@@ -52,12 +52,24 @@ const navigation: NavItem[] = [
   },
 ];
 
-export function Sidebar(): React.ReactElement {
+interface SidebarProps {
+  onNavigate?: () => void;
+  isMobile?: boolean;
+}
+
+export function Sidebar({ onNavigate, isMobile }: SidebarProps): React.ReactElement {
   const pathname = usePathname();
   const { usuario, logout } = useAuth();
 
+  function handleLinkClick(): void {
+    if (onNavigate) onNavigate();
+  }
+
   return (
-    <aside className="w-64 bg-[#0C0A04] text-white min-h-screen flex flex-col">
+    <aside className={cn(
+      "bg-[#0C0A04] text-white flex flex-col",
+      isMobile ? "w-full h-full" : "w-64 h-screen overflow-y-auto"
+    )}>
       {/* Logo Header */}
       <div className="p-6 border-b border-white/10">
         <h1 className="text-2xl font-bold tracking-tight">
@@ -90,6 +102,7 @@ export function Sidebar(): React.ReactElement {
                       <Link
                         key={child.href}
                         href={child.href}
+                        onClick={handleLinkClick}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200",
                           isActive
@@ -112,6 +125,7 @@ export function Sidebar(): React.ReactElement {
             <Link
               key={item.href}
               href={item.href!}
+              onClick={handleLinkClick}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200",
                 isActive
