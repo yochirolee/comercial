@@ -6,7 +6,7 @@ const empresaSchema = z.object({
   nombre: z.string().min(1, 'Nombre es requerido'),
   direccion: z.string().optional(),
   telefono: z.string().optional(),
-  email: z.string().email().optional().or(z.literal('')),
+  email: z.string().optional(), // Permite múltiples emails separados por coma
   nit: z.string().optional(),
   representante: z.string().optional(),
   cargoRepresentante: z.string().optional(),
