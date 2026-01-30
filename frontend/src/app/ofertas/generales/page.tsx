@@ -317,7 +317,7 @@ export default function OfertasGeneralesPage(): React.ReactElement {
     if (!selectedOferta || !editingItemId) return;
 
     try {
-      // Siempre enviar todos los campos opcionales, incluso si están vacíos (como null)
+      // Siempre enviar todos los campos opcionales, incluso si están vacíos (como null para limpiar)
       const updateData: Partial<ItemOfertaGeneralInput> = {
         cantidad: parseFloat(editItemFormStrings.cantidad) || 0,
         precioUnitario: parseFloat(editItemFormStrings.precioUnitario) || 0,

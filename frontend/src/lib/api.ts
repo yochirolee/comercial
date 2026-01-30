@@ -459,13 +459,13 @@ export interface ItemOfertaGeneralInput {
   productoId: string;
   cantidad: number;
   precioUnitario: number;
-  // Campos informativos opcionales
-  cantidadCajas?: number;
-  cantidadSacos?: number;
-  pesoXSaco?: number;
-  precioXSaco?: number;
-  pesoXCaja?: number;
-  precioXCaja?: number;
+  // Campos informativos opcionales (pueden ser null para limpiar)
+  cantidadCajas?: number | null;
+  cantidadSacos?: number | null;
+  pesoXSaco?: number | null;
+  precioXSaco?: number | null;
+  pesoXCaja?: number | null;
+  precioXCaja?: number | null;
 }
 
 // ==========================================
@@ -546,16 +546,16 @@ export interface ItemOfertaClienteInput {
   productoId: string;
   cantidad: number;
   precioUnitario: number;
-  // Campos informativos opcionales
-  cantidadCajas?: number;
-  cantidadSacos?: number;
-  pesoNeto?: number;
-  pesoBruto?: number;
-  pesoXSaco?: number;
-  precioXSaco?: number;
-  pesoXCaja?: number;
-  precioXCaja?: number;
-  codigoArancelario?: string; // Partida arancelaria
+  // Campos informativos opcionales (pueden ser null para limpiar)
+  cantidadCajas?: number | null;
+  cantidadSacos?: number | null;
+  pesoNeto?: number | null;
+  pesoBruto?: number | null;
+  pesoXSaco?: number | null;
+  precioXSaco?: number | null;
+  pesoXCaja?: number | null;
+  precioXCaja?: number | null;
+  codigoArancelario?: string | null; // Partida arancelaria
 }
 
 // ==========================================
