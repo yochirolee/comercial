@@ -958,7 +958,7 @@ export const ExportController = {
   // ==========================================
   // TIPO 2: OFERTA CLIENTE
   // Muestra: OFERTA NO, Fecha, CONSIGNADO A, Dirección, NIT, ANEXO-1
-  //          Tabla, TOTAL CIF, Términos+Puerto+Origen+Moneda, Firma
+  //          Tabla, TOTAL CIF, Texto de Validez (campoExtra1), Firma (solo texto, sin imágenes)
   // ==========================================
 
   async ofertaClientePdf(req: Request, res: Response): Promise<void> {
@@ -1017,62 +1017,24 @@ export const ExportController = {
     const { yPos, totalImporte } = renderPdfTable(doc, oferta.items, margin, false, true, 'TOTAL CIF');
     doc.y = yPos + 15;
 
-    // TÉRMINOS + Puerto + Origen + Moneda
-    doc.font('Helvetica').fontSize(9);
-    doc.text(`TERMINOS Y CONDICIONES: ${oferta.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE'}`, margin, doc.y);
-    doc.text(`PUERTO DE EMBARQUE: ${oferta.puertoEmbarque || 'NEW ORLEANS, LA'}`);
-    doc.text(`ORIGEN: ${oferta.origen || 'ESTADOS UNIDOS'}`);
-    doc.text(`MONEDA: ${oferta.moneda || 'USD'}`);
+    // CAMPO DE VALIDEZ (campoExtra1)
+    if (oferta.campoExtra1) {
+      doc.font('Helvetica').fontSize(9);
+      doc.text(oferta.campoExtra1, margin, doc.y, { align: 'left' });
+      doc.moveDown(1);
+    }
 
-    // FIRMAS - Si incluye firma cliente, ambas en la misma línea
-    doc.moveDown(4);
+    // FIRMA - Solo texto (sin imagen, sin línea)
+    doc.moveDown(3);
     
     const firmaStartY = doc.y;
-    const firmaWidth = 180;
-    const firmaClienteX = pageWidth - margin - firmaWidth;
-
-    // Imagen de firma empresa (si existe)
-    const firmaPath = getImagePath(empresa.firmaPresidente);
-    if (firmaPath) {
-      const firmaData = await getImageForPdf(firmaPath);
-      if (firmaData) {
-        doc.image(firmaData, margin + 40, firmaStartY, { width: 100, height: 45 });
-      }
-    }
-
-    // Cuño (si existe) - al lado de la firma empresa
-    const cunoPath = getImagePath(empresa.cunoEmpresa);
-    if (cunoPath) {
-      const cunoData = await getImageForPdf(cunoPath);
-      if (cunoData) {
-        doc.image(cunoData, margin + firmaWidth + 20, firmaStartY + 10, { width: 70, height: 70 });
-      }
-    }
-
-    // Líneas de firma
-    const firmaLineY = firmaStartY + 50;
-    doc.moveTo(margin, firmaLineY).lineTo(margin + firmaWidth, firmaLineY).stroke();
     
-    if (oferta.incluyeFirmaCliente) {
-      doc.moveTo(firmaClienteX, firmaLineY).lineTo(firmaClienteX + firmaWidth, firmaLineY).stroke();
-    }
-    
-    // Texto firma empresa
+    // Texto firma empresa (alineado a la izquierda)
     doc.font('Helvetica-Bold').fontSize(9);
-    doc.text(empresa.representante, margin, firmaLineY + 5, { width: firmaWidth, align: 'center' });
+    doc.text(empresa.representante, margin, firmaStartY, { align: 'left' });
     doc.font('Helvetica').fontSize(9);
-    doc.text(empresa.cargoRepresentante, margin, firmaLineY + 18, { width: firmaWidth, align: 'center' });
-    doc.text(empresa.nombre, margin, firmaLineY + 30, { width: firmaWidth, align: 'center' });
-    
-    // Texto firma cliente (si está configurado)
-    if (oferta.incluyeFirmaCliente) {
-      const nombreCompleto = `${oferta.cliente.nombre || ''} ${oferta.cliente.apellidos || ''}`.trim();
-      doc.font('Helvetica-Bold').fontSize(9);
-      doc.text(nombreCompleto, firmaClienteX, firmaLineY + 5, { width: firmaWidth, align: 'center' });
-      doc.font('Helvetica').fontSize(9);
-      doc.text('DIRECTOR', firmaClienteX, firmaLineY + 18, { width: firmaWidth, align: 'center' });
-      doc.text(oferta.cliente.nombreCompania || '', firmaClienteX, firmaLineY + 30, { width: firmaWidth, align: 'center' });
-    }
+    doc.text(empresa.cargoRepresentante, margin, firmaStartY + 13, { align: 'left' });
+    doc.text(empresa.nombre, margin, firmaStartY + 26, { align: 'left' });
 
     doc.end();
   },
@@ -1187,87 +1149,29 @@ export const ExportController = {
     row = renderExcelTotalRow(worksheet, endRow, totalImporte, numCols, lastCol);
     row++; // Espacio
 
-    // TÉRMINOS + Puerto + Origen + Moneda
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `TERMINOS Y CONDICIONES: ${oferta.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE'}`;
-    row++;
-
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `PUERTO DE EMBARQUE: ${oferta.puertoEmbarque || 'NEW ORLEANS, LA'}`;
-    row++;
-
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `ORIGEN: ${oferta.origen || 'ESTADOS UNIDOS'}`;
-    row++;
-
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `MONEDA: ${oferta.moneda || 'USD'}`;
-    row++;
-
-    // FIRMAS - Empresa a la izquierda, Cliente a la derecha (en la misma fila)
-    const firmaStartRow = row + 2;
-
-    // FIRMA EMPRESA - Imagen (centrada sobre la sección de firma)
-    const firmaPath = getImagePath(empresa.firmaPresidente);
-    if (firmaPath) {
-      await addImageToExcel(workbook, worksheet, firmaPath, { col: 1.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
+    // CAMPO DE VALIDEZ (campoExtra1)
+    if (oferta.campoExtra1) {
+      worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+      worksheet.getCell(`A${row}`).value = oferta.campoExtra1;
+      worksheet.getCell(`A${row}`).alignment = { horizontal: 'left' };
+      row++;
     }
 
-    // CUÑO - al lado de la firma
-    const cunoPath = getImagePath(empresa.cunoEmpresa);
-    if (cunoPath) {
-      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
-    }
+    // FIRMA - Solo texto (sin imagen, sin línea)
+    row += 2;
 
-    row = firmaStartRow + 3;
-
-    // Líneas y texto de firma empresa (columnas A-B)
-    worksheet.getCell(`A${row}`).value = '________________________________';
-    worksheet.mergeCells(`A${row}:B${row}`);
-    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
-    
-    // Firma cliente en la misma fila (columnas E-F)
-    if (oferta.incluyeFirmaCliente) {
-      worksheet.getCell(`E${row}`).value = '________________________________';
-      worksheet.mergeCells(`E${row}:F${row}`);
-      worksheet.getCell(`E${row}`).alignment = { horizontal: 'center' };
-    }
-    row++;
-
+    // Texto firma empresa (alineado a la izquierda)
     worksheet.getCell(`A${row}`).value = empresa.representante;
-    worksheet.mergeCells(`A${row}:B${row}`);
     worksheet.getCell(`A${row}`).font = { bold: true };
-    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
-    
-    if (oferta.incluyeFirmaCliente) {
-      const nombreCompleto = `${oferta.cliente.nombre || ''} ${oferta.cliente.apellidos || ''}`.trim();
-      worksheet.getCell(`E${row}`).value = nombreCompleto;
-      worksheet.mergeCells(`E${row}:F${row}`);
-      worksheet.getCell(`E${row}`).font = { bold: true };
-      worksheet.getCell(`E${row}`).alignment = { horizontal: 'center' };
-    }
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'left' };
     row++;
 
     worksheet.getCell(`A${row}`).value = empresa.cargoRepresentante;
-    worksheet.mergeCells(`A${row}:B${row}`);
-    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
-    
-    if (oferta.incluyeFirmaCliente) {
-      worksheet.getCell(`E${row}`).value = 'DIRECTOR';
-      worksheet.mergeCells(`E${row}:F${row}`);
-      worksheet.getCell(`E${row}`).alignment = { horizontal: 'center' };
-    }
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'left' };
     row++;
 
     worksheet.getCell(`A${row}`).value = empresa.nombre;
-    worksheet.mergeCells(`A${row}:B${row}`);
-    worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
-    
-    if (oferta.incluyeFirmaCliente) {
-      worksheet.getCell(`E${row}`).value = oferta.cliente.nombreCompania || '';
-      worksheet.mergeCells(`E${row}:F${row}`);
-      worksheet.getCell(`E${row}`).alignment = { horizontal: 'center' };
-    }
+    worksheet.getCell(`A${row}`).alignment = { horizontal: 'left' };
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=oferta-${oferta.numero}.xlsx`);

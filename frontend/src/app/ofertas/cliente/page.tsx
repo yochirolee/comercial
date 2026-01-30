@@ -53,11 +53,7 @@ export default function OfertasClientePage(): React.ReactElement {
     numero: "",
     clienteId: "",
     observaciones: "",
-    puertoEmbarque: "NEW ORLEANS, LA",
-    origen: "ESTADOS UNIDOS",
-    moneda: "USD",
-    terminosPago: "PAGO 100% ANTES DEL EMBARQUE",
-    incluyeFirmaCliente: false,
+    campoExtra1: "OFERTA VALIDA POR 30 DIAS",
   });
   const [itemsTemp, setItemsTemp] = useState<ItemTemp[]>([]);
 
@@ -129,11 +125,7 @@ export default function OfertasClientePage(): React.ReactElement {
         numero,
         clienteId: clientes[0]?.id || "",
         observaciones: "",
-        puertoEmbarque: "NEW ORLEANS, LA",
-        origen: "ESTADOS UNIDOS",
-        moneda: "USD",
-        terminosPago: "PAGO 100% ANTES DEL EMBARQUE",
-        incluyeFirmaCliente: false,
+        campoExtra1: "OFERTA VALIDA POR 30 DIAS",
       });
       setItemsTemp([]);
       setShowAddItem(false);
@@ -274,11 +266,7 @@ export default function OfertasClientePage(): React.ReactElement {
   const [editFormData, setEditFormData] = useState({
     numero: "",
     observaciones: "",
-    puertoEmbarque: "",
-    origen: "",
-    moneda: "",
-    terminosPago: "",
-    incluyeFirmaCliente: false,
+    campoExtra1: "",
   });
 
   async function openDetailDialog(oferta: OfertaCliente): Promise<void> {
@@ -287,11 +275,7 @@ export default function OfertasClientePage(): React.ReactElement {
     setEditFormData({
       numero: updated.numero || "",
       observaciones: updated.observaciones || "",
-      puertoEmbarque: updated.puertoEmbarque || "NEW ORLEANS, LA",
-      origen: updated.origen || "ESTADOS UNIDOS",
-      moneda: updated.moneda || "USD",
-      terminosPago: updated.terminosPago || "PAGO 100% ANTES DEL EMBARQUE",
-      incluyeFirmaCliente: updated.incluyeFirmaCliente || false,
+      campoExtra1: updated.campoExtra1 || "OFERTA VALIDA POR 30 DIAS",
     });
     setDetailDialogOpen(true);
   }
@@ -370,16 +354,31 @@ export default function OfertasClientePage(): React.ReactElement {
     if (!selectedOferta || !editingItemId) return;
 
     try {
+      // Siempre enviar todos los campos opcionales, incluso si están vacíos (como null)
       const updateData: Partial<ItemOfertaClienteInput> = {
         cantidad: parseFloat(editItemFormStrings.cantidad) || 0,
         precioUnitario: parseFloat(editItemFormStrings.precioUnitario) || 0,
-        cantidadCajas: editItemFormStrings.cantidadCajas ? parseInt(editItemFormStrings.cantidadCajas) : undefined,
-        cantidadSacos: editItemFormStrings.cantidadSacos ? parseInt(editItemFormStrings.cantidadSacos) : undefined,
-        pesoXSaco: editItemFormStrings.pesoXSaco ? parseFloat(editItemFormStrings.pesoXSaco) : undefined,
-        precioXSaco: editItemFormStrings.precioXSaco ? parseFloat(editItemFormStrings.precioXSaco) : undefined,
-        pesoXCaja: editItemFormStrings.pesoXCaja ? parseFloat(editItemFormStrings.pesoXCaja) : undefined,
-        precioXCaja: editItemFormStrings.precioXCaja ? parseFloat(editItemFormStrings.precioXCaja) : undefined,
-        codigoArancelario: editItemFormStrings.codigoArancelario || undefined,
+        cantidadCajas: editItemFormStrings.cantidadCajas && editItemFormStrings.cantidadCajas.trim() !== '' 
+          ? parseFloat(editItemFormStrings.cantidadCajas) 
+          : null,
+        cantidadSacos: editItemFormStrings.cantidadSacos && editItemFormStrings.cantidadSacos.trim() !== '' 
+          ? parseFloat(editItemFormStrings.cantidadSacos) 
+          : null,
+        pesoXSaco: editItemFormStrings.pesoXSaco && editItemFormStrings.pesoXSaco.trim() !== '' 
+          ? parseFloat(editItemFormStrings.pesoXSaco) 
+          : null,
+        precioXSaco: editItemFormStrings.precioXSaco && editItemFormStrings.precioXSaco.trim() !== '' 
+          ? parseFloat(editItemFormStrings.precioXSaco) 
+          : null,
+        pesoXCaja: editItemFormStrings.pesoXCaja && editItemFormStrings.pesoXCaja.trim() !== '' 
+          ? parseFloat(editItemFormStrings.pesoXCaja) 
+          : null,
+        precioXCaja: editItemFormStrings.precioXCaja && editItemFormStrings.precioXCaja.trim() !== '' 
+          ? parseFloat(editItemFormStrings.precioXCaja) 
+          : null,
+        codigoArancelario: editItemFormStrings.codigoArancelario && editItemFormStrings.codigoArancelario.trim() !== '' 
+          ? editItemFormStrings.codigoArancelario 
+          : null,
       };
       
       await ofertasClienteApi.updateItem(selectedOferta.id, editingItemId, updateData);
@@ -759,59 +758,15 @@ export default function OfertasClientePage(): React.ReactElement {
               )}
             </div>
 
-            {/* Términos y condiciones */}
-            <div className="border rounded-lg p-3 space-y-2 sm:space-y-3">
-              <h3 className="font-semibold text-xs sm:text-sm">Términos</h3>
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Puerto</Label>
-                  <Input
-                    value={formData.puertoEmbarque}
-                    onChange={(e) => setFormData((p) => ({ ...p, puertoEmbarque: e.target.value }))}
-                    className="h-8 sm:h-9 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Origen</Label>
-                  <Input
-                    value={formData.origen}
-                    onChange={(e) => setFormData((p) => ({ ...p, origen: e.target.value }))}
-                    className="h-8 sm:h-9 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Moneda</Label>
-                  <Input
-                    value={formData.moneda}
-                    onChange={(e) => setFormData((p) => ({ ...p, moneda: e.target.value }))}
-                    className="h-8 sm:h-9 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">T. de Pago</Label>
-                  <Input
-                    value={formData.terminosPago}
-                    onChange={(e) => setFormData((p) => ({ ...p, terminosPago: e.target.value }))}
-                    className="h-8 sm:h-9 text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Firma Cliente */}
-            <div className="p-3 sm:p-4 bg-amber-50 rounded-lg border border-amber-200">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="incluyeFirmaCliente"
-                  checked={formData.incluyeFirmaCliente}
-                  onChange={(e) => setFormData((p) => ({ ...p, incluyeFirmaCliente: e.target.checked }))}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="incluyeFirmaCliente" className="cursor-pointer font-medium text-amber-800 text-sm sm:text-base">
-                  Incluir firma del cliente
-                </Label>
-              </div>
+            {/* Campo de validez */}
+            <div className="border rounded-lg p-3 space-y-2">
+              <Label className="text-xs sm:text-sm">Texto de Validez</Label>
+              <Input
+                value={formData.campoExtra1}
+                onChange={(e) => setFormData((p) => ({ ...p, campoExtra1: e.target.value }))}
+                placeholder="OFERTA VALIDA POR 30 DIAS"
+                className="h-8 sm:h-9 text-sm"
+              />
             </div>
 
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
@@ -887,55 +842,14 @@ export default function OfertasClientePage(): React.ReactElement {
               </div>
             </div>
 
-            {/* Términos y condiciones editables */}
-            <div className="border rounded-lg p-4 space-y-4">
-              <h3 className="font-semibold">Términos y Condiciones</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="space-y-2">
-                  <Label>Puerto de Embarque</Label>
-                  <Input
-                    value={editFormData.puertoEmbarque}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, puertoEmbarque: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Origen</Label>
-                  <Input
-                    value={editFormData.origen}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, origen: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Moneda</Label>
-                  <Input
-                    value={editFormData.moneda}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, moneda: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Términos de Pago</Label>
-                  <Input
-                    value={editFormData.terminosPago}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, terminosPago: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Firma Cliente */}
-            <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="editIncluyeFirmaCliente"
-                  checked={editFormData.incluyeFirmaCliente}
-                  onChange={(e) => setEditFormData((p) => ({ ...p, incluyeFirmaCliente: e.target.checked }))}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="editIncluyeFirmaCliente" className="cursor-pointer font-medium text-amber-800">
-                  Incluir firma del cliente en la oferta
-                </Label>
-              </div>
+            {/* Campo de validez */}
+            <div className="border rounded-lg p-4 space-y-2">
+              <Label className="text-sm">Texto de Validez</Label>
+              <Input
+                value={editFormData.campoExtra1}
+                onChange={(e) => setEditFormData((p) => ({ ...p, campoExtra1: e.target.value }))}
+                placeholder="OFERTA VALIDA POR 30 DIAS"
+              />
             </div>
 
             {/* Productos */}

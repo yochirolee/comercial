@@ -6,17 +6,17 @@ const itemSchema = z.object({
   productoId: z.string().min(1, 'Producto es requerido'),
   cantidad: z.number().positive('La cantidad debe ser positiva'),
   precioUnitario: z.number().positive('El precio debe ser positivo'),
-  // Campos informativos opcionales
-  cantidadCajas: z.number().optional(),
-  cantidadSacos: z.number().optional(),
-  pesoXSaco: z.number().optional(),
-  precioXSaco: z.number().optional(),
-  pesoXCaja: z.number().optional(),
-  precioXCaja: z.number().optional(),
-  campoExtra1: z.string().optional(),
-  campoExtra2: z.string().optional(),
-  campoExtra3: z.string().optional(),
-  campoExtra4: z.string().optional(),
+  // Campos informativos opcionales - aceptan null para limpiar valores
+  cantidadCajas: z.number().nullable().optional(),
+  cantidadSacos: z.number().nullable().optional(),
+  pesoXSaco: z.number().nullable().optional(),
+  precioXSaco: z.number().nullable().optional(),
+  pesoXCaja: z.number().nullable().optional(),
+  precioXCaja: z.number().nullable().optional(),
+  campoExtra1: z.string().nullable().optional(),
+  campoExtra2: z.string().nullable().optional(),
+  campoExtra3: z.string().nullable().optional(),
+  campoExtra4: z.string().nullable().optional(),
 });
 
 const ofertaGeneralSchema = z.object({
@@ -258,20 +258,31 @@ export const OfertaGeneralController = {
 
   async updateItem(req: Request, res: Response): Promise<void> {
     const { itemId } = req.params;
-    const { cantidad, precioUnitario, cantidadCajas, cantidadSacos, pesoXSaco, precioXSaco, pesoXCaja, precioXCaja } = req.body;
+    const validation = itemSchema.partial().safeParse(req.body);
+    
+    if (!validation.success) {
+      res.status(400).json({ error: validation.error.errors });
+      return;
+    }
+
+    // Construir objeto de actualización - incluir todos los campos que vienen en el body original
+    const updateData: any = {};
+
+    // Campos requeridos
+    if (validation.data.cantidad !== undefined) updateData.cantidad = validation.data.cantidad;
+    if (validation.data.precioUnitario !== undefined) updateData.precioUnitario = validation.data.precioUnitario;
+    
+    // Campos opcionales - verificar si están en el body original (incluso si son null)
+    if ('cantidadCajas' in req.body) updateData.cantidadCajas = validation.data.cantidadCajas ?? null;
+    if ('cantidadSacos' in req.body) updateData.cantidadSacos = validation.data.cantidadSacos ?? null;
+    if ('pesoXSaco' in req.body) updateData.pesoXSaco = validation.data.pesoXSaco ?? null;
+    if ('precioXSaco' in req.body) updateData.precioXSaco = validation.data.precioXSaco ?? null;
+    if ('pesoXCaja' in req.body) updateData.pesoXCaja = validation.data.pesoXCaja ?? null;
+    if ('precioXCaja' in req.body) updateData.precioXCaja = validation.data.precioXCaja ?? null;
     
     const item = await prisma.itemOfertaGeneral.update({
       where: { id: itemId },
-      data: {
-        cantidad,
-        precioUnitario,
-        cantidadCajas,
-        cantidadSacos,
-        pesoXSaco,
-        precioXSaco,
-        pesoXCaja,
-        precioXCaja,
-      },
+      data: updateData,
       include: {
         producto: {
           include: { unidadMedida: true },

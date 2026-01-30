@@ -317,15 +317,28 @@ export default function OfertasGeneralesPage(): React.ReactElement {
     if (!selectedOferta || !editingItemId) return;
 
     try {
+      // Siempre enviar todos los campos opcionales, incluso si están vacíos (como null)
       const updateData: Partial<ItemOfertaGeneralInput> = {
         cantidad: parseFloat(editItemFormStrings.cantidad) || 0,
         precioUnitario: parseFloat(editItemFormStrings.precioUnitario) || 0,
-        cantidadCajas: editItemFormStrings.cantidadCajas ? parseInt(editItemFormStrings.cantidadCajas) : undefined,
-        cantidadSacos: editItemFormStrings.cantidadSacos ? parseInt(editItemFormStrings.cantidadSacos) : undefined,
-        pesoXSaco: editItemFormStrings.pesoXSaco ? parseFloat(editItemFormStrings.pesoXSaco) : undefined,
-        precioXSaco: editItemFormStrings.precioXSaco ? parseFloat(editItemFormStrings.precioXSaco) : undefined,
-        pesoXCaja: editItemFormStrings.pesoXCaja ? parseFloat(editItemFormStrings.pesoXCaja) : undefined,
-        precioXCaja: editItemFormStrings.precioXCaja ? parseFloat(editItemFormStrings.precioXCaja) : undefined,
+        cantidadCajas: editItemFormStrings.cantidadCajas && editItemFormStrings.cantidadCajas.trim() !== '' 
+          ? parseFloat(editItemFormStrings.cantidadCajas) 
+          : null,
+        cantidadSacos: editItemFormStrings.cantidadSacos && editItemFormStrings.cantidadSacos.trim() !== '' 
+          ? parseFloat(editItemFormStrings.cantidadSacos) 
+          : null,
+        pesoXSaco: editItemFormStrings.pesoXSaco && editItemFormStrings.pesoXSaco.trim() !== '' 
+          ? parseFloat(editItemFormStrings.pesoXSaco) 
+          : null,
+        precioXSaco: editItemFormStrings.precioXSaco && editItemFormStrings.precioXSaco.trim() !== '' 
+          ? parseFloat(editItemFormStrings.precioXSaco) 
+          : null,
+        pesoXCaja: editItemFormStrings.pesoXCaja && editItemFormStrings.pesoXCaja.trim() !== '' 
+          ? parseFloat(editItemFormStrings.pesoXCaja) 
+          : null,
+        precioXCaja: editItemFormStrings.precioXCaja && editItemFormStrings.precioXCaja.trim() !== '' 
+          ? parseFloat(editItemFormStrings.precioXCaja) 
+          : null,
       };
       
       await ofertasGeneralesApi.updateItem(selectedOferta.id, editingItemId, updateData);
@@ -531,11 +544,24 @@ export default function OfertasGeneralesPage(): React.ReactElement {
                   </TableCell>
                 </TableRow>
               ) : (
-                ofertas.map((oferta) => (
+                ofertas.map((oferta) => {
+                  const productosNombres = oferta.items
+                    .map(item => item.producto?.nombre || '')
+                    .filter(Boolean)
+                    .join(', ');
+                  const productosPreview = productosNombres.length > 60 
+                    ? productosNombres.substring(0, 60) + '...' 
+                    : productosNombres;
+                  
+                  return (
                   <TableRow key={oferta.id}>
                     <TableCell className="font-medium">{oferta.numero}</TableCell>
                     <TableCell>{formatDate(oferta.fecha)}</TableCell>
-                    <TableCell>{oferta.items.length} productos</TableCell>
+                    <TableCell className="max-w-md">
+                      <div className="truncate" title={productosNombres}>
+                        {productosPreview || 'Sin productos'}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={oferta.estado === "activa" ? "default" : "secondary"}>
                         {oferta.estado}
@@ -566,7 +592,8 @@ export default function OfertasGeneralesPage(): React.ReactElement {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
+                  );
+                })
               )}
             </TableBody>
           </Table>

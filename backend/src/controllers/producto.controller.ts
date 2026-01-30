@@ -66,7 +66,7 @@ export const ProductoController = {
       include: {
         unidadMedida: true,
       },
-      orderBy: { nombre: 'asc' },
+      orderBy: { codigo: 'desc' },
     });
     
     res.json(productos);
