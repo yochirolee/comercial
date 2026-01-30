@@ -11,7 +11,7 @@ import {
   TrendingUp,
   DollarSign
 } from "lucide-react";
-import { clientesApi, productosApi, ofertasClienteApi, facturasApi } from "@/lib/api";
+import { clientesApi, productosApi, ofertasClienteApi, ofertasImportadoraApi, facturasApi } from "@/lib/api";
 import type { Producto, Factura } from "@/lib/api";
 
 export default function Dashboard(): React.ReactElement {
@@ -19,6 +19,8 @@ export default function Dashboard(): React.ReactElement {
     clientes: 0,
     productos: 0,
     ofertas: 0,
+    ofertasCliente: 0,
+    ofertasImportadora: 0,
     facturas: 0,
     totalFacturado: 0,
     facturasPendientes: 0,
@@ -28,10 +30,11 @@ export default function Dashboard(): React.ReactElement {
   useEffect(() => {
     async function loadStats(): Promise<void> {
       try {
-        const [clientes, productos, ofertas, facturas] = await Promise.all([
+        const [clientes, productos, ofertasCliente, ofertasImportadora, facturas] = await Promise.all([
           clientesApi.getAll(),
           productosApi.getAll(),
           ofertasClienteApi.getAll(),
+          ofertasImportadoraApi.getAll(),
           facturasApi.getAll(),
         ]);
 
@@ -46,7 +49,9 @@ export default function Dashboard(): React.ReactElement {
         setStats({
           clientes: clientes.length,
           productos: productos.filter((p: Producto) => p.activo).length,
-          ofertas: ofertas.length,
+          ofertas: ofertasCliente.length + ofertasImportadora.length,
+          ofertasCliente: ofertasCliente.length,
+          ofertasImportadora: ofertasImportadora.length,
           facturas: facturas.length,
           totalFacturado,
           facturasPendientes,
@@ -82,6 +87,10 @@ export default function Dashboard(): React.ReactElement {
       icon: FileText,
       color: "text-[#0C0A04]",
       bgColor: "bg-[#F3B450]",
+      details: {
+        cliente: stats.ofertasCliente,
+        importadora: stats.ofertasImportadora,
+      },
     },
     {
       title: "Facturas",
@@ -129,6 +138,20 @@ export default function Dashboard(): React.ReactElement {
                 <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                   {loading ? "..." : card.value}
                 </div>
+                {card.details && !loading && (
+                  <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between p-2 bg-blue-50 rounded-md">
+                        <span className="text-xs sm:text-sm font-medium text-blue-700">Ofertas a Cliente</span>
+                        <span className="text-sm sm:text-base font-bold text-blue-900">{card.details.cliente}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-2 bg-amber-50 rounded-md">
+                        <span className="text-xs sm:text-sm font-medium text-amber-700">Ofertas a Importadora</span>
+                        <span className="text-sm sm:text-base font-bold text-amber-900">{card.details.importadora}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

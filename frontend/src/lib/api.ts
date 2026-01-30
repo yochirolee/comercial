@@ -801,14 +801,14 @@ export interface ItemFacturaInput {
   productoId: string;
   descripcion?: string;
   cantidad: number;
-  cantidadCajas?: number;
-  cantidadSacos?: number;
-  pesoNeto?: number;
-  pesoBruto?: number;
+  cantidadCajas?: number | null;
+  cantidadSacos?: number | null;
+  pesoNeto?: number | null;
+  pesoBruto?: number | null;
   precioUnitario: number;
-  pesoXSaco?: number;
-  precioXSaco?: number;
-  pesoXCaja?: number;
-  precioXCaja?: number;
-  codigoArancelario?: string;
+  pesoXSaco?: number | null;
+  precioXSaco?: number | null;
+  pesoXCaja?: number | null;
+  precioXCaja?: number | null;
+  codigoArancelario?: string | null;
 }

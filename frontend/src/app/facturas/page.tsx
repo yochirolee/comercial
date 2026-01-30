@@ -97,6 +97,7 @@ export default function FacturasPage(): React.ReactElement {
 
   // Form data for edit factura
   const [editFormData, setEditFormData] = useState({
+    numeroFactura: "",
     fecha: "",
     estado: "pendiente",
     flete: "0",
@@ -295,6 +296,7 @@ export default function FacturasPage(): React.ReactElement {
   function openDetailDialog(factura: Factura): void {
     setSelectedFactura(factura);
     setEditFormData({
+      numeroFactura: factura.numero || "",
       fecha: factura.fecha ? factura.fecha.split("T")[0] : "",
       estado: factura.estado || "pendiente",
       flete: String(factura.flete || 0),
@@ -319,6 +321,7 @@ export default function FacturasPage(): React.ReactElement {
     setSaving(true);
     try {
       await facturasApi.update(selectedFactura.id, {
+        numero: editFormData.numeroFactura || undefined,
         fecha: editFormData.fecha || undefined,
         estado: editFormData.estado || undefined,
         flete: parseFloat(editFormData.flete) || 0,
@@ -393,18 +396,37 @@ export default function FacturasPage(): React.ReactElement {
     if (!selectedFactura || !editingItemId) return;
     setSaving(true);
     try {
+      // Siempre enviar todos los campos opcionales, incluso si están vacíos (como null para limpiar)
       await facturasApi.updateItem(selectedFactura.id, editingItemId, {
         cantidad: parseFloat(editItemForm.cantidad) || undefined,
-        pesoNeto: parseFloat(editItemForm.pesoNeto) || undefined,
-        pesoBruto: parseFloat(editItemForm.pesoBruto) || undefined,
+        pesoNeto: editItemForm.pesoNeto && editItemForm.pesoNeto.trim() !== '' 
+          ? parseFloat(editItemForm.pesoNeto) 
+          : null,
+        pesoBruto: editItemForm.pesoBruto && editItemForm.pesoBruto.trim() !== '' 
+          ? parseFloat(editItemForm.pesoBruto) 
+          : null,
         precioUnitario: parseFloat(editItemForm.precioUnitario) || undefined,
-        cantidadCajas: parseFloat(editItemForm.cantidadCajas) || undefined,
-        cantidadSacos: parseFloat(editItemForm.cantidadSacos) || undefined,
-        pesoXSaco: parseFloat(editItemForm.pesoXSaco) || undefined,
-        precioXSaco: parseFloat(editItemForm.precioXSaco) || undefined,
-        pesoXCaja: parseFloat(editItemForm.pesoXCaja) || undefined,
-        precioXCaja: parseFloat(editItemForm.precioXCaja) || undefined,
-        codigoArancelario: editItemForm.codigoArancelario || undefined,
+        cantidadCajas: editItemForm.cantidadCajas && editItemForm.cantidadCajas.trim() !== '' 
+          ? parseFloat(editItemForm.cantidadCajas) 
+          : null,
+        cantidadSacos: editItemForm.cantidadSacos && editItemForm.cantidadSacos.trim() !== '' 
+          ? parseFloat(editItemForm.cantidadSacos) 
+          : null,
+        pesoXSaco: editItemForm.pesoXSaco && editItemForm.pesoXSaco.trim() !== '' 
+          ? parseFloat(editItemForm.pesoXSaco) 
+          : null,
+        precioXSaco: editItemForm.precioXSaco && editItemForm.precioXSaco.trim() !== '' 
+          ? parseFloat(editItemForm.precioXSaco) 
+          : null,
+        pesoXCaja: editItemForm.pesoXCaja && editItemForm.pesoXCaja.trim() !== '' 
+          ? parseFloat(editItemForm.pesoXCaja) 
+          : null,
+        precioXCaja: editItemForm.precioXCaja && editItemForm.precioXCaja.trim() !== '' 
+          ? parseFloat(editItemForm.precioXCaja) 
+          : null,
+        codigoArancelario: editItemForm.codigoArancelario && editItemForm.codigoArancelario.trim() !== '' 
+          ? editItemForm.codigoArancelario 
+          : null,
       });
       toast.success("Item actualizado");
       const updated = await facturasApi.getById(selectedFactura.id);
@@ -808,6 +830,17 @@ export default function FacturasPage(): React.ReactElement {
                   )}
                 </div>
                 <div>
+                  <Label className="text-slate-500">Número de Factura</Label>
+                  <Input
+                    className="mt-1"
+                    value={editFormData.numeroFactura}
+                    onChange={(e) => setEditFormData((p) => ({ ...p, numeroFactura: e.target.value }))}
+                    placeholder="FAC-XXX"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
                   <Label className="text-slate-500">Estado</Label>
                   <Select
                     value={editFormData.estado}
@@ -1015,11 +1048,7 @@ export default function FacturasPage(): React.ReactElement {
                         <TableCell className="text-right">{(item.pesoBruto || "-")}</TableCell>
                         <TableCell className="text-right">{formatCurrencyUnitPrice(item.precioUnitario)}</TableCell>
                         <TableCell className="text-right font-medium">
-                          {(() => {
-                            const precioRedondeado = Math.round(item.precioUnitario * 1000) / 1000;
-                            const cantidadRedondeada = Math.round(item.cantidad * 100) / 100;
-                            return formatCurrency(precioRedondeado * cantidadRedondeada);
-                          })()}
+                          {formatCurrency(item.subtotal)}
                         </TableCell>
                         <TableCell>
                           <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>

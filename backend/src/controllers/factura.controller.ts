@@ -35,16 +35,16 @@ const itemSchema = z.object({
   productoId: z.string().min(1, 'Producto es requerido'),
   descripcion: z.string().optional(),
   cantidad: z.number().positive('La cantidad debe ser positiva'),
-  cantidadCajas: z.number().optional(),
-  cantidadSacos: z.number().optional(),
-  pesoNeto: z.number().optional(),
-  pesoBruto: z.number().optional(),
+  cantidadCajas: z.number().nullable().optional(),
+  cantidadSacos: z.number().nullable().optional(),
+  pesoNeto: z.number().nullable().optional(),
+  pesoBruto: z.number().nullable().optional(),
   precioUnitario: z.number().positive('El precio debe ser positivo'),
-  pesoXSaco: z.number().optional(),
-  precioXSaco: z.number().optional(),
-  pesoXCaja: z.number().optional(),
-  precioXCaja: z.number().optional(),
-  codigoArancelario: z.string().optional(),
+  pesoXSaco: z.number().nullable().optional(),
+  precioXSaco: z.number().nullable().optional(),
+  pesoXCaja: z.number().nullable().optional(),
+  precioXCaja: z.number().nullable().optional(),
+  codigoArancelario: z.string().nullable().optional(),
 });
 
 const fromOfertaClienteSchema = z.object({
@@ -137,7 +137,7 @@ export const FacturaController = {
         ],
       },
       include: includeFactura,
-      orderBy: { fecha: 'desc' },
+      orderBy: { numero: 'desc' },
     });
     
     res.json(facturas);
@@ -643,13 +643,28 @@ export const FacturaController = {
     const subtotal = cantidad * precioUnitario;
     const pesoNeto = validation.data.pesoNeto ?? existingItem.pesoNeto ?? cantidad;
 
+    // Construir objeto de actualización incluyendo campos null para limpiarlos
+    const updateData: any = {
+      cantidad,
+      precioUnitario,
+      pesoNeto,
+      subtotal,
+    };
+
+    // Verificar si los campos están en el body original (incluso si son null)
+    if ('cantidadCajas' in req.body) updateData.cantidadCajas = validation.data.cantidadCajas ?? null;
+    if ('cantidadSacos' in req.body) updateData.cantidadSacos = validation.data.cantidadSacos ?? null;
+    if ('pesoBruto' in req.body) updateData.pesoBruto = validation.data.pesoBruto ?? null;
+    if ('pesoXSaco' in req.body) updateData.pesoXSaco = validation.data.pesoXSaco ?? null;
+    if ('precioXSaco' in req.body) updateData.precioXSaco = validation.data.precioXSaco ?? null;
+    if ('pesoXCaja' in req.body) updateData.pesoXCaja = validation.data.pesoXCaja ?? null;
+    if ('precioXCaja' in req.body) updateData.precioXCaja = validation.data.precioXCaja ?? null;
+    if ('codigoArancelario' in req.body) updateData.codigoArancelario = validation.data.codigoArancelario ?? null;
+    if ('descripcion' in req.body) updateData.descripcion = validation.data.descripcion ?? null;
+
     const item = await prisma.itemFactura.update({
       where: { id: itemId },
-      data: {
-        ...validation.data,
-        pesoNeto,
-        subtotal,
-      },
+      data: updateData,
       include: {
         producto: {
           include: { unidadMedida: true },
