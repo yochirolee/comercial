@@ -411,17 +411,19 @@ export default function Dashboard(): React.ReactElement {
             breakdown={facturasBreakdown}
             icon={Receipt}
           />
-          {/* Facturas emitidas - siempre visible, segunda posición en grande */}
-          <BreakdownCard
-            title="Facturas emitidas"
-            total={loading ? 0 : stats.facturas}
-            badge={stats.facturasPendientes > 0 ? {
-              icon: AlertCircle,
-              color: "bg-red-100 text-red-700",
-            } : undefined}
-            breakdown={[]}
-            icon={FileText}
-          />
+          {/* Facturas emitidas - visible solo en tablet/desktop, segunda posición en grande */}
+          <div className="hidden sm:block">
+            <BreakdownCard
+              title="Facturas emitidas"
+              total={loading ? 0 : stats.facturas}
+              badge={stats.facturasPendientes > 0 ? {
+                icon: AlertCircle,
+                color: "bg-red-100 text-red-700",
+              } : undefined}
+              breakdown={[]}
+              icon={FileText}
+            />
+          </div>
           {/* Ofertas - solo visible en pantallas grandes (md+), tercera posición */}
           <div className="hidden md:block">
             <BreakdownCard
