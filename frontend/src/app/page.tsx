@@ -123,31 +123,31 @@ export default function Dashboard(): React.ReactElement {
       />
       
       <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
           {cards.map((card) => (
-            <Card key={card.title} className="hover:shadow-md transition-shadow">
-              <CardHeader className="flex flex-row items-center justify-between pb-2 p-3 sm:p-4 lg:p-6">
+            <Card key={card.title} className="hover:shadow-md transition-shadow flex flex-col">
+              <CardHeader className="flex flex-row items-center justify-between pb-1 p-2 sm:p-3">
                 <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
                   {card.title}
                 </CardTitle>
-                <div className={`p-1.5 sm:p-2 rounded-lg ${card.bgColor}`}>
-                  <card.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${card.color}`} />
+                <div className={`p-1 sm:p-1.5 rounded-lg ${card.bgColor}`}>
+                  <card.icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${card.color}`} />
                 </div>
               </CardHeader>
-              <CardContent className="p-3 pt-0 sm:p-4 sm:pt-0 lg:p-6 lg:pt-0">
-                <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+              <CardContent className="p-2 pt-0 sm:p-3 sm:pt-0 flex-1 flex flex-col justify-between">
+                <div className="text-base sm:text-xl lg:text-2xl font-bold text-gray-900 mb-1.5 sm:mb-0">
                   {loading ? "..." : card.value}
                 </div>
                 {card.details && !loading && (
-                  <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between p-2 bg-blue-50 rounded-md">
-                        <span className="text-xs sm:text-sm font-medium text-blue-700">Ofertas a Cliente</span>
-                        <span className="text-sm sm:text-base font-bold text-blue-900">{card.details.cliente}</span>
+                  <div className="mt-auto pt-1.5 sm:pt-2 border-t border-gray-200">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between px-1.5 py-1 bg-blue-50 rounded-md">
+                        <span className="text-[10px] sm:text-xs font-medium text-blue-700 truncate pr-1">Ofertas a Cliente</span>
+                        <span className="text-xs font-bold text-blue-900 whitespace-nowrap">{card.details.cliente}</span>
                       </div>
-                      <div className="flex items-center justify-between p-2 bg-amber-50 rounded-md">
-                        <span className="text-xs sm:text-sm font-medium text-amber-700">Ofertas a Importadora</span>
-                        <span className="text-sm sm:text-base font-bold text-amber-900">{card.details.importadora}</span>
+                      <div className="flex items-center justify-between px-1.5 py-1 bg-amber-50 rounded-md">
+                        <span className="text-[10px] sm:text-xs font-medium text-amber-700 truncate pr-1">Ofertas a Importadora</span>
+                        <span className="text-xs font-bold text-amber-900 whitespace-nowrap">{card.details.importadora}</span>
                       </div>
                     </div>
                   </div>

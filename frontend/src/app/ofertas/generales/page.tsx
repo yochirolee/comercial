@@ -394,13 +394,13 @@ export default function OfertasGeneralesPage(): React.ReactElement {
 
   // Función inline para renderizar el formulario de item (evita re-crear componente)
   const renderItemForm = (onAdd: () => void, onCancel: () => void) => (
-    <div className="bg-slate-50 rounded p-1.5 sm:p-2 space-y-1.5 sm:space-y-2">
-      <div className="grid grid-cols-3 gap-1 sm:gap-2">
-        <div className="space-y-0.5">
-          <Label className="text-[9px] sm:text-xs">Producto *</Label>
+    <div className="bg-slate-50 rounded p-3 sm:p-2 space-y-3 sm:space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-2">
+        <div className="space-y-1.5 sm:space-y-0.5">
+          <Label className="text-sm sm:text-xs">Producto *</Label>
           <Select value={itemFormStrings.productoId} onValueChange={handleSelectProduct}>
-            <SelectTrigger className="h-7 sm:h-9 text-[10px] sm:text-sm px-1 sm:px-3">
-              <SelectValue placeholder="Sel." />
+            <SelectTrigger className="h-11 sm:h-9 text-base sm:text-sm px-3 sm:px-3">
+              <SelectValue placeholder="Seleccionar" />
             </SelectTrigger>
             <SelectContent>
               {productos.map((p) => (
@@ -411,95 +411,110 @@ export default function OfertasGeneralesPage(): React.ReactElement {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-0.5">
-          <Label className="text-[9px] sm:text-xs">Cant. *</Label>
+        <div className="space-y-1.5 sm:space-y-0.5">
+          <Label className="text-sm sm:text-xs">Cantidad *</Label>
           <Input
+            type="number"
+            step="0.01"
             placeholder="0"
             value={itemFormStrings.cantidad}
             onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidad: e.target.value }))}
-            className="h-7 sm:h-9 text-[10px] sm:text-xs px-1 sm:px-2"
+            className="h-11 sm:h-9 text-base sm:text-xs px-3 sm:px-2"
           />
         </div>
-        <div className="space-y-0.5">
-          <Label className="text-[9px] sm:text-xs">Precio *</Label>
+        <div className="space-y-1.5 sm:space-y-0.5">
+          <Label className="text-sm sm:text-xs">Precio *</Label>
           <Input
+            type="number"
+            step="0.01"
             placeholder="0.00"
             value={itemFormStrings.precioUnitario}
             onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioUnitario: e.target.value }))}
-            className="h-7 sm:h-9 text-[10px] sm:text-xs px-1 sm:px-2"
+            className="h-11 sm:h-9 text-base sm:text-xs px-3 sm:px-2"
           />
         </div>
       </div>
 
       {/* Campos informativos opcionales */}
-      <div className="border-t pt-1">
-        <p className="text-[9px] text-slate-500 mb-0.5">Opcionales</p>
-        <div className="grid grid-cols-6 gap-0.5 sm:gap-1">
-          <div className="space-y-0.5">
-            <Label className="text-[8px] sm:text-[10px]">Sacos</Label>
+      <div className="border-t pt-3 sm:pt-1">
+        <p className="text-xs sm:text-[9px] text-slate-500 mb-2 sm:mb-0.5">Campos Informativos (opcionales)</p>
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 sm:gap-1">
+          <div className="space-y-1 sm:space-y-0.5">
+            <Label className="text-xs sm:text-[10px]">Cant. Sacos</Label>
             <Input
+              type="number"
               placeholder="-"
               value={itemFormStrings.cantidadSacos}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
-              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
+              className="h-10 sm:h-7 text-base sm:text-[10px] px-2 sm:px-1"
             />
           </div>
-          <div className="space-y-0.5">
-            <Label className="text-[8px] sm:text-[10px]">Peso/S</Label>
+          <div className="space-y-1 sm:space-y-0.5">
+            <Label className="text-xs sm:text-[10px]">Peso x Saco</Label>
             <Input
+              type="number"
+              step="0.01"
               placeholder="-"
               value={itemFormStrings.pesoXSaco}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
-              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
+              className="h-10 sm:h-7 text-base sm:text-[10px] px-2 sm:px-1"
             />
           </div>
-          <div className="space-y-0.5">
-            <Label className="text-[8px] sm:text-[10px]">$/S</Label>
+          <div className="space-y-1 sm:space-y-0.5">
+            <Label className="text-xs sm:text-[10px]">Precio x Saco</Label>
             <Input
+              type="number"
+              step="0.01"
               placeholder="-"
               value={itemFormStrings.precioXSaco}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXSaco: e.target.value }))}
-              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
+              className="h-10 sm:h-7 text-base sm:text-[10px] px-2 sm:px-1"
             />
           </div>
-          <div className="space-y-0.5">
-            <Label className="text-[8px] sm:text-[10px]">Cajas</Label>
+          <div className="space-y-1 sm:space-y-0.5">
+            <Label className="text-xs sm:text-[10px]">Cant. Cajas</Label>
             <Input
+              type="number"
               placeholder="-"
               value={itemFormStrings.cantidadCajas}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
-              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
+              className="h-10 sm:h-7 text-base sm:text-[10px] px-2 sm:px-1"
             />
           </div>
-          <div className="space-y-0.5">
-            <Label className="text-[8px] sm:text-[10px]">Peso/C</Label>
+          <div className="space-y-1 sm:space-y-0.5">
+            <Label className="text-xs sm:text-[10px]">Peso x Caja</Label>
             <Input
+              type="number"
+              step="0.01"
               placeholder="-"
               value={itemFormStrings.pesoXCaja}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
-              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
+              className="h-10 sm:h-7 text-base sm:text-[10px] px-2 sm:px-1"
             />
           </div>
-          <div className="space-y-0.5">
-            <Label className="text-[8px] sm:text-[10px]">$/C</Label>
+          <div className="space-y-1 sm:space-y-0.5">
+            <Label className="text-xs sm:text-[10px]">Precio x Caja</Label>
             <Input
+              type="number"
+              step="0.01"
               placeholder="-"
               value={itemFormStrings.precioXCaja}
               onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
-              className="h-6 sm:h-7 text-[9px] sm:text-[10px] px-0.5 sm:px-1"
+              className="h-10 sm:h-7 text-base sm:text-[10px] px-2 sm:px-1"
             />
           </div>
         </div>
       </div>
 
-      <div className="flex justify-end gap-1">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel} className="h-6 sm:h-7 text-[9px] sm:text-xs px-1.5 sm:px-2">
-          <X className="h-3 w-3 sm:hidden" />
+      <div className="flex justify-end gap-2 sm:gap-1">
+        <Button type="button" variant="outline" size="sm" onClick={onCancel} className="h-10 sm:h-7 text-sm sm:text-xs px-3 sm:px-2">
+          <X className="h-4 w-4 sm:h-3 sm:w-3 sm:hidden" />
+          <span className="sm:hidden">Cancelar</span>
           <span className="hidden sm:inline">Cancelar</span>
         </Button>
-        <Button type="button" size="sm" onClick={onAdd} className="h-6 sm:h-7 text-[9px] sm:text-xs px-1.5 sm:px-2">
-          <Plus className="h-3 w-3" />
-          <span className="hidden sm:inline sm:ml-1">Agregar</span>
+        <Button type="button" size="sm" onClick={onAdd} className="h-10 sm:h-7 text-sm sm:text-xs px-3 sm:px-2">
+          <Plus className="h-4 w-4 sm:h-3 sm:w-3" />
+          <span className="ml-1 sm:ml-1">Agregar</span>
         </Button>
       </div>
     </div>
@@ -602,48 +617,48 @@ export default function OfertasGeneralesPage(): React.ReactElement {
 
       {/* Create Dialog - Todo en un paso */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[96vw] sm:w-[90vw] max-w-[900px] max-h-[90vh] overflow-y-auto p-2 sm:p-6">
+        <DialogContent className="w-[95vw] sm:w-[90vw] max-w-[900px] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle className="text-sm sm:text-lg">Nueva Lista de Precios</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Nueva Lista de Precios</DialogTitle>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-4">
             {/* Información básica */}
-            <div className="grid grid-cols-2 gap-1.5 sm:gap-3">
-              <div className="space-y-0.5 sm:space-y-1">
-                <Label htmlFor="numero" className="text-[10px] sm:text-xs">Número *</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3">
+              <div className="space-y-1.5 sm:space-y-1">
+                <Label htmlFor="numero" className="text-sm sm:text-xs">Número *</Label>
                 <Input
                   id="numero"
                   value={formData.numero}
                   onChange={(e) => setFormData((prev) => ({ ...prev, numero: e.target.value }))}
                   required
-                  className="h-7 sm:h-10 text-xs sm:text-sm px-2"
+                  className="h-11 sm:h-10 text-base sm:text-sm px-3"
                 />
               </div>
-              <div className="space-y-0.5 sm:space-y-1">
-                <Label htmlFor="observaciones" className="text-[10px] sm:text-xs">Observ.</Label>
+              <div className="space-y-1.5 sm:space-y-1">
+                <Label htmlFor="observaciones" className="text-sm sm:text-xs">Observaciones</Label>
                 <Input
                   id="observaciones"
                   value={formData.observaciones}
                   onChange={(e) => setFormData((prev) => ({ ...prev, observaciones: e.target.value }))}
-                  className="h-7 sm:h-10 text-xs sm:text-sm px-2"
+                  className="h-11 sm:h-10 text-base sm:text-sm px-3"
                 />
               </div>
             </div>
 
             {/* Sección de productos */}
-            <div className="border rounded p-1.5 sm:p-4 space-y-1.5 sm:space-y-3">
-              <div className="flex justify-between items-center gap-1">
-                <h3 className="font-semibold text-[10px] sm:text-base">Productos</h3>
+            <div className="border rounded p-3 sm:p-4 space-y-3 sm:space-y-3">
+              <div className="flex justify-between items-center gap-2">
+                <h3 className="font-semibold text-base sm:text-base">Productos</h3>
                 <Button
                   type="button"
                   size="sm"
                   variant={showAddItem ? "secondary" : "default"}
                   onClick={() => { setShowAddItem(!showAddItem); resetItemForm(); }}
-                  className="h-6 px-1.5 text-[10px]"
+                  className="h-9 sm:h-8 px-3 sm:px-2 text-sm sm:text-xs"
                 >
-                  {showAddItem ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                  <span className="hidden sm:inline sm:ml-1">{showAddItem ? "Cancelar" : "Agregar"}</span>
+                  {showAddItem ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  <span className="ml-1 sm:ml-1">{showAddItem ? "Cancelar" : "Agregar"}</span>
                 </Button>
               </div>
 
@@ -709,12 +724,12 @@ export default function OfertasGeneralesPage(): React.ReactElement {
               )}
             </div>
 
-            <div className="flex justify-end gap-1.5 sm:gap-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="h-7 sm:h-9 text-[10px] sm:text-sm px-2 sm:px-4">
+            <div className="flex justify-end gap-2 sm:gap-2">
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="h-11 sm:h-9 text-base sm:text-sm px-4 sm:px-4">
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving || itemsTemp.length === 0} className="h-7 sm:h-9 text-[10px] sm:text-sm px-2 sm:px-4">
-                {saving ? "..." : "Crear"}
+              <Button type="submit" disabled={saving || itemsTemp.length === 0} className="h-11 sm:h-9 text-base sm:text-sm px-4 sm:px-4">
+                {saving ? "Guardando..." : "Crear"}
               </Button>
             </div>
           </form>
