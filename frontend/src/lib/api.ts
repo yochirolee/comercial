@@ -492,6 +492,11 @@ export interface OfertaCliente {
   total: number;
   subtotal?: number;
   descuento?: number;
+  // Campos extra
+  campoExtra1?: string;
+  campoExtra2?: string;
+  campoExtra3?: string;
+  campoExtra4?: string;
   items: ItemOfertaCliente[];
 }
 
@@ -508,6 +513,10 @@ export interface OfertaClienteInput {
   moneda?: string;
   terminosPago?: string;
   incluyeFirmaCliente?: boolean;
+  campoExtra1?: string;
+  campoExtra2?: string;
+  campoExtra3?: string;
+  campoExtra4?: string;
 }
 
 export interface OfertaClienteInputWithItems extends OfertaClienteInput {
