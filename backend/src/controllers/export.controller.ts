@@ -543,6 +543,24 @@ async function renderPdfFirma(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, mar
 }
 
 // ==========================================
+// PDF - FIRMA PARA OFERTAS GENERALES (solo texto, sin imágenes ni línea)
+// ==========================================
+function renderPdfFirmaOfertaGeneral(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: number): void {
+  // Más espacio antes de la firma
+  doc.moveDown(3);
+  
+  const firmaStartY = doc.y;
+  const firmaWidth = 180;
+  
+  // Texto firma empresa (alineado a la izquierda)
+  doc.font('Helvetica-Bold').fontSize(9);
+  doc.text(empresa.representante, margin, firmaStartY, { width: firmaWidth, align: 'left' });
+  doc.font('Helvetica').fontSize(9);
+  doc.text(empresa.cargoRepresentante, margin, firmaStartY + 13, { width: firmaWidth, align: 'left' });
+  doc.text(empresa.nombre, margin, firmaStartY + 26, { width: firmaWidth, align: 'left' });
+}
+
+// ==========================================
 // EXCEL - HEADER COMÚN
 // ==========================================
 async function renderExcelHeader(
@@ -848,6 +866,33 @@ async function renderExcelFirma(
 }
 
 // ==========================================
+// EXCEL - FIRMA PARA OFERTAS GENERALES (solo texto, sin imágenes ni línea)
+// ==========================================
+function renderExcelFirmaOfertaGeneral(
+  worksheet: ExcelJS.Worksheet, 
+  empresa: EmpresaInfo, 
+  startRow: number
+): number {
+  let row = startRow + 2;
+
+  // Texto firma empresa (alineado a la izquierda, sin línea, sin imágenes)
+  worksheet.getCell(`A${row}`).value = empresa.representante;
+  worksheet.getCell(`A${row}`).font = { bold: true };
+  worksheet.getCell(`A${row}`).alignment = { horizontal: 'left' };
+  row++;
+
+  worksheet.getCell(`A${row}`).value = empresa.cargoRepresentante;
+  worksheet.getCell(`A${row}`).alignment = { horizontal: 'left' };
+  row++;
+
+  worksheet.getCell(`A${row}`).value = empresa.nombre;
+  worksheet.getCell(`A${row}`).alignment = { horizontal: 'left' };
+  row++;
+
+  return row;
+}
+
+// ==========================================
 // TIPO 1: OFERTA GENERAL (Price List)
 // NO muestra: Oferta No, Fecha, Consignado A, Dirección, NIT, Puerto, Origen, Moneda
 // SÍ muestra: Header, Tabla, "TOTAL CIF:", Términos, Firma
@@ -896,8 +941,8 @@ export const ExportController = {
     // TÉRMINOS
     renderPdfTerminos(doc, margin);
 
-    // FIRMA
-    await renderPdfFirma(doc, empresa, margin);
+    // FIRMA (solo texto, sin imágenes ni línea)
+    renderPdfFirmaOfertaGeneral(doc, empresa, margin);
 
     doc.end();
   },
@@ -946,8 +991,8 @@ export const ExportController = {
     // TÉRMINOS
     row = renderExcelTerminos(worksheet, row, lastCol);
 
-    // FIRMA
-    await renderExcelFirma(worksheet, workbook, empresa, row);
+    // FIRMA (solo texto, sin imágenes ni línea)
+    row = renderExcelFirmaOfertaGeneral(worksheet, empresa, row);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=oferta-general-${oferta.numero || 'sin-numero'}.xlsx`);
