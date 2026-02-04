@@ -1,20 +1,44 @@
 # Notas de Despliegue a Producción
 
-## ⚠️ IMPORTANTE: Migración de Base de Datos Requerida
+## ⚠️ IMPORTANTE: Migraciones de Base de Datos Requeridas
 
-**Este despliegue REQUIERE ejecutar una migración SQL en PostgreSQL antes de desplegar el código.**
+**Este despliegue REQUIERE ejecutar migraciones SQL en PostgreSQL antes de desplegar el código.**
 
-### Migración SQL Requerida
+### Migraciones SQL Requeridas
 
-Ejecutar el siguiente script SQL en la base de datos PostgreSQL de producción:
-
+**1. Ejecutar el script para `codigoArancelario` en Producto:**
 ```sql
 -- Agregar columna codigoArancelario a la tabla Producto
 ALTER TABLE "Producto" 
 ADD COLUMN IF NOT EXISTS "codigoArancelario" TEXT;
 ```
+Archivo: `backend/prisma/migrate_codigo_arancelario_prod.sql`
 
-El archivo está en: `backend/prisma/migrate_codigo_arancelario_prod.sql`
+**2. Ejecutar el script para campos faltantes en Factura e ItemFactura:**
+```sql
+-- Campos en Factura
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "flete" DOUBLE PRECISION DEFAULT 0;
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "seguro" DOUBLE PRECISION DEFAULT 0;
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "tieneSeguro" BOOLEAN DEFAULT false;
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "codigoMincex" TEXT;
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "puertoEmbarque" TEXT DEFAULT 'NEW ORLEANS, LA';
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "origen" TEXT DEFAULT 'ESTADOS UNIDOS';
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "moneda" TEXT DEFAULT 'USD';
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "terminosPago" TEXT DEFAULT 'PAGO 100% ANTES DEL EMBARQUE';
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "incluyeFirmaCliente" BOOLEAN DEFAULT false;
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "firmaClienteNombre" TEXT;
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "firmaClienteCargo" TEXT;
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "firmaClienteEmpresa" TEXT;
+
+-- Campos en ItemFactura
+ALTER TABLE "ItemFactura" ADD COLUMN IF NOT EXISTS "cantidadSacos" DOUBLE PRECISION;
+ALTER TABLE "ItemFactura" ADD COLUMN IF NOT EXISTS "pesoXSaco" DOUBLE PRECISION;
+ALTER TABLE "ItemFactura" ADD COLUMN IF NOT EXISTS "precioXSaco" DOUBLE PRECISION;
+ALTER TABLE "ItemFactura" ADD COLUMN IF NOT EXISTS "pesoXCaja" DOUBLE PRECISION;
+ALTER TABLE "ItemFactura" ADD COLUMN IF NOT EXISTS "precioXCaja" DOUBLE PRECISION;
+ALTER TABLE "ItemFactura" ADD COLUMN IF NOT EXISTS "codigoArancelario" TEXT;
+```
+Archivo: `backend/prisma/migrate_factura_campos_prod.sql`
 
 ## Resumen de Cambios
 
