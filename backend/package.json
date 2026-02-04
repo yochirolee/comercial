@@ -4,7 +4,7 @@
   "description": "Sistema de gestión de ofertas y facturas",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "npm run setup && tsx watch src/index.ts",
+    "dev": "npm run setup && prisma generate && tsx watch src/index.ts",
     "build": "npm run setup && prisma generate && tsc",
     "start": "node dist/index.js",
     "setup": "node scripts/setup-schema.js",
