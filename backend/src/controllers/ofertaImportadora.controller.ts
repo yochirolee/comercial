@@ -467,10 +467,9 @@ export const OfertaImportadoraController = {
     if ((!codigoArancelario || codigoArancelario === '') && validation.data.productoId) {
       const producto = await prisma.producto.findUnique({
         where: { id: validation.data.productoId },
-        select: { codigoArancelario: true },
       });
-      if (producto?.codigoArancelario) {
-        codigoArancelario = producto.codigoArancelario;
+      if (producto && 'codigoArancelario' in producto && producto.codigoArancelario) {
+        codigoArancelario = producto.codigoArancelario as string;
       }
     }
 

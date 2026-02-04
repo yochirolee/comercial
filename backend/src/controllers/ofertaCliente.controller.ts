@@ -188,10 +188,9 @@ export const OfertaClienteController = {
         if ((!codigoArancelario || codigoArancelario === '') && item.productoId) {
           const producto = await prisma.producto.findUnique({
             where: { id: item.productoId },
-            select: { codigoArancelario: true },
           });
-          if (producto?.codigoArancelario) {
-            codigoArancelario = producto.codigoArancelario;
+          if (producto && 'codigoArancelario' in producto && producto.codigoArancelario) {
+            codigoArancelario = producto.codigoArancelario as string;
           }
         }
         
@@ -315,10 +314,9 @@ export const OfertaClienteController = {
     if ((!codigoArancelario || codigoArancelario === '') && validation.data.productoId) {
       const producto = await prisma.producto.findUnique({
         where: { id: validation.data.productoId },
-        select: { codigoArancelario: true },
       });
-      if (producto?.codigoArancelario) {
-        codigoArancelario = producto.codigoArancelario;
+      if (producto && 'codigoArancelario' in producto && producto.codigoArancelario) {
+        codigoArancelario = producto.codigoArancelario as string;
       }
     }
 
