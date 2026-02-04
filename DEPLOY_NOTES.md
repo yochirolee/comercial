@@ -95,17 +95,28 @@ Se agregó el campo opcional `codigoArancelario` al modelo Producto y se impleme
 
 2. **Luego, en producción (Render), configurar el Build Command:**
    
+   **El Build Command ahora es más simple gracias a la detección automática de entorno:**
+   
    **Si el Root Directory en Render está configurado como `backend/`, usar:**
    ```bash
-   npm install && cp prisma/schema.prod.prisma prisma/schema.prisma && npx prisma generate && npm run build
+   npm install && npm run build
    ```
    
    **Si el Root Directory es la raíz del proyecto, usar:**
    ```bash
-   npm install && cd backend && cp prisma/schema.prod.prisma prisma/schema.prisma && npx prisma generate && npm run build
+   npm install && cd backend && npm run build
    ```
    
-   **IMPORTANTE:** La diferencia clave con el comando anterior es agregar `cp prisma/schema.prod.prisma prisma/schema.prisma &&` antes de `npx prisma generate` para asegurar que se use el schema correcto de PostgreSQL.
+   **Cómo funciona:**
+   - El script `setup-schema.js` detecta automáticamente que es producción (por `NODE_ENV=production` o `DATABASE_URL` con "postgres")
+   - Copia automáticamente `schema.prod.prisma` a `schema.prisma`
+   - Genera el Prisma Client con el schema correcto
+   - Compila TypeScript
+   
+   **Nota:** Si necesitas forzar el uso del schema de producción, puedes usar:
+   ```bash
+   NODE_ENV=production npm run build
+   ```
    
    Este proceso automáticamente:
    - Copia `schema.prod.prisma` a `schema.prisma`

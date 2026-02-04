@@ -1,134 +1,167 @@
-# ZAS Backend - Sistema de Gestión de Ofertas y Facturas
+# ZAS Backend
 
-Backend desarrollado con Express.js y TypeScript para el sistema de gestión de ofertas y facturas.
+Sistema de gestión de ofertas y facturas - Backend API
 
-## Requisitos
+## 🚀 Inicio Rápido
 
-- Node.js 18+
+### Requisitos Previos
+
+- Node.js 18+ 
 - npm o yarn
+- Para desarrollo local: SQLite (incluido)
+- Para producción: PostgreSQL
 
-## Instalación
+### Instalación
 
 ```bash
 # Instalar dependencias
 npm install
 
-# Crear archivo .env (copiar de .env.example)
-cp .env.example .env
+# Configurar base de datos local (SQLite)
+npm run local:setup
 
-# Generar cliente de Prisma
-npm run db:generate
-
-# Crear base de datos y tablas
-npm run db:push
-
-# (Opcional) Cargar datos de prueba
-npm run db:seed
+# (Opcional) Poblar con datos de ejemplo
+npm run local:seed
 ```
 
-## Ejecutar
+## 📋 Scripts Disponibles
+
+### Desarrollo Local
 
 ```bash
-# Modo desarrollo
+# Iniciar servidor en modo desarrollo (con hot-reload)
 npm run dev
 
-# Modo producción
+# O usar el comando completo
+npm run local:dev
+
+# Resetear base de datos local y poblar con datos de ejemplo
+npm run local:reset
+
+# Abrir Prisma Studio (interfaz visual para la BD)
+npm run db:studio
+```
+
+### Producción
+
+```bash
+# Compilar para producción
 npm run build
+
+# Iniciar servidor en producción
 npm start
 ```
 
-## API Endpoints
+### Utilidades
 
-### Empresa
-- `GET /api/empresa` - Obtener info de la empresa
-- `POST /api/empresa` - Crear/actualizar empresa
+```bash
+# Configurar schema según entorno (automático)
+npm run setup
 
-### Clientes
-- `GET /api/clientes` - Listar clientes
-- `GET /api/clientes/:id` - Obtener cliente
-- `POST /api/clientes` - Crear cliente
-- `PUT /api/clientes/:id` - Actualizar cliente
-- `DELETE /api/clientes/:id` - Eliminar cliente
+# Regenerar Prisma Client
+npm run db:generate
 
-### Productos
-- `GET /api/productos` - Listar productos
-- `GET /api/productos/:id` - Obtener producto
-- `POST /api/productos` - Crear producto
-- `PUT /api/productos/:id` - Actualizar producto
-- `DELETE /api/productos/:id` - Desactivar producto
+# Aplicar cambios de schema a la BD (solo local)
+npm run db:push
+```
 
-### Unidades de Medida
-- `GET /api/unidades-medida` - Listar unidades
-- `POST /api/unidades-medida` - Crear unidad
-- `PUT /api/unidades-medida/:id` - Actualizar unidad
-- `DELETE /api/unidades-medida/:id` - Eliminar unidad
+## 🔧 Configuración de Entornos
 
-### Ofertas Generales (Lista de precios sin cliente)
-- `GET /api/ofertas-generales` - Listar ofertas
-- `POST /api/ofertas-generales` - Crear oferta
-- `PUT /api/ofertas-generales/:id` - Actualizar oferta
-- `POST /api/ofertas-generales/:id/items` - Agregar producto
-- `DELETE /api/ofertas-generales/:id/items/:itemId` - Quitar producto
+El sistema detecta automáticamente el entorno:
 
-### Ofertas a Cliente
-- `GET /api/ofertas-cliente` - Listar ofertas
-- `POST /api/ofertas-cliente` - Crear oferta
-- `PUT /api/ofertas-cliente/:id` - Actualizar oferta
-- `POST /api/ofertas-cliente/:id/items` - Agregar producto
+- **Local**: Usa `schema.local.prisma` (SQLite)
+- **Producción**: Usa `schema.prod.prisma` (PostgreSQL)
 
-### Ofertas a Importadora (CIF)
-- `GET /api/ofertas-importadora` - Listar ofertas
-- `POST /api/ofertas-importadora` - Crear oferta
-- `PUT /api/ofertas-importadora/:id` - Actualizar (incluye flete, seguro)
-- `POST /api/ofertas-importadora/:id/items` - Agregar producto
+La detección se basa en:
+- `NODE_ENV=production`
+- `DATABASE_URL` contiene "postgres"
+- `RENDER=true` (para Render.com)
 
-### Ofertas a Comercializadora (Precio pactado con desglose)
-- `GET /api/ofertas-comercializadora` - Listar ofertas
-- `POST /api/ofertas-comercializadora` - Crear oferta
-- `PUT /api/ofertas-comercializadora/:id` - Actualizar
-- `POST /api/ofertas-comercializadora/:id/ajustar-precios` - Ajustar precios según flete/seguro
+### Variables de Entorno
 
-### Facturas
-- `GET /api/facturas` - Listar facturas
-- `POST /api/facturas` - Crear factura
-- `POST /api/facturas/desde-oferta` - Crear desde oferta existente
-- `PUT /api/facturas/:id/estado` - Cambiar estado
+Crea un archivo `.env` en la raíz del proyecto:
 
-### Exportación
-- `GET /api/export/ofertas-generales/:id/pdf` - Exportar PDF
-- `GET /api/export/ofertas-generales/:id/excel` - Exportar Excel
-- `GET /api/export/ofertas-cliente/:id/pdf`
-- `GET /api/export/ofertas-cliente/:id/excel`
-- `GET /api/export/ofertas-importadora/:id/pdf`
-- `GET /api/export/ofertas-importadora/:id/excel`
-- `GET /api/export/ofertas-comercializadora/:id/pdf`
-- `GET /api/export/ofertas-comercializadora/:id/excel`
-- `GET /api/export/facturas/:id/pdf`
-- `GET /api/export/facturas/:id/excel`
+```env
+# Base de datos
+DATABASE_URL="file:./prisma/dev.db"  # Local (SQLite)
+# DATABASE_URL="postgresql://..."     # Producción (PostgreSQL)
 
-## Estructura de Base de Datos
+# JWT
+JWT_SECRET="tu-secret-key-aqui"
 
-### Tablas principales:
-- **Empresa**: Información de tu empresa
-- **Cliente**: Clientes con nombre, apellidos, NIT, TC Cuba, etc.
-- **UnidadMedida**: libras, kilos, unidades, etc.
-- **Producto**: Productos con precio base y unidad de medida
-- **OfertaGeneral**: Lista de precios sin cliente específico
-- **OfertaCliente**: Oferta con precios específicos para un cliente
-- **OfertaImportadora**: Incluye flete, seguro y precio CIF
-- **OfertaComercializadora**: Precio pactado con desglose de flete/seguro
-- **Factura**: Facturas generadas desde ofertas
+# Email (Resend)
+RESEND_API_KEY="tu-api-key"
+FROM_EMAIL="noreply@tudominio.com"
 
-Cada tabla incluye 4 campos extra (`campoExtra1-4`) para uso futuro.
+# Cloudinary (opcional)
+CLOUDINARY_CLOUD_NAME="tu-cloud-name"
+CLOUDINARY_API_KEY="tu-api-key"
+CLOUDINARY_API_SECRET="tu-api-secret"
+```
 
-## Lógica de Negocio
+## 📁 Estructura del Proyecto
 
-### Oferta a Comercializadora
-Cuando se pacta un precio final con el cliente, la oferta a comercializadora permite:
-1. Establecer el `precioPactadoTotal`
-2. Definir `fleteDesglosado` y `seguroDesglosado`
-3. El sistema ajusta automáticamente los precios de productos (`precioUnitarioAjustado`)
-4. El total final es igual al precio pactado, pero desglosado para la comercializadora
+```
+backend/
+├── src/
+│   ├── controllers/    # Controladores de las rutas
+│   ├── routes/          # Definición de rutas
+│   ├── middleware/       # Middlewares (auth, etc.)
+│   ├── services/        # Servicios (email, cloudinary)
+│   └── lib/             # Utilidades (prisma client)
+├── prisma/
+│   ├── schema.prisma           # Schema activo (generado automáticamente)
+│   ├── schema.local.prisma     # Schema para desarrollo (SQLite)
+│   ├── schema.prod.prisma      # Schema para producción (PostgreSQL)
+│   └── migrate_*.sql           # Scripts de migración SQL
+├── scripts/
+│   └── setup-schema.js         # Script de configuración automática
+└── dist/                        # Código compilado (generado)
+```
 
-Esto permite que a vista del facturador, el cliente pague menos por producto y pague flete/seguro por separado, pero el total sea el mismo precio acordado.
+## 🗄️ Base de Datos
 
+### Desarrollo Local (SQLite)
+
+El schema se configura automáticamente al ejecutar cualquier comando. Los cambios se aplican con:
+
+```bash
+npm run db:push
+```
+
+### Producción (PostgreSQL)
+
+**IMPORTANTE**: Antes de desplegar, ejecuta los scripts SQL de migración:
+
+1. Verifica que todos los campos existan en la BD
+2. Ejecuta los scripts en `prisma/migrate_*.sql`
+3. El build en Render ejecutará `npm run build` que automáticamente:
+   - Detecta el entorno de producción
+   - Copia `schema.prod.prisma` a `schema.prisma`
+   - Genera el Prisma Client
+   - Compila TypeScript
+
+## 🔐 Autenticación
+
+El sistema usa JWT para autenticación. Los tokens se generan en el login y deben incluirse en las peticiones:
+
+```
+Authorization: Bearer <token>
+```
+
+## 📝 Notas de Despliegue
+
+Para instrucciones detalladas de despliegue, ver [DEPLOY_NOTES.md](../DEPLOY_NOTES.md)
+
+## 🐛 Troubleshooting
+
+### Error: "Schema not found"
+Ejecuta `npm run setup` para configurar el schema correcto.
+
+### Error: "Prisma Client not generated"
+Ejecuta `npm run db:generate` para regenerar el cliente.
+
+### Error en producción: "Unknown field"
+Asegúrate de:
+1. Ejecutar los scripts SQL de migración
+2. Que el Build Command en Render use `npm run build` (detecta automáticamente)
