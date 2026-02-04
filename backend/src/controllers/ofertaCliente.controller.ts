@@ -177,29 +177,45 @@ export const OfertaClienteController = {
 
     // Calcular total si hay items
     let total = 0;
-    const itemsToCreate = items?.map(item => {
-      const cantidadParaCalculo = item.pesoNeto || item.cantidad;
-      const subtotal = cantidadParaCalculo * item.precioUnitario;
-      total += subtotal;
-      return {
-        productoId: item.productoId,
-        cantidad: item.cantidad,
-        precioUnitario: item.precioUnitario,
-        subtotal,
-        cantidadCajas: item.cantidadCajas,
-        cantidadSacos: item.cantidadSacos,
-        pesoNeto: item.pesoNeto,
-        pesoBruto: item.pesoBruto,
-        pesoXSaco: item.pesoXSaco,
-        precioXSaco: item.precioXSaco,
-        pesoXCaja: item.pesoXCaja,
-        precioXCaja: item.precioXCaja,
-        campoExtra1: item.campoExtra1,
-        campoExtra2: item.campoExtra2,
-        campoExtra3: item.campoExtra3,
-        campoExtra4: item.campoExtra4,
-      };
-    });
+    const itemsToCreate = await Promise.all(
+      items?.map(async (item) => {
+        const cantidadParaCalculo = item.pesoNeto || item.cantidad;
+        const subtotal = cantidadParaCalculo * item.precioUnitario;
+        total += subtotal;
+        
+        // Obtener codigoArancelario del producto si no se proporciona o está vacío
+        let codigoArancelario = item.codigoArancelario?.trim() || null;
+        if ((!codigoArancelario || codigoArancelario === '') && item.productoId) {
+          const producto = await prisma.producto.findUnique({
+            where: { id: item.productoId },
+            select: { codigoArancelario: true },
+          });
+          if (producto?.codigoArancelario) {
+            codigoArancelario = producto.codigoArancelario;
+          }
+        }
+        
+        return {
+          productoId: item.productoId,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario,
+          subtotal,
+          cantidadCajas: item.cantidadCajas,
+          cantidadSacos: item.cantidadSacos,
+          pesoNeto: item.pesoNeto,
+          pesoBruto: item.pesoBruto,
+          pesoXSaco: item.pesoXSaco,
+          precioXSaco: item.precioXSaco,
+          pesoXCaja: item.pesoXCaja,
+          precioXCaja: item.precioXCaja,
+          codigoArancelario: codigoArancelario ?? null,
+          campoExtra1: item.campoExtra1,
+          campoExtra2: item.campoExtra2,
+          campoExtra3: item.campoExtra3,
+          campoExtra4: item.campoExtra4,
+        };
+      }) || []
+    );
 
     const oferta = await prisma.ofertaCliente.create({
       data: {
@@ -294,6 +310,18 @@ export const OfertaClienteController = {
       return;
     }
 
+    // Obtener producto para copiar codigoArancelario si no se proporciona o está vacío
+    let codigoArancelario = validation.data.codigoArancelario?.trim() || null;
+    if ((!codigoArancelario || codigoArancelario === '') && validation.data.productoId) {
+      const producto = await prisma.producto.findUnique({
+        where: { id: validation.data.productoId },
+        select: { codigoArancelario: true },
+      });
+      if (producto?.codigoArancelario) {
+        codigoArancelario = producto.codigoArancelario;
+      }
+    }
+
     // Calcular subtotal: usar pesoNeto si existe, sino cantidad
     const cantidadParaCalculo = validation.data.pesoNeto || validation.data.cantidad;
     const subtotal = cantidadParaCalculo * validation.data.precioUnitario;
@@ -302,6 +330,7 @@ export const OfertaClienteController = {
       data: {
         ofertaClienteId: id,
         ...validation.data,
+        codigoArancelario: codigoArancelario ?? null,
         subtotal,
       },
       include: {

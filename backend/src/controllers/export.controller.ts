@@ -255,13 +255,13 @@ function buildDynamicColumns(items: any[], unidadMedida?: string): DynamicColumn
   if (optionalFields.precioXCaja) numOptionalCols++;
   if (optionalFields.codigoArancelario) numOptionalCols++;
   
-  // Columnas base: ITEM, DESCRIPCION (ajustar ancho según columnas opcionales)
-  const headers: string[] = ['ITEM', 'DESCRIPCION'];
+  // Columnas base: ITEM, DESCRIPCION, UM (ajustar ancho según columnas opcionales)
+  const headers: string[] = ['ITEM', 'DESCRIPCION', 'UM'];
   // Si hay muchas columnas, reducir descripción; si hay pocas, ampliarla
-  const descWidthPdf = numOptionalCols >= 4 ? 100 : numOptionalCols >= 2 ? 140 : 180;
-  const descWidthExcel = numOptionalCols >= 4 ? 25 : numOptionalCols >= 2 ? 32 : 40;
-  const widthsPdf: number[] = [30, descWidthPdf];
-  const widthsExcel: number[] = [6, descWidthExcel];
+  const descWidthPdf = numOptionalCols >= 4 ? 100 : numOptionalCols >= 2 ? 130 : 170;
+  const descWidthExcel = numOptionalCols >= 4 ? 25 : numOptionalCols >= 2 ? 30 : 38;
+  const widthsPdf: number[] = [30, descWidthPdf, 25];
+  const widthsExcel: number[] = [6, descWidthExcel, 6];
 
   // Agregar campos opcionales en orden lógico
   if (optionalFields.cantidadSacos) {
@@ -406,6 +406,11 @@ function renderPdfTable(
     
     // DESCRIPCION
     doc.text(item.producto.nombre, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6 });
+    xPos += widthsPdf[colIndex++];
+    
+    // UM
+    const um = item.producto?.unidadMedida?.abreviatura || '-';
+    doc.text(um, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
     xPos += widthsPdf[colIndex++];
     
     // Campos opcionales
@@ -657,7 +662,8 @@ function renderExcelTable(
     totalImporte += importe;
 
     // Construir valores dinámicamente
-    const values: (string | number)[] = [itemNum, item.producto.nombre];
+    const um = item.producto?.unidadMedida?.abreviatura || '-';
+    const values: (string | number)[] = [itemNum, item.producto.nombre, um];
     
     if (optionalFields.cantidadSacos) values.push(item.cantidadSacos ?? '-');
     if (optionalFields.pesoXSaco) values.push(item.pesoXSaco ?? '-');
@@ -683,6 +689,9 @@ function renderExcelTable(
     // Altura: 18 base + 12 por cada línea adicional
     dataRow.height = numLines > 1 ? 16 + (numLines * 12) : 18;
     
+    // UM - centrado
+    dataRow.getCell(3).alignment = { horizontal: 'center' };
+    
     // Índices de las últimas 3 columnas (cantidad, precio, importe)
     const numCols = values.length;
     dataRow.getCell(numCols - 2).alignment = { horizontal: 'right' };
@@ -693,7 +702,7 @@ function renderExcelTable(
     dataRow.getCell(numCols).numFmt = '"$"#,##0.00';
     
     // Formatear campos opcionales de precio con $
-    let colIdx = 3;
+    let colIdx = 4; // Después de ITEM (1), DESCRIPCION (2), UM (3)
     if (optionalFields.cantidadSacos) {
       dataRow.getCell(colIdx).alignment = { horizontal: 'center' };
       colIdx++;

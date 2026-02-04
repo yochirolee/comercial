@@ -403,6 +403,7 @@ export interface Producto {
   precioBase: number;
   unidadMedidaId: string;
   unidadMedida: UnidadMedida;
+  codigoArancelario?: string;
   activo: boolean;
   campoExtra1?: string;
   campoExtra2?: string;
@@ -416,6 +417,7 @@ export interface ProductoInput {
   descripcion?: string;
   precioBase: number;
   unidadMedidaId: string;
+  codigoArancelario?: string;
 }
 
 export interface OfertaGeneral {

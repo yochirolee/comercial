@@ -462,6 +462,18 @@ export const OfertaImportadoraController = {
       return;
     }
 
+    // Obtener producto para copiar codigoArancelario si no se proporciona o está vacío
+    let codigoArancelario = validation.data.codigoArancelario?.trim() || null;
+    if ((!codigoArancelario || codigoArancelario === '') && validation.data.productoId) {
+      const producto = await prisma.producto.findUnique({
+        where: { id: validation.data.productoId },
+        select: { codigoArancelario: true },
+      });
+      if (producto?.codigoArancelario) {
+        codigoArancelario = producto.codigoArancelario;
+      }
+    }
+
     const cantidadParaCalculo = validation.data.pesoNeto || validation.data.cantidad;
     const subtotal = cantidadParaCalculo * validation.data.precioUnitario;
 
@@ -481,6 +493,7 @@ export const OfertaImportadoraController = {
         precioXSaco: validation.data.precioXSaco,
         pesoXCaja: validation.data.pesoXCaja,
         precioXCaja: validation.data.precioXCaja,
+        codigoArancelario: codigoArancelario ?? null,
         campoExtra1: validation.data.campoExtra1,
         campoExtra2: validation.data.campoExtra2,
         campoExtra3: validation.data.campoExtra3,

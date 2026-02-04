@@ -174,6 +174,7 @@ export default function OfertasClientePage(): React.ReactElement {
       cantidadCajas: itemOfertaGeneral?.cantidadCajas?.toString() || "",
       pesoXCaja: itemOfertaGeneral?.pesoXCaja?.toString() || "",
       precioXCaja: itemOfertaGeneral?.precioXCaja?.toString() || "",
+      codigoArancelario: prod?.codigoArancelario || "",
     }));
   }
 
@@ -189,7 +190,7 @@ export default function OfertasClientePage(): React.ReactElement {
       precioXSaco: itemFormStrings.precioXSaco ? parseFloat(itemFormStrings.precioXSaco) : undefined,
       pesoXCaja: itemFormStrings.pesoXCaja ? parseFloat(itemFormStrings.pesoXCaja) : undefined,
       precioXCaja: itemFormStrings.precioXCaja ? parseFloat(itemFormStrings.precioXCaja) : undefined,
-      codigoArancelario: itemFormStrings.codigoArancelario || undefined,
+      codigoArancelario: itemFormStrings.codigoArancelario?.trim() || undefined,
     };
   }
 

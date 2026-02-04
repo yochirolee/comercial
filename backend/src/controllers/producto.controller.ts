@@ -8,6 +8,7 @@ const productoSchema = z.object({
   descripcion: z.string().optional(),
   precioBase: z.number().positive('El precio debe ser positivo'),
   unidadMedidaId: z.string().min(1, 'Unidad de medida es requerida'),
+  codigoArancelario: z.string().optional(),
   activo: z.boolean().optional(),
   campoExtra1: z.string().optional(),
   campoExtra2: z.string().optional(),

@@ -1,16 +1,39 @@
 # Notas de Despliegue a Producción
 
+## ⚠️ IMPORTANTE: Migración de Base de Datos Requerida
+
+**Este despliegue REQUIERE ejecutar una migración SQL en PostgreSQL antes de desplegar el código.**
+
+### Migración SQL Requerida
+
+Ejecutar el siguiente script SQL en la base de datos PostgreSQL de producción:
+
+```sql
+-- Agregar columna codigoArancelario a la tabla Producto
+ALTER TABLE "Producto" 
+ADD COLUMN IF NOT EXISTS "codigoArancelario" TEXT;
+```
+
+El archivo está en: `backend/prisma/migrate_codigo_arancelario_prod.sql`
+
 ## Resumen de Cambios
 
-Los cambios realizados son **SOLO en la lógica de la aplicación** (código TypeScript/JavaScript). **NO se requieren cambios en la base de datos**.
+Se agregó el campo opcional `codigoArancelario` al modelo Producto y se implementó la funcionalidad para copiar automáticamente este código desde el producto a las ofertas.
 
 ### Cambios Realizados
 
-1. **Backend - Controladores:**
-   - `backend/src/controllers/ofertaGeneral.controller.ts`: Mejorado el manejo de campos opcionales para aceptar `null` y limpiar valores vacíos
-   - `backend/src/controllers/ofertaCliente.controller.ts`: Mismo cambio para ofertas a cliente
-   - `backend/src/controllers/producto.controller.ts`: Ordenamiento de productos por código descendente
-   - `backend/src/controllers/export.controller.ts`: Cambios en generación de PDF/Excel para ofertas a cliente
+1. **Base de Datos:**
+   - Agregado campo `codigoArancelario` (TEXT, nullable) a la tabla `Producto`
+
+2. **Backend - Schema:**
+   - `backend/prisma/schema.prisma`: Agregado campo `codigoArancelario` al modelo Producto
+   - `backend/prisma/schema.prod.prisma`: Agregado campo `codigoArancelario` al modelo Producto
+
+3. **Backend - Controladores:**
+   - `backend/src/controllers/producto.controller.ts`: Agregado soporte para `codigoArancelario` en create/update
+   - `backend/src/controllers/ofertaCliente.controller.ts`: Copia automática de `codigoArancelario` del producto al agregar items
+   - `backend/src/controllers/ofertaImportadora.controller.ts`: Copia automática de `codigoArancelario` del producto al agregar items
+   - `backend/src/controllers/export.controller.ts`: Agregada columna UM en PDFs y Excels
 
 2. **Frontend:**
    - `frontend/src/app/ofertas/generales/page.tsx`: Mejorado el envío de campos opcionales (envía `null` cuando están vacíos)
@@ -35,7 +58,18 @@ Los cambios realizados son **SOLO en la lógica de la aplicación** (código Typ
 
 **IMPORTANTE: Producción usa PostgreSQL (no SQLite)**
 
-1. **En producción, ejecutar:**
+1. **PRIMERO: Ejecutar migración SQL en PostgreSQL:**
+   ```sql
+   ALTER TABLE "Producto" 
+   ADD COLUMN IF NOT EXISTS "codigoArancelario" TEXT;
+   ```
+   
+   O ejecutar el archivo:
+   ```bash
+   psql -d tu_base_de_datos -f backend/prisma/migrate_codigo_arancelario_prod.sql
+   ```
+
+2. **Luego, en producción, ejecutar:**
    ```bash
    # Copiar el schema de producción (PostgreSQL)
    cp prisma/schema.prod.prisma prisma/schema.prisma

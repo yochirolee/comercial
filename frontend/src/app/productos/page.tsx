@@ -39,6 +39,7 @@ const emptyProducto: ProductoInput = {
   descripcion: "",
   precioBase: 0,
   unidadMedidaId: "",
+  codigoArancelario: "",
 };
 
 export default function ProductosPage() {
@@ -108,6 +109,7 @@ export default function ProductosPage() {
       descripcion: producto.descripcion || "",
       precioBase: producto.precioBase,
       unidadMedidaId: producto.unidadMedidaId,
+      codigoArancelario: producto.codigoArancelario || "",
     });
     setPrecioString(producto.precioBase.toString());
     setDialogOpen(true);
@@ -247,6 +249,16 @@ export default function ProductosPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="codigoArancelario">Código Arancelario</Label>
+                    <Input
+                      id="codigoArancelario"
+                      name="codigoArancelario"
+                      value={formData.codigoArancelario || ""}
+                      onChange={handleChange}
+                      placeholder="Opcional"
+                    />
                   </div>
                 </div>
                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
