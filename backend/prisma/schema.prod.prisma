@@ -290,12 +290,33 @@ model Factura {
   cliente          Cliente  @relation(fields: [clienteId], references: [id])
   observaciones    String?
   estado           String   @default("pendiente")
+  
+  // Campos de costos
   subtotal         Float    @default(0)
+  flete            Float    @default(0)
+  seguro           Float    @default(0)
+  tieneSeguro      Boolean  @default(false)
   impuestos        Float    @default(0)
   descuento        Float    @default(0)
   total            Float    @default(0)
+  
+  // Términos y condiciones
+  codigoMincex     String?
+  puertoEmbarque   String?  @default("NEW ORLEANS, LA")
+  origen           String?  @default("ESTADOS UNIDOS")
+  moneda           String?  @default("USD")
+  terminosPago     String?  @default("PAGO 100% ANTES DEL EMBARQUE")
+  
+  // Firmas
+  incluyeFirmaCliente Boolean @default(false)
+  firmaClienteNombre  String?
+  firmaClienteCargo   String?
+  firmaClienteEmpresa String?
+  
+  // Origen
   tipoOfertaOrigen String?
   ofertaOrigenId   String?
+  
   campoExtra1      String?
   campoExtra2      String?
   campoExtra3      String?
@@ -316,10 +337,16 @@ model ItemFactura {
   descripcion      String?
   cantidad         Float
   cantidadCajas    Float?
+  cantidadSacos    Float?
   pesoNeto         Float?
   pesoBruto        Float?
   precioUnitario   Float
   subtotal         Float
+  pesoXSaco        Float?
+  precioXSaco      Float?
+  pesoXCaja        Float?
+  precioXCaja      Float?
+  codigoArancelario String?
   campoExtra1      String?
   campoExtra2      String?
   campoExtra3      String?
