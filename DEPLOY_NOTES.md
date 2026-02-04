@@ -69,7 +69,19 @@ Se agregó el campo opcional `codigoArancelario` al modelo Producto y se impleme
    psql -d tu_base_de_datos -f backend/prisma/migrate_codigo_arancelario_prod.sql
    ```
 
-2. **Luego, en producción, ejecutar:**
+2. **Luego, en producción (Render), configurar el Build Command:**
+   
+   **En Render, configurar el Build Command como:**
+   ```bash
+   cd backend && npm run build:prod
+   ```
+   
+   Este comando automáticamente:
+   - Copia `schema.prod.prisma` a `schema.prisma`
+   - Regenera el cliente de Prisma con el schema correcto
+   - Compila TypeScript
+   
+   **O si prefieres hacerlo manualmente:**
    ```bash
    # Copiar el schema de producción (PostgreSQL)
    cp prisma/schema.prod.prisma prisma/schema.prisma
