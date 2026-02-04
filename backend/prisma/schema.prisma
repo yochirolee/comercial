@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ==========================================
@@ -106,6 +106,7 @@ model Producto {
   precioBase       Float
   unidadMedidaId   String
   unidadMedida     UnidadMedida @relation(fields: [unidadMedidaId], references: [id])
+  codigoArancelario String?
   activo           Boolean  @default(true)
   campoExtra1      String?
   campoExtra2      String?
