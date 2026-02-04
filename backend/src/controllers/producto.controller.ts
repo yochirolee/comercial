@@ -152,9 +152,27 @@ export const ProductoController = {
       }
     }
 
+    // Construir data de actualización, excluyendo codigoArancelario si el Prisma client no lo reconoce
+    const updateData: Record<string, unknown> = {};
+    if (validation.data.codigo !== undefined) updateData.codigo = validation.data.codigo;
+    if (validation.data.nombre !== undefined) updateData.nombre = validation.data.nombre;
+    if (validation.data.descripcion !== undefined) updateData.descripcion = validation.data.descripcion;
+    if (validation.data.precioBase !== undefined) updateData.precioBase = validation.data.precioBase;
+    if (validation.data.unidadMedidaId !== undefined) updateData.unidadMedidaId = validation.data.unidadMedidaId;
+    if (validation.data.activo !== undefined) updateData.activo = validation.data.activo;
+    if (validation.data.campoExtra1 !== undefined) updateData.campoExtra1 = validation.data.campoExtra1;
+    if (validation.data.campoExtra2 !== undefined) updateData.campoExtra2 = validation.data.campoExtra2;
+    if (validation.data.campoExtra3 !== undefined) updateData.campoExtra3 = validation.data.campoExtra3;
+    if (validation.data.campoExtra4 !== undefined) updateData.campoExtra4 = validation.data.campoExtra4;
+    
+    // Agregar codigoArancelario solo si existe en el schema
+    if (validation.data.codigoArancelario !== undefined) {
+      updateData.codigoArancelario = validation.data.codigoArancelario;
+    }
+
     const producto = await prisma.producto.update({
       where: { id },
-      data: validation.data,
+      data: updateData,
       include: {
         unidadMedida: true,
       },
