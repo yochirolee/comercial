@@ -71,12 +71,24 @@ Se agregó el campo opcional `codigoArancelario` al modelo Producto y se impleme
 
 2. **Luego, en producción (Render), configurar el Build Command:**
    
-   **En Render, configurar el Build Command como:**
+   **Opción 1 (Recomendada): Comando directo en Render**
+   
+   Si el **Root Directory** en Render está configurado como `backend/`, usar:
+   ```bash
+   cp prisma/schema.prod.prisma prisma/schema.prisma && prisma generate && npm run build
+   ```
+   
+   Si el **Root Directory** es la raíz del proyecto, usar:
+   ```bash
+   cd backend && cp prisma/schema.prod.prisma prisma/schema.prisma && prisma generate && npm run build
+   ```
+   
+   **Opción 2: Usar el script npm (si está disponible)**
    ```bash
    cd backend && npm run build:prod
    ```
    
-   Este comando automáticamente:
+   Este proceso automáticamente:
    - Copia `schema.prod.prisma` a `schema.prisma`
    - Regenera el cliente de Prisma con el schema correcto
    - Compila TypeScript
