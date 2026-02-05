@@ -532,8 +532,8 @@ export default function FacturasPage(): React.ReactElement {
                   <>
                     {/* Costos de envío y Total */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
-                        <h4 className="font-medium text-blue-800 flex items-center gap-2">
+                      <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-4">
+                        <h4 className="font-medium text-slate-700 flex items-center gap-2">
                           <Ship className="h-4 w-4" />
                           Costos de Envío
                         </h4>
@@ -862,8 +862,8 @@ export default function FacturasPage(): React.ReactElement {
               {/* Costos de Envío y Ajuste */}
               <div className="grid grid-cols-2 gap-4">
                 {/* Costos de envío */}
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3">
-                  <h4 className="font-medium text-blue-800">Costos de Envío</h4>
+                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+                  <h4 className="font-medium text-slate-700">Costos de Envío</h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-sm">Flete ($)</Label>

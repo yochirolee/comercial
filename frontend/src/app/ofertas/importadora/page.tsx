@@ -88,6 +88,26 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     codigoArancelario: "",
   });
 
+  // Estado para items editables en creación
+  const [itemsEditables, setItemsEditables] = useState<Array<{
+    id: string; // id temporal para React keys
+    productoId: string;
+    producto: Producto;
+    cantidad: number;
+    precioUnitario: number;
+    precioAjustado: number;
+    cantidadCajas?: number | null;
+    cantidadSacos?: number | null;
+    pesoNeto?: number | null;
+    pesoBruto?: number | null;
+    pesoXSaco?: number | null;
+    precioXSaco?: number | null;
+    pesoXCaja?: number | null;
+    precioXCaja?: number | null;
+    codigoArancelario?: string | null;
+  }>>([]);
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+
   async function loadData(): Promise<void> {
     try {
       const [ofertasData, ofertasClienteData, clientesData, productosData] = await Promise.all([
@@ -129,7 +149,14 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setOrigen(primeraOferta?.origen || "");
     setMoneda(primeraOferta?.moneda || "USD");
     setTerminosPago(primeraOferta?.terminosPago || "");
+    setItemsEditables([]);
+    setEditingItemIndex(null);
     setDialogOpen(true);
+    
+    // Si hay una primera oferta, cargar sus items
+    if (primeraOferta && primeraOferta.items) {
+      handleSelectOfertaCliente(primeraOferta.id);
+    }
   }
 
   function handleSelectOfertaCliente(ofertaClienteId: string): void {
@@ -142,12 +169,40 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setOrigen(oferta?.origen || "");
     setMoneda(oferta?.moneda || "USD");
     setTerminosPago(oferta?.terminosPago || "");
+    
+    // Cargar items de la oferta cliente para edición
+    if (oferta && oferta.items) {
+      const itemsCargados = oferta.items.map((item, index) => ({
+        id: `temp-${index}-${Date.now()}`,
+        productoId: item.productoId,
+        producto: item.producto,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario,
+        precioAjustado: item.precioUnitario, // Inicialmente igual al precio original
+        cantidadCajas: item.cantidadCajas || null,
+        cantidadSacos: item.cantidadSacos || null,
+        pesoNeto: item.pesoNeto || null,
+        pesoBruto: item.pesoBruto || null,
+        pesoXSaco: item.pesoXSaco || null,
+        precioXSaco: item.precioXSaco || null,
+        pesoXCaja: item.pesoXCaja || null,
+        precioXCaja: item.precioXCaja || null,
+        codigoArancelario: item.codigoArancelario || null,
+      }));
+      setItemsEditables(itemsCargados);
+    } else {
+      setItemsEditables([]);
+    }
   }
 
-  // Calcular CIF
+  // Calcular CIF desde items editables
   const fleteNum = parseFloat(flete) || 0;
   const seguroNum = tieneSeguro ? (parseFloat(seguro) || 0) : 0;
-  const subtotalProductos = selectedOfertaCliente?.total || 0;
+  const subtotalProductos = itemsEditables.reduce((acc, item) => {
+    const cantidadParaCalculo = item.pesoNeto || item.cantidad;
+    const subtotal = item.precioAjustado * cantidadParaCalculo;
+    return acc + subtotal;
+  }, 0);
   const cifCalculado = subtotalProductos + fleteNum + seguroNum;
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
@@ -163,6 +218,23 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     try {
       const cifDeseado = parseFloat(totalCifDeseado);
       
+      // Preparar items para enviar (convertir a formato del API)
+      const itemsParaEnviar = itemsEditables.map(item => ({
+        productoId: item.productoId,
+        cantidad: item.cantidad,
+        precioUnitario: item.precioUnitario, // Precio original
+        precioAjustado: item.precioAjustado, // Precio ajustado (puede ser diferente)
+        cantidadCajas: item.cantidadCajas,
+        cantidadSacos: item.cantidadSacos,
+        pesoNeto: item.pesoNeto,
+        pesoBruto: item.pesoBruto,
+        pesoXSaco: item.pesoXSaco,
+        precioXSaco: item.precioXSaco,
+        pesoXCaja: item.pesoXCaja,
+        precioXCaja: item.precioXCaja,
+        codigoArancelario: item.codigoArancelario,
+      }));
+      
       await ofertasImportadoraApi.createFromOfertaCliente({
         ofertaClienteId: selectedOfertaClienteId,
         numero: numeroOferta,
@@ -177,6 +249,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         origen: origen || undefined,
         moneda: moneda || undefined,
         terminosPago: terminosPago || undefined,
+        // Enviar items editados
+        items: itemsParaEnviar,
       });
       
       if (cifDeseado > 0 && cifDeseado !== cifCalculado) {
@@ -273,6 +347,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   // Abrir diálogo de edición de item
   function openEditItemDialog(item: OfertaImportadora["items"][0]): void {
     setEditingItemId(item.id);
+    setEditingItemIndex(null); // Asegurar que no estamos en modo creación
     setEditItemForm({
       cantidad: (item.pesoNeto || item.cantidad)?.toString() || "",
       precioUnitario: item.precioAjustado?.toString() || "", // Mostrar precio ajustado actual
@@ -334,6 +409,67 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     return new Date(date).toLocaleDateString("es-ES");
   }
 
+  // Funciones para editar items en creación
+  function openEditItemDialogCreate(index: number): void {
+    setEditingItemIndex(index);
+    setEditingItemId(null); // Asegurar que no estamos en modo edición de item existente
+    const item = itemsEditables[index];
+    setEditItemForm({
+      cantidad: (item.pesoNeto || item.cantidad)?.toString() || "",
+      precioUnitario: item.precioAjustado.toString(), // Mostrar precio ajustado actual
+      cantidadCajas: item.cantidadCajas?.toString() || "",
+      cantidadSacos: item.cantidadSacos?.toString() || "",
+      pesoXSaco: item.pesoXSaco?.toString() || "",
+      precioXSaco: item.precioXSaco?.toString() || "",
+      pesoXCaja: item.pesoXCaja?.toString() || "",
+      precioXCaja: item.precioXCaja?.toString() || "",
+      codigoArancelario: item.codigoArancelario || "",
+    });
+    setEditItemDialogOpen(true);
+  }
+
+  function handleUpdateItemCreate(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    if (editingItemIndex === null) return Promise.resolve();
+
+    const updatedItems = [...itemsEditables];
+    const item = updatedItems[editingItemIndex];
+    
+    const cantidad = parseFloat(editItemForm.cantidad) || item.cantidad;
+    const precioAjustado = parseFloat(editItemForm.precioUnitario) || item.precioAjustado;
+    
+    updatedItems[editingItemIndex] = {
+      ...item,
+      cantidad,
+      precioAjustado, // Precio ajustado puede ser diferente al original
+      cantidadCajas: editItemForm.cantidadCajas && editItemForm.cantidadCajas.trim() !== '' ? parseInt(editItemForm.cantidadCajas) : null,
+      cantidadSacos: editItemForm.cantidadSacos && editItemForm.cantidadSacos.trim() !== '' ? parseInt(editItemForm.cantidadSacos) : null,
+      pesoNeto: cantidad !== item.cantidad ? cantidad : item.pesoNeto,
+      pesoXSaco: editItemForm.pesoXSaco && editItemForm.pesoXSaco.trim() !== '' ? parseFloat(editItemForm.pesoXSaco) : null,
+      precioXSaco: editItemForm.precioXSaco && editItemForm.precioXSaco.trim() !== '' ? parseFloat(editItemForm.precioXSaco) : null,
+      pesoXCaja: editItemForm.pesoXCaja && editItemForm.pesoXCaja.trim() !== '' ? parseFloat(editItemForm.pesoXCaja) : null,
+      precioXCaja: editItemForm.precioXCaja && editItemForm.precioXCaja.trim() !== '' ? parseFloat(editItemForm.precioXCaja) : null,
+      codigoArancelario: editItemForm.codigoArancelario && editItemForm.codigoArancelario.trim() !== '' ? editItemForm.codigoArancelario : null,
+    };
+    
+    setItemsEditables(updatedItems);
+    setEditItemDialogOpen(false);
+    setEditingItemIndex(null);
+    setEditItemForm({
+      cantidad: "",
+      precioUnitario: "",
+      cantidadCajas: "",
+      cantidadSacos: "",
+      pesoXSaco: "",
+      precioXSaco: "",
+      pesoXCaja: "",
+      precioXCaja: "",
+      codigoArancelario: "",
+    });
+    toast.success("Producto actualizado");
+    return Promise.resolve();
+  }
+
   return (
     <div>
       <Header
@@ -347,27 +483,27 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 Nueva desde Oferta Cliente
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Ship className="h-5 w-5" />
+            <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[80vw] xl:w-[75vw] max-w-[1400px] max-h-[90vh] overflow-y-auto p-3 sm:p-4 md:p-6">
+              <DialogHeader className="pb-2 sm:pb-3">
+                <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                  <Ship className="h-4 w-4 sm:h-5 sm:w-5" />
                   Nueva Oferta a Importadora
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
                 {/* Seleccionar oferta cliente */}
-                <div className="space-y-2">
-                  <Label>Oferta al Cliente *</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label className="text-sm sm:text-base">Oferta al Cliente *</Label>
                   <Select
                     value={selectedOfertaClienteId}
                     onValueChange={handleSelectOfertaCliente}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="text-sm sm:text-base h-9 sm:h-10">
                       <SelectValue placeholder="Seleccionar oferta" />
                     </SelectTrigger>
                     <SelectContent>
                       {ofertasCliente.map((o) => (
-                        <SelectItem key={o.id} value={o.id}>
+                        <SelectItem key={o.id} value={o.id} className="text-sm sm:text-base">
                           {o.numero} - {o.cliente.nombre} ({formatCurrency(o.total)})
                         </SelectItem>
                       ))}
@@ -377,35 +513,36 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
                 {/* Info de la oferta seleccionada */}
                 {selectedOfertaCliente && (
-                  <div className="p-4 bg-slate-50 rounded-lg border">
-                    <h4 className="font-medium mb-2">📋 Datos de la Oferta Cliente</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border">
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">📋 Datos de la Oferta Cliente</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm sm:text-base">
                       <div className="text-slate-600">Cliente:</div>
                       <div className="font-medium">{selectedOfertaCliente.cliente.nombre}</div>
                       <div className="text-slate-600">Productos:</div>
                       <div className="font-medium">{selectedOfertaCliente.items.length} items</div>
                       <div className="text-slate-600">Total acordado:</div>
-                      <div className="font-bold text-blue-700">{formatCurrency(selectedOfertaCliente.total)}</div>
+                      <div className="font-bold text-slate-700">{formatCurrency(selectedOfertaCliente.total)}</div>
                     </div>
                   </div>
                 )}
 
                 {/* Número de oferta */}
-                <div className="space-y-2">
-                  <Label>Número de Oferta</Label>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <Label className="text-sm sm:text-base">Número de Oferta</Label>
                   <Input
                     value={numeroOferta}
                     onChange={(e) => setNumeroOferta(e.target.value)}
                     placeholder="Ej: Z26001"
+                    className="text-sm sm:text-base h-9 sm:h-10"
                   />
                 </div>
 
                 {/* Flete y Seguro */}
                 {selectedOfertaCliente && (
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
-                    <h4 className="font-medium text-blue-800">Costos de Envío</h4>
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3 sm:space-y-4">
+                    <h4 className="font-medium text-slate-700 text-sm sm:text-base">Costos de Envío</h4>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="space-y-2">
                         <Label>Flete ($)</Label>
                         <Input
@@ -440,8 +577,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
                 {/* Términos */}
                 {selectedOfertaCliente && (
-                  <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
-                    <h4 className="font-medium text-slate-700">Términos</h4>
+                  <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-3">
+                    <h4 className="font-medium text-slate-700 text-sm sm:text-base">Términos</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-sm">Puerto de Embarque</Label>
@@ -481,7 +618,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
                 {/* Firma Cliente */}
                 {selectedOfertaCliente && (
-                  <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                  <div className="p-3 sm:p-4 bg-amber-50 rounded-lg border border-amber-200">
                     <div className="flex items-center gap-2">
                       <input
                         type="checkbox"
@@ -490,19 +627,91 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                         onChange={(e) => setIncluyeFirmaCliente(e.target.checked)}
                         className="h-4 w-4 rounded border-gray-300"
                       />
-                      <Label htmlFor="incluyeFirma" className="cursor-pointer font-medium text-amber-800">
+                      <Label htmlFor="incluyeFirma" className="cursor-pointer font-medium text-amber-800 text-sm sm:text-base">
                         Incluir firma del cliente en la plantilla
                       </Label>
                     </div>
                   </div>
                 )}
 
+                {/* Tabla de productos editables */}
+                {selectedOfertaCliente && itemsEditables.length > 0 && (
+                  <div className="p-2 sm:p-3 md:p-4 bg-white rounded-lg border border-slate-200">
+                    <h4 className="font-medium mb-2 sm:mb-3 text-slate-700 text-sm sm:text-base">📦 Productos</h4>
+                    <div className="overflow-x-auto -mx-1 sm:-mx-2 md:mx-0">
+                      <div className="inline-block min-w-full align-middle px-1 sm:px-2 md:px-0">
+                        <Table className="min-w-full">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="min-w-[150px] sm:min-w-[200px] md:min-w-[250px] text-xs sm:text-sm">Producto</TableHead>
+                              <TableHead className="text-right whitespace-nowrap text-xs sm:text-sm">Cantidad</TableHead>
+                              <TableHead className="text-right whitespace-nowrap text-xs sm:text-sm hidden sm:table-cell">Precio Unit.</TableHead>
+                              <TableHead className="text-right whitespace-nowrap text-xs sm:text-sm">Subtotal</TableHead>
+                              <TableHead className="w-12 sm:w-16 md:w-20 text-center text-xs sm:text-sm">Acción</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {itemsEditables.map((item, index) => {
+                              const cantidadParaCalculo = item.pesoNeto || item.cantidad;
+                              const subtotal = item.precioAjustado * cantidadParaCalculo;
+                              return (
+                                <TableRow key={item.id}>
+                                  <TableCell className="font-medium py-2 sm:py-3">
+                                    <div className="text-xs sm:text-sm md:text-base">
+                                      {item.producto.nombre}
+                                    </div>
+                                    {item.codigoArancelario && (
+                                      <div className="text-xs text-slate-500 mt-0.5 sm:mt-1">
+                                        ({item.codigoArancelario})
+                                      </div>
+                                    )}
+                                    {/* Mostrar precio en móvil dentro de la celda de producto */}
+                                    <div className="sm:hidden text-xs text-slate-600 mt-1">
+                                      {formatCurrencyUnitPrice(item.precioAjustado)} c/u
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3">
+                                    {cantidadParaCalculo.toLocaleString()} {item.producto.unidadMedida.abreviatura}
+                                  </TableCell>
+                                  <TableCell className="text-right whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3 hidden sm:table-cell">
+                                    {formatCurrencyUnitPrice(item.precioAjustado)}
+                                  </TableCell>
+                                  <TableCell className="text-right font-medium whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3">
+                                    {formatCurrency(subtotal)}
+                                  </TableCell>
+                                  <TableCell className="text-center py-2 sm:py-3">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9"
+                                      onClick={() => openEditItemDialogCreate(index)}
+                                    >
+                                      <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                    <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t text-xs sm:text-sm md:text-base">
+                      <div className="flex justify-between font-medium">
+                        <span>Subtotal Productos (FOB):</span>
+                        <span className="text-xs sm:text-sm md:text-base">{formatCurrency(subtotalProductos)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Resumen CIF y ajuste */}
                 {selectedOfertaCliente && (
-                  <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-3">
-                    <h4 className="font-medium text-emerald-800">Resumen CIF</h4>
+                  <div className="p-3 sm:p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-3">
+                    <h4 className="font-medium text-emerald-800 text-sm sm:text-base">Resumen CIF</h4>
                     
-                    <div className="space-y-2 text-sm">
+                    <div className="space-y-2 text-sm sm:text-base">
                       <div className="flex justify-between">
                         <span>Productos (FOB):</span>
                         <span className="font-medium">{formatCurrency(subtotalProductos)}</span>
@@ -546,11 +755,20 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 )}
 
                 {/* Botones */}
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-2 pt-2 sm:pt-3">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setDialogOpen(false)}
+                    className="w-full sm:w-auto text-sm sm:text-base"
+                  >
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={saving || !selectedOfertaClienteId}>
+                  <Button 
+                    type="submit" 
+                    disabled={saving || !selectedOfertaClienteId}
+                    className="w-full sm:w-auto text-sm sm:text-base"
+                  >
                     {saving ? "Creando..." : "Crear Oferta"}
                   </Button>
                 </div>
@@ -723,8 +941,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             {/* Flete, Seguro y Ajuste */}
             <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               {/* Costos de envío */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3">
-                <h4 className="font-medium text-blue-800">Costos de Envío</h4>
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+                <h4 className="font-medium text-slate-700">Costos de Envío</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <Label className="text-sm">Flete ($)</Label>
@@ -972,7 +1190,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
           <DialogHeader>
             <DialogTitle>Editar Producto</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleUpdateItem} className="space-y-4">
+          <form onSubmit={editingItemIndex !== null ? handleUpdateItemCreate : handleUpdateItem} className="space-y-4">
             {/* Cantidad y Precio */}
             <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">

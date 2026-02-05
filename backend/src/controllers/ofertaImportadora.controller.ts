@@ -88,6 +88,8 @@ const crearDesdeOfertaSchema = z.object({
   origen: z.string().optional(),
   moneda: z.string().optional(),
   terminosPago: z.string().optional(),
+  // Items opcionales: si se proporcionan, se usan; si no, se copian de la oferta cliente
+  items: z.array(itemSchema).optional(),
 });
 
 // Función auxiliar para actualizar totales de la oferta (sin tocar precios)
@@ -227,7 +229,7 @@ export const OfertaImportadoraController = {
 
     const { 
       ofertaClienteId, flete, seguro, tieneSeguro, incluyeFirmaCliente, totalCifDeseado,
-      puertoEmbarque, origen, moneda, terminosPago,
+      puertoEmbarque, origen, moneda, terminosPago, items: itemsProporcionados,
     } = validation.data;
     
     const numero = validation.data.numero || await generarNumeroOferta();
@@ -261,13 +263,87 @@ export const OfertaImportadoraController = {
 
     const seguroFinal = tieneSeguro ? (seguro || 0) : 0;
     
-    // Subtotal de productos = suma de subtotales de la oferta cliente
-    const subtotalProductos = ofertaCliente.items.reduce((acc, item) => acc + item.subtotal, 0);
+    // Determinar qué items usar: los proporcionados o los de la oferta cliente
+    let itemsParaCrear: Array<{
+      productoId: string;
+      cantidad: number;
+      cantidadCajas?: number | null;
+      cantidadSacos?: number | null;
+      pesoNeto?: number | null;
+      pesoBruto?: number | null;
+      precioOriginal: number;
+      precioAjustado: number;
+      subtotal: number;
+      pesoXSaco?: number | null;
+      precioXSaco?: number | null;
+      pesoXCaja?: number | null;
+      precioXCaja?: number | null;
+      codigoArancelario?: string | null;
+      campoExtra1?: string | null;
+      campoExtra2?: string | null;
+      campoExtra3?: string | null;
+      campoExtra4?: string | null;
+    }>;
+
+    if (itemsProporcionados && itemsProporcionados.length > 0) {
+      // Usar items proporcionados por el frontend
+      itemsParaCrear = itemsProporcionados.map(item => {
+        const precioFinal = item.precioAjustado || item.precioUnitario;
+        const cantidadParaCalculo = item.pesoNeto || item.cantidad;
+        const subtotal = precioFinal * cantidadParaCalculo;
+        
+        return {
+          productoId: item.productoId,
+          cantidad: item.cantidad,
+          cantidadCajas: item.cantidadCajas || null,
+          cantidadSacos: item.cantidadSacos || null,
+          pesoNeto: item.pesoNeto || null,
+          pesoBruto: item.pesoBruto || null,
+          precioOriginal: item.precioUnitario,
+          precioAjustado: precioFinal,
+          subtotal,
+          pesoXSaco: item.pesoXSaco || null,
+          precioXSaco: item.precioXSaco || null,
+          pesoXCaja: item.pesoXCaja || null,
+          precioXCaja: item.precioXCaja || null,
+          codigoArancelario: item.codigoArancelario || null,
+          campoExtra1: item.campoExtra1 || null,
+          campoExtra2: item.campoExtra2 || null,
+          campoExtra3: item.campoExtra3 || null,
+          campoExtra4: item.campoExtra4 || null,
+        };
+      });
+    } else {
+      // Copiar items de la oferta cliente (comportamiento original)
+      itemsParaCrear = ofertaCliente.items.map(item => ({
+        productoId: item.productoId,
+        cantidad: item.cantidad,
+        cantidadCajas: item.cantidadCajas,
+        cantidadSacos: item.cantidadSacos,
+        pesoNeto: item.pesoNeto,
+        pesoBruto: item.pesoBruto,
+        precioOriginal: item.precioUnitario,
+        precioAjustado: item.precioUnitario,
+        subtotal: item.subtotal,
+        pesoXSaco: item.pesoXSaco,
+        precioXSaco: item.precioXSaco,
+        pesoXCaja: item.pesoXCaja,
+        precioXCaja: item.precioXCaja,
+        codigoArancelario: item.codigoArancelario,
+        campoExtra1: item.campoExtra1,
+        campoExtra2: item.campoExtra2,
+        campoExtra3: item.campoExtra3,
+        campoExtra4: item.campoExtra4,
+      }));
+    }
+    
+    // Calcular subtotal de productos desde los items que se van a crear
+    const subtotalProductos = itemsParaCrear.reduce((acc, item) => acc + item.subtotal, 0);
     
     // CIF = Subtotal productos + Flete + Seguro
     const cifCalculado = subtotalProductos + flete + seguroFinal;
 
-    // Crear oferta importadora con los items copiados de oferta cliente
+    // Crear oferta importadora con los items determinados
     const ofertaImportadora = await prisma.ofertaImportadora.create({
       data: {
         numero,
@@ -286,28 +362,7 @@ export const OfertaImportadoraController = {
         subtotalProductos,
         precioCIF: cifCalculado,
         items: {
-          create: ofertaCliente.items.map(item => ({
-            productoId: item.productoId,
-            cantidad: item.cantidad,
-            cantidadCajas: item.cantidadCajas,
-            cantidadSacos: item.cantidadSacos,
-            pesoNeto: item.pesoNeto,
-            pesoBruto: item.pesoBruto,
-            // Copiar precio tal cual viene de oferta cliente
-            precioOriginal: item.precioUnitario,
-            precioAjustado: item.precioUnitario, // Inicialmente igual
-            subtotal: item.subtotal,
-            // Campos opcionales
-            pesoXSaco: item.pesoXSaco,
-            precioXSaco: item.precioXSaco,
-            pesoXCaja: item.pesoXCaja,
-            precioXCaja: item.precioXCaja,
-            codigoArancelario: item.codigoArancelario,
-            campoExtra1: item.campoExtra1,
-            campoExtra2: item.campoExtra2,
-            campoExtra3: item.campoExtra3,
-            campoExtra4: item.campoExtra4,
-          })),
+          create: itemsParaCrear,
         },
       },
       include: {

@@ -632,6 +632,26 @@ export interface CrearDesdeOfertaClienteInput {
   origen?: string;
   moneda?: string;
   terminosPago?: string;
+  // Items opcionales: si se proporcionan, se usan; si no, se copian de la oferta cliente
+  items?: Array<{
+    productoId: string;
+    cantidad: number;
+    precioUnitario: number;
+    precioAjustado?: number;
+    cantidadCajas?: number | null;
+    cantidadSacos?: number | null;
+    pesoNeto?: number | null;
+    pesoBruto?: number | null;
+    pesoXSaco?: number | null;
+    precioXSaco?: number | null;
+    pesoXCaja?: number | null;
+    precioXCaja?: number | null;
+    codigoArancelario?: string | null;
+    campoExtra1?: string | null;
+    campoExtra2?: string | null;
+    campoExtra3?: string | null;
+    campoExtra4?: string | null;
+  }>;
 }
 
 export interface ItemOfertaImportadora {
