@@ -262,9 +262,6 @@ export default function EmpresaPage() {
                   <Image className="h-5 w-5" />
                   Imágenes para Documentos
                 </h3>
-                <p className="text-sm text-slate-500">
-                  Estas imágenes aparecerán en los PDF y Excel de ofertas y facturas
-                </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {/* Logo */}

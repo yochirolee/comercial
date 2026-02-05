@@ -169,7 +169,7 @@ export default function ClientesPage() {
                       name="contacto"
                       value={formData.contacto}
                       onChange={handleChange}
-                      placeholder="HECTOR LAZARO"
+                      placeholder="Nombre"
                     />
                   </div>
                   <div className="space-y-2">
@@ -179,7 +179,7 @@ export default function ClientesPage() {
                       name="nombreCompania"
                       value={formData.nombreCompania}
                       onChange={handleChange}
-                      placeholder="PISOS DEL VALLE"
+                      placeholder="Nombre de la Compañía"
                     />
                   </div>
                   <div className="sm:col-span-2 space-y-2">

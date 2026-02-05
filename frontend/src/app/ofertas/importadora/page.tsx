@@ -736,10 +736,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                     <Separator />
 
                     <div className="space-y-2">
-                      <Label className="font-medium">¿Quieres otro total CIF?</Label>
-                      <p className="text-xs text-slate-600">
-                        Si quieres que el CIF sea diferente, escribe el total. Los precios de los productos se ajustarán automáticamente.
-                      </p>
+                      <Label className="font-medium">Ajustar Total CIF</Label>
                       <Input
                         placeholder={`Dejar vacío para ${formatCurrency(cifCalculado)}`}
                         value={totalCifDeseado}
