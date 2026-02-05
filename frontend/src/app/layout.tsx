@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ZAS - Sistema de Ofertas y Facturas",
   description: "Sistema de gestión de ofertas y facturas",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
