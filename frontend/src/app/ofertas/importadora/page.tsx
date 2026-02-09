@@ -521,6 +521,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setEditItemDialogOpen(false);
     setEditingItemIndex(null);
     setEditItemForm({
+      productoId: "",
       cantidad: "",
       precioUnitario: "",
       cantidadCajas: "",
