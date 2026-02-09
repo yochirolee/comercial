@@ -40,6 +40,13 @@ ALTER TABLE "ItemFactura" ADD COLUMN IF NOT EXISTS "codigoArancelario" TEXT;
 ```
 Archivo: `backend/prisma/migrate_factura_campos_prod.sql`
 
+**3. Ejecutar el script para `nroContrato` en Factura:**
+```sql
+-- Agregar columna nroContrato a la tabla Factura
+ALTER TABLE "Factura" ADD COLUMN IF NOT EXISTS "nroContrato" TEXT;
+```
+Archivo: `backend/prisma/migrations/migrate_nro_contrato_prod.sql`
+
 ## Resumen de Cambios
 
 Se agregó el campo opcional `codigoArancelario` al modelo Producto y se implementó la funcionalidad para copiar automáticamente este código desde el producto a las ofertas.

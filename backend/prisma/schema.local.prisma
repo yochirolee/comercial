@@ -302,6 +302,7 @@ model Factura {
   
   // Términos y condiciones
   codigoMincex     String?
+  nroContrato      String?
   puertoEmbarque   String?  @default("NEW ORLEANS, LA")
   origen           String?  @default("ESTADOS UNIDOS")
   moneda           String?  @default("USD")

@@ -17,6 +17,7 @@ const facturaSchema = z.object({
   descuento: z.number().min(0).optional(),
   // Términos
   codigoMincex: z.string().optional(),
+  nroContrato: z.string().optional(),
   puertoEmbarque: z.string().optional(),
   origen: z.string().optional(),
   moneda: z.string().optional(),

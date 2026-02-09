@@ -1687,6 +1687,10 @@ export const ExportController = {
     const codigoMincex = factura.codigoMincex || empresa.codigoMincex;
     doc.fontSize(10).font('Helvetica');
     doc.text(`CODIGO MINCEX: ${codigoMincex}`, margin, doc.y);
+    // NRO CONTRATO (solo si tiene valor)
+    if (factura.nroContrato && factura.nroContrato.trim() !== '') {
+      doc.text(`NRO CONTRATO: ${factura.nroContrato}`, margin, doc.y);
+    }
     doc.text(`FECHA: ${formatDate(new Date(factura.fecha))}`, margin, doc.y);
 
     // CONSIGNADO A
@@ -2024,6 +2028,13 @@ export const ExportController = {
     worksheet.mergeCells(`A${row}:${lastCol}${row}`);
     worksheet.getCell(`A${row}`).value = `CODIGO MINCEX: ${codigoMincex}`;
     row++;
+
+    // NRO CONTRATO (solo si tiene valor)
+    if (factura.nroContrato && factura.nroContrato.trim() !== '') {
+      worksheet.mergeCells(`A${row}:${lastCol}${row}`);
+      worksheet.getCell(`A${row}`).value = `NRO CONTRATO: ${factura.nroContrato}`;
+      row++;
+    }
 
     // FECHA (fila separada, sin borde)
     worksheet.mergeCells(`A${row}:${lastCol}${row}`);

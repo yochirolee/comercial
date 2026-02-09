@@ -84,6 +84,7 @@ export default function FacturasPage(): React.ReactElement {
     seguro: "0",
     tieneSeguro: false,
     codigoMincex: "",
+    nroContrato: "",
     puertoEmbarque: "",
     origen: "",
     moneda: "",
@@ -104,6 +105,7 @@ export default function FacturasPage(): React.ReactElement {
     seguro: "0",
     tieneSeguro: false,
     codigoMincex: "",
+    nroContrato: "",
     puertoEmbarque: "",
     origen: "",
     moneda: "",
@@ -185,6 +187,7 @@ export default function FacturasPage(): React.ReactElement {
       seguro: "0",
       tieneSeguro: false,
       codigoMincex: "",
+      nroContrato: "",
       puertoEmbarque: "",
       origen: "",
       moneda: "",
@@ -217,6 +220,7 @@ export default function FacturasPage(): React.ReactElement {
         numeroFactura: numeroFac,
         // Términos de la oferta importadora
         codigoMincex: oferta.codigoMincex || "",
+        nroContrato: "",
         puertoEmbarque: oferta.puertoEmbarque || "NEW ORLEANS, LA",
         origen: oferta.origen || "ESTADOS UNIDOS",
         moneda: oferta.moneda || "USD",
@@ -268,6 +272,7 @@ export default function FacturasPage(): React.ReactElement {
         seguro: parseFloat(newFormData.seguro) || 0,
         tieneSeguro: newFormData.tieneSeguro,
         codigoMincex: newFormData.codigoMincex || undefined,
+        nroContrato: newFormData.nroContrato || undefined,
         puertoEmbarque: newFormData.puertoEmbarque || undefined,
         origen: newFormData.origen || undefined,
         moneda: newFormData.moneda || undefined,
@@ -303,6 +308,7 @@ export default function FacturasPage(): React.ReactElement {
       seguro: String(factura.seguro || 0),
       tieneSeguro: factura.tieneSeguro || false,
       codigoMincex: factura.codigoMincex || "",
+      nroContrato: factura.nroContrato || "",
       puertoEmbarque: factura.puertoEmbarque || "",
       origen: factura.origen || "",
       moneda: factura.moneda || "",
@@ -328,6 +334,7 @@ export default function FacturasPage(): React.ReactElement {
         seguro: parseFloat(editFormData.seguro) || 0,
         tieneSeguro: editFormData.tieneSeguro,
         codigoMincex: editFormData.codigoMincex || undefined,
+        nroContrato: editFormData.nroContrato || undefined,
         puertoEmbarque: editFormData.puertoEmbarque || undefined,
         origen: editFormData.origen || undefined,
         moneda: editFormData.moneda || undefined,
@@ -625,6 +632,14 @@ export default function FacturasPage(): React.ReactElement {
                             type="date"
                             value={newFormData.fecha}
                             onChange={(e) => setNewFormData((p) => ({ ...p, fecha: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-slate-500 text-xs sm:text-sm">NRO Contrato (opcional)</Label>
+                          <Input
+                            value={newFormData.nroContrato}
+                            onChange={(e) => setNewFormData((p) => ({ ...p, nroContrato: e.target.value }))}
+                            placeholder="Número de contrato"
                           />
                         </div>
                         <div className="space-y-1">
@@ -932,6 +947,15 @@ export default function FacturasPage(): React.ReactElement {
                       className="mt-1"
                       value={editFormData.fecha}
                       onChange={(e) => setEditFormData((p) => ({ ...p, fecha: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm">NRO Contrato (opcional)</Label>
+                    <Input
+                      className="mt-1"
+                      value={editFormData.nroContrato}
+                      onChange={(e) => setEditFormData((p) => ({ ...p, nroContrato: e.target.value }))}
+                      placeholder="Número de contrato"
                     />
                   </div>
                   <div>

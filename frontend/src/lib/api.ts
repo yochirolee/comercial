@@ -871,6 +871,7 @@ export interface Factura {
   total: number;
   // Términos
   codigoMincex?: string;
+  nroContrato?: string;
   puertoEmbarque?: string;
   origen?: string;
   moneda?: string;
@@ -901,6 +902,7 @@ export interface FacturaInput {
   descuento?: number;
   // Términos
   codigoMincex?: string;
+  nroContrato?: string;
   puertoEmbarque?: string;
   origen?: string;
   moneda?: string;
@@ -922,6 +924,7 @@ export interface FacturaFromOfertaClienteInput {
   tieneSeguro?: boolean;
   // Términos
   codigoMincex?: string;
+  nroContrato?: string;
   puertoEmbarque?: string;
   origen?: string;
   moneda?: string;
@@ -945,6 +948,7 @@ export interface FacturaFromOfertaImportadoraInput {
   tieneSeguro?: boolean;
   // Términos
   codigoMincex?: string;
+  nroContrato?: string;
   puertoEmbarque?: string;
   origen?: string;
   moneda?: string;
