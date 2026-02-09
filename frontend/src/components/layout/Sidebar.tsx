@@ -17,6 +17,7 @@ import {
   User,
   Settings,
   UserCog,
+  FileCheck,
 } from "lucide-react";
 
 interface NavItem {
@@ -42,6 +43,7 @@ const navigation: NavItem[] = [
     ]
   },
   { name: "Facturas", href: "/facturas", icon: Receipt },
+  { name: "Documentación", href: "/documentacion", icon: FileCheck, adminOnly: true },
   { 
     name: "Configuración", 
     icon: Settings,
@@ -118,6 +120,11 @@ export function Sidebar({ onNavigate, isMobile }: SidebarProps): React.ReactElem
                 </div>
               </div>
             );
+          }
+
+          // Filtrar items según permisos de admin
+          if (item.adminOnly && usuario?.rol !== "admin") {
+            return null;
           }
 
           const isActive = pathname === item.href;
