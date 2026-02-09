@@ -476,8 +476,10 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   function openEditItemDialogCreate(index: number): void {
     setEditingItemIndex(index);
     setEditingItemId(null); // Asegurar que no estamos en modo edición de item existente
+    setIsAddingNewItem(false);
     const item = itemsEditables[index];
     setEditItemForm({
+      productoId: item.productoId,
       cantidad: (item.pesoNeto || item.cantidad)?.toString() || "",
       precioUnitario: item.precioAjustado.toString(), // Mostrar precio ajustado actual
       cantidadCajas: item.cantidadCajas?.toString() || "",
