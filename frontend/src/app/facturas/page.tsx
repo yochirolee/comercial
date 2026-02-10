@@ -1070,44 +1070,52 @@ export default function FacturasPage(): React.ReactElement {
               </div>
               {selectedFactura && (
                 <div className="overflow-x-auto -mx-4 sm:mx-0">
-                <Table>
+                <Table className="min-w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Producto</TableHead>
-                      <TableHead>UM</TableHead>
+                      <TableHead className="min-w-[150px] max-w-[200px]">Producto</TableHead>
+                      <TableHead className="w-16">UM</TableHead>
                       {hasOptionalFields(selectedFactura.items).cantidadSacos && (
-                        <TableHead className="text-right">Sacos</TableHead>
+                        <TableHead className="text-right w-20">Sacos</TableHead>
                       )}
                       {hasOptionalFields(selectedFactura.items).codigoArancelario && (
-                        <TableHead>Partida Arancel.</TableHead>
+                        <TableHead className="min-w-[120px] max-w-[150px]">Partida Arancel.</TableHead>
                       )}
-                      <TableHead className="text-right">Cantidad</TableHead>
-                      <TableHead className="text-right">Peso Neto</TableHead>
-                      <TableHead className="text-right">Peso Bruto</TableHead>
-                      <TableHead className="text-right">Precio</TableHead>
-                      <TableHead className="text-right">Importe</TableHead>
-                      <TableHead className="w-12"></TableHead>
+                      <TableHead className="text-right w-24">Cantidad</TableHead>
+                      <TableHead className="text-right w-24">Peso Neto</TableHead>
+                      <TableHead className="text-right w-24">Peso Bruto</TableHead>
+                      <TableHead className="text-right w-24">Precio</TableHead>
+                      <TableHead className="text-right w-28">Importe</TableHead>
+                      <TableHead className="w-20"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {selectedFactura.items.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{item.producto.nombre}</TableCell>
-                        <TableCell>{item.producto.unidadMedida.abreviatura}</TableCell>
+                        <TableCell className="min-w-[150px] max-w-[200px]">
+                          <div className="truncate" title={item.producto.nombre}>
+                            {item.producto.nombre}
+                          </div>
+                        </TableCell>
+                        <TableCell className="w-16">{item.producto.unidadMedida.abreviatura}</TableCell>
                         {hasOptionalFields(selectedFactura.items).cantidadSacos && (
-                          <TableCell className="text-right">{item.cantidadSacos || "-"}</TableCell>
+                          <TableCell className="text-right w-20">{item.cantidadSacos || "-"}</TableCell>
                         )}
                         {hasOptionalFields(selectedFactura.items).codigoArancelario && (
-                          <TableCell>{item.codigoArancelario || "-"}</TableCell>
+                          <TableCell className="min-w-[120px] max-w-[150px]">
+                            <div className="truncate" title={item.codigoArancelario || "-"}>
+                              {item.codigoArancelario || "-"}
+                            </div>
+                          </TableCell>
                         )}
-                        <TableCell className="text-right">{item.cantidad.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">{(item.pesoNeto || item.cantidad).toFixed(2)}</TableCell>
-                        <TableCell className="text-right">{(item.pesoBruto || "-")}</TableCell>
-                        <TableCell className="text-right">{formatCurrencyUnitPrice(item.precioUnitario)}</TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="text-right w-24">{item.cantidad.toFixed(2)}</TableCell>
+                        <TableCell className="text-right w-24">{(item.pesoNeto || item.cantidad).toFixed(2)}</TableCell>
+                        <TableCell className="text-right w-24">{(item.pesoBruto || "-")}</TableCell>
+                        <TableCell className="text-right w-24">{formatCurrencyUnitPrice(item.precioUnitario)}</TableCell>
+                        <TableCell className="text-right font-medium w-28">
                           {formatCurrency(item.subtotal)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="w-20">
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
                               <Pencil className="h-4 w-4" />
