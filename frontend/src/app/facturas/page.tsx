@@ -819,7 +819,7 @@ export default function FacturasPage(): React.ReactElement {
 
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="w-[90vw] max-w-[1200px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[90vw] max-w-[1200px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
           <DialogHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
@@ -851,9 +851,9 @@ export default function FacturasPage(): React.ReactElement {
             </div>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             {/* Info básica */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg min-w-0">
               <div>
                 <Label className="text-slate-500">Cliente</Label>
                 <p className="font-medium">
@@ -1064,12 +1064,12 @@ export default function FacturasPage(): React.ReactElement {
             <Separator />
 
             {/* Tabla de productos */}
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-medium">Productos</h4>
               </div>
               {selectedFactura && (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
