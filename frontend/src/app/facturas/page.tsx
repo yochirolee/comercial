@@ -398,6 +398,22 @@ export default function FacturasPage(): React.ReactElement {
     setEditItemDialogOpen(true);
   }
 
+  // Remove item
+  async function handleRemoveItem(itemId: string): Promise<void> {
+    if (!selectedFactura || !confirm("¿Eliminar este producto?")) return;
+
+    try {
+      await facturasApi.removeItem(selectedFactura.id, itemId);
+      toast.success("Producto eliminado");
+      const updated = await facturasApi.getById(selectedFactura.id);
+      setSelectedFactura(updated);
+      loadData();
+    } catch (error) {
+      toast.error("Error al eliminar");
+      console.error(error);
+    }
+  }
+
   // Update item
   async function handleUpdateItem(): Promise<void> {
     if (!selectedFactura || !editingItemId) return;
@@ -803,240 +819,257 @@ export default function FacturasPage(): React.ReactElement {
 
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-6xl max-h-[90vh] overflow-auto">
-          <DialogHeader className="flex flex-row items-center justify-between pr-8">
+        <DialogContent className="w-[90vw] max-w-[1200px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
               Factura: {selectedFactura?.numero}
             </DialogTitle>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                variant="outline" 
                 size="sm"
-                onClick={() => exportApi.downloadPdf("facturas", selectedFactura?.id || "")}
+                onClick={() => selectedFactura && exportApi.downloadPdf("facturas", selectedFactura.id)}
+                className="flex-1 sm:flex-initial"
               >
-                <FileDown className="h-4 w-4 mr-2" /> PDF
+                <FileDown className="h-4 w-4 mr-1" />
+                PDF
               </Button>
-              <Button
-                variant="outline"
+              <Button 
+                variant="outline" 
                 size="sm"
-                onClick={() => exportApi.downloadExcel("facturas", selectedFactura?.id || "")}
+                onClick={() => selectedFactura && exportApi.downloadExcel("facturas", selectedFactura.id)}
+                className="flex-1 sm:flex-initial"
               >
-                <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+                <FileSpreadsheet className="h-4 w-4 mr-1" />
+                Excel
               </Button>
-              <Button onClick={handleSaveChanges} disabled={saving} className="gap-2">
+              <Button onClick={handleSaveChanges} disabled={saving} size="sm" className="gap-2 flex-1 sm:flex-initial">
                 <Save className="h-4 w-4" />
                 Guardar y Cerrar
               </Button>
             </div>
           </DialogHeader>
 
-          {selectedFactura && (
-            <div className="space-y-6">
-              {/* Info básica */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <Label className="text-slate-500">Cliente</Label>
-                  <p className="font-medium">
-                    {selectedFactura.cliente.nombreCompania || selectedFactura.cliente.nombre}
-                  </p>
-                  {selectedFactura.cliente.nit && (
-                    <p className="text-slate-500">NIT: {selectedFactura.cliente.nit}</p>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-slate-500">Número de Factura</Label>
-                  <Input
-                    className="mt-1"
-                    value={editFormData.numeroFactura}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, numeroFactura: e.target.value }))}
-                    placeholder="FAC-XXX"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <Label className="text-slate-500">Estado</Label>
-                  <Select
-                    value={editFormData.estado}
-                    onValueChange={(value) => setEditFormData((p) => ({ ...p, estado: value }))}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pendiente">Pendiente</SelectItem>
-                      <SelectItem value="pagada">Pagada</SelectItem>
-                      <SelectItem value="vencida">Vencida</SelectItem>
-                      <SelectItem value="cancelada">Cancelada</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Costos de Envío y Ajuste */}
-              <div className="grid grid-cols-2 gap-4">
-                {/* Costos de envío */}
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-                  <h4 className="font-medium text-slate-700">Costos de Envío</h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-sm">Flete ($)</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        className="mt-1"
-                        value={editFormData.flete}
-                        onChange={(e) => setEditFormData((p) => ({ ...p, flete: e.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm flex items-center gap-2">
-                        <Checkbox
-                          checked={editFormData.tieneSeguro}
-                          onCheckedChange={(checked) => 
-                            setEditFormData((p) => ({ ...p, tieneSeguro: !!checked }))
-                          }
-                        />
-                        Seguro ($)
-                      </Label>
-                      {editFormData.tieneSeguro && (
-                        <Input
-                          type="number"
-                          step="0.01"
-                          className="mt-1"
-                          value={editFormData.seguro}
-                          onChange={(e) => setEditFormData((p) => ({ ...p, seguro: e.target.value }))}
-                        />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ajustar al total */}
-                <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-3">
-                  <h4 className="font-medium text-emerald-800">Ajustar al Total CFR</h4>
-                  <p className="text-xs text-slate-600">
-                    Si quieres que el CFR sea un valor específico, escríbelo aquí. Los precios de los productos se ajustarán.
-                  </p>
-                  <div className="flex gap-2">
-                    <Input
-                      className="flex-1"
-                      placeholder={`Actual: ${formatCurrency(selectedFactura.total)}`}
-                      value={adjustTotal}
-                      onChange={(e) => setAdjustTotal(e.target.value)}
-                    />
-                    <Button 
-                      onClick={handleAdjustPrices}
-                      disabled={!adjustTotal || parseFloat(adjustTotal) <= 0}
-                    >
-                      Ajustar
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Términos */}
-              <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
-                <h4 className="font-medium text-slate-700">Términos</h4>
-                <div className="grid grid-cols-4 gap-3">
-                  <div>
-                    <Label className="text-sm">Fecha</Label>
-                    <Input
-                      type="date"
-                      className="mt-1"
-                      value={editFormData.fecha}
-                      onChange={(e) => setEditFormData((p) => ({ ...p, fecha: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm">NRO Contrato (opcional)</Label>
-                    <Input
-                      className="mt-1"
-                      value={editFormData.nroContrato}
-                      onChange={(e) => setEditFormData((p) => ({ ...p, nroContrato: e.target.value }))}
-                      placeholder="Número de contrato"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm">Puerto Embarque</Label>
-                    <Input
-                      className="mt-1"
-                      value={editFormData.puertoEmbarque}
-                      onChange={(e) => setEditFormData((p) => ({ ...p, puertoEmbarque: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm">Origen</Label>
-                    <Input
-                      className="mt-1"
-                      value={editFormData.origen}
-                      onChange={(e) => setEditFormData((p) => ({ ...p, origen: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-sm">Moneda</Label>
-                    <Input
-                      className="mt-1"
-                      value={editFormData.moneda}
-                      onChange={(e) => setEditFormData((p) => ({ ...p, moneda: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-sm">Términos de Pago</Label>
-                  <Input
-                    className="mt-1"
-                    value={editFormData.terminosPago}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, terminosPago: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              {/* Firma Cliente */}
-              <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-amber-800">Firma del Cliente</h4>
-                  <Checkbox
-                    checked={editFormData.incluyeFirmaCliente}
-                    onCheckedChange={(checked) => 
-                      setEditFormData((p) => ({ ...p, incluyeFirmaCliente: !!checked }))
-                    }
-                  />
-                </div>
-                {editFormData.incluyeFirmaCliente && (
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Nombre</Label>
-                      <Input
-                        value={editFormData.firmaClienteNombre}
-                        onChange={(e) => setEditFormData((p) => ({ ...p, firmaClienteNombre: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Cargo</Label>
-                      <Input
-                        value={editFormData.firmaClienteCargo}
-                        onChange={(e) => setEditFormData((p) => ({ ...p, firmaClienteCargo: e.target.value }))}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Empresa</Label>
-                      <Input
-                        value={editFormData.firmaClienteEmpresa}
-                        onChange={(e) => setEditFormData((p) => ({ ...p, firmaClienteEmpresa: e.target.value }))}
-                      />
-                    </div>
-                  </div>
+          <div className="space-y-4">
+            {/* Info básica */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg">
+              <div>
+                <Label className="text-slate-500">Cliente</Label>
+                <p className="font-medium">
+                  {selectedFactura?.cliente.nombreCompania || selectedFactura?.cliente.nombre}
+                </p>
+                {selectedFactura?.cliente.nit && (
+                  <p className="text-slate-500 text-sm mt-1">NIT: {selectedFactura.cliente.nit}</p>
                 )}
               </div>
-
-              <Separator />
-
-              {/* Productos */}
               <div>
-                <h3 className="font-semibold mb-2">Productos</h3>
-                <div className="overflow-x-auto -mx-4 px-4">
+                <Label className="text-slate-500">Número</Label>
+                <Input
+                  className="mt-1"
+                  value={editFormData.numeroFactura}
+                  onChange={(e) => setEditFormData((p) => ({ ...p, numeroFactura: e.target.value }))}
+                  placeholder="FAC-XXX"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-500">Estado</Label>
+                <Select
+                  value={editFormData.estado}
+                  onValueChange={(value) => setEditFormData((p) => ({ ...p, estado: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendiente">Pendiente</SelectItem>
+                    <SelectItem value="pagada">Pagada</SelectItem>
+                    <SelectItem value="vencida">Vencida</SelectItem>
+                    <SelectItem value="cancelada">Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-slate-500">Número de Contrato (opcional)</Label>
+                <Input
+                  className="mt-1"
+                  value={editFormData.nroContrato}
+                  onChange={(e) => setEditFormData((p) => ({ ...p, nroContrato: e.target.value }))}
+                  placeholder="Número de contrato"
+                />
+              </div>
+            </div>
+
+            {/* Flete, Seguro y Ajuste */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+              {/* Costos de envío */}
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+                <h4 className="font-medium text-slate-700">Costos de Envío</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-sm">Flete ($)</Label>
+                    <Input
+                      inputMode="decimal"
+                      className="mt-1"
+                      type="number"
+                      step="0.01"
+                      value={editFormData.flete}
+                      onChange={(e) => setEditFormData((p) => ({ ...p, flete: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editFormData.tieneSeguro}
+                        onChange={(e) => setEditFormData((p) => ({ ...p, tieneSeguro: e.target.checked }))}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      Seguro ($)
+                    </Label>
+                    {editFormData.tieneSeguro && (
+                      <Input
+                        inputMode="decimal"
+                        className="mt-1"
+                        type="number"
+                        step="0.01"
+                        value={editFormData.seguro}
+                        onChange={(e) => setEditFormData((p) => ({ ...p, seguro: e.target.value }))}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Ajustar al total */}
+              <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-3">
+                <h4 className="font-medium text-emerald-800">Ajustar al Total CFR</h4>
+                <p className="text-xs text-slate-600">
+                  Si quieres que el CFR sea un valor específico, escríbelo aquí. Los precios de los productos se ajustarán.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input
+                    className="flex-1"
+                    placeholder={`Actual: ${formatCurrency(selectedFactura?.total || 0)}`}
+                    value={adjustTotal}
+                    onChange={(e) => setAdjustTotal(e.target.value)}
+                  />
+                  <Button 
+                    onClick={handleAdjustPrices}
+                    disabled={!adjustTotal || parseFloat(adjustTotal) <= 0}
+                    className="w-full sm:w-auto"
+                  >
+                    Ajustar
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Términos */}
+            <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
+              <h4 className="font-medium text-slate-700">Términos</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div>
+                  <Label className="text-sm">Fecha</Label>
+                  <Input
+                    type="date"
+                    className="mt-1"
+                    value={editFormData.fecha}
+                    onChange={(e) => setEditFormData((p) => ({ ...p, fecha: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">Puerto Embarque</Label>
+                  <Input
+                    className="mt-1"
+                    value={editFormData.puertoEmbarque}
+                    onChange={(e) => setEditFormData((p) => ({ ...p, puertoEmbarque: e.target.value }))}
+                    placeholder="NEW ORLEANS, LA"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">Origen</Label>
+                  <Input
+                    className="mt-1"
+                    value={editFormData.origen}
+                    onChange={(e) => setEditFormData((p) => ({ ...p, origen: e.target.value }))}
+                    placeholder="ESTADOS UNIDOS"
+                  />
+                </div>
+                <div>
+                  <Label className="text-sm">Moneda</Label>
+                  <Input
+                    className="mt-1"
+                    value={editFormData.moneda}
+                    onChange={(e) => setEditFormData((p) => ({ ...p, moneda: e.target.value }))}
+                    placeholder="USD"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm">Términos de Pago</Label>
+                <Input
+                  className="mt-1"
+                  value={editFormData.terminosPago}
+                  onChange={(e) => setEditFormData((p) => ({ ...p, terminosPago: e.target.value }))}
+                  placeholder="100% antes del embarque"
+                />
+              </div>
+            </div>
+
+            {/* Firma Cliente */}
+            <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="editIncluyeFirmaFactura"
+                  checked={editFormData.incluyeFirmaCliente}
+                  onChange={(e) => setEditFormData((p) => ({ ...p, incluyeFirmaCliente: e.target.checked }))}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="editIncluyeFirmaFactura" className="cursor-pointer font-medium text-amber-800">
+                  Incluir firma del cliente en la plantilla
+                </Label>
+              </div>
+              {editFormData.incluyeFirmaCliente && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                  <div>
+                    <Label className="text-sm">Nombre</Label>
+                    <Input
+                      className="mt-1"
+                      value={editFormData.firmaClienteNombre}
+                      onChange={(e) => setEditFormData((p) => ({ ...p, firmaClienteNombre: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Cargo</Label>
+                    <Input
+                      className="mt-1"
+                      value={editFormData.firmaClienteCargo}
+                      onChange={(e) => setEditFormData((p) => ({ ...p, firmaClienteCargo: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Empresa</Label>
+                    <Input
+                      className="mt-1"
+                      value={editFormData.firmaClienteEmpresa}
+                      onChange={(e) => setEditFormData((p) => ({ ...p, firmaClienteEmpresa: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Tabla de productos */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium">Productos</h4>
+              </div>
+              {selectedFactura && (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1075,43 +1108,48 @@ export default function FacturasPage(): React.ReactElement {
                           {formatCurrency(item.subtotal)}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
                 </div>
-              </div>
+              )}
+            </div>
 
-              {/* Resumen totales */}
-              <div className="flex justify-end">
-                <div className="w-80 space-y-2 text-sm p-4 bg-emerald-50 rounded-lg">
+            {/* Resumen totales */}
+            <div className="flex justify-end">
+              <div className="w-full sm:w-80 space-y-2 text-sm p-4 bg-emerald-50 rounded-lg">
+                <div className="flex justify-between">
+                  <span>FOB (productos):</span>
+                  <span className="font-medium">{formatCurrency(selectedFactura?.subtotal || 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>+ Flete:</span>
+                  <span>{formatCurrency(parseFloat(editFormData.flete) || 0)}</span>
+                </div>
+                {editFormData.tieneSeguro && (
                   <div className="flex justify-between">
-                    <span>FOB (productos):</span>
-                    <span className="font-medium">{formatCurrency(selectedFactura.subtotal)}</span>
+                    <span>+ Seguro:</span>
+                    <span>{formatCurrency(parseFloat(editFormData.seguro) || 0)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>+ Flete:</span>
-                    <span>{formatCurrency(parseFloat(editFormData.flete) || 0)}</span>
-                  </div>
-                  {editFormData.tieneSeguro && (
-                    <div className="flex justify-between">
-                      <span>+ Seguro:</span>
-                      <span>{formatCurrency(parseFloat(editFormData.seguro) || 0)}</span>
-                    </div>
-                  )}
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold text-emerald-700">
-                    <span>= CFR Total:</span>
-                    <span>{formatCurrency(selectedFactura.total)}</span>
-                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between text-lg font-bold text-emerald-700">
+                  <span>= CFR Total:</span>
+                  <span>{formatCurrency(selectedFactura?.total || 0)}</span>
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
 

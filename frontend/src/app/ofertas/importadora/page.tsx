@@ -415,6 +415,22 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     }
   }
 
+  // Eliminar item
+  async function handleRemoveItem(itemId: string): Promise<void> {
+    if (!selectedOferta || !confirm("¿Eliminar este producto?")) return;
+
+    try {
+      await ofertasImportadoraApi.removeItem(selectedOferta.id, itemId);
+      toast.success("Producto eliminado");
+      const updated = await ofertasImportadoraApi.getById(selectedOferta.id);
+      setSelectedOferta(updated);
+      loadData();
+    } catch (error) {
+      toast.error("Error al eliminar");
+      console.error(error);
+    }
+  }
+
   // Agregar nuevo item
   async function handleAddItem(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -929,8 +945,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       {/* Diálogo de detalle/edición */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="w-[90vw] max-w-[1200px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
+          <DialogHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <DialogTitle className="flex items-center gap-2 flex-wrap">
               <Ship className="h-5 w-5" />
               Oferta: {selectedOferta?.numero}
               {selectedOferta?.ofertaCliente && (
@@ -939,11 +955,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </Badge>
               )}
             </DialogTitle>
-            <div className="flex gap-2 mr-6">
+            <div className="flex flex-wrap gap-2">
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => selectedOferta && exportApi.downloadPdf("ofertas-importadora", selectedOferta.id)}
+                className="flex-1 sm:flex-initial"
               >
                 <FileDown className="h-4 w-4 mr-1" />
                 PDF
@@ -952,11 +969,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 variant="outline" 
                 size="sm"
                 onClick={() => selectedOferta && exportApi.downloadExcel("ofertas-importadora", selectedOferta.id)}
+                className="flex-1 sm:flex-initial"
               >
                 <FileSpreadsheet className="h-4 w-4 mr-1" />
                 Excel
               </Button>
-              <Button onClick={handleSaveChanges} size="sm" className="gap-2">
+              <Button onClick={handleSaveChanges} size="sm" className="gap-2 flex-1 sm:flex-initial">
                 <Save className="h-4 w-4" />
                 Guardar y Cerrar
               </Button>
@@ -965,7 +983,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
           <div className="space-y-4">
             {/* Info básica */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg">
               <div>
                 <Label className="text-slate-500">Cliente</Label>
                 <p className="font-medium">
@@ -1002,7 +1020,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             </div>
 
             {/* Flete, Seguro y Ajuste */}
-            <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               {/* Costos de envío */}
               <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
                 <h4 className="font-medium text-slate-700">Costos de Envío</h4>
@@ -1049,7 +1067,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 <p className="text-xs text-slate-600">
                   Si quieres que el CIF sea un valor específico, escríbelo aquí. Los precios de los productos se ajustarán.
                 </p>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     className="flex-1"
                     placeholder={`Actual: ${formatCurrency(selectedOferta?.precioCIF || 0)}`}
@@ -1059,6 +1077,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   <Button 
                     onClick={handleAdjustPrices}
                     disabled={!totalDeseadoEdit || parseFloat(totalDeseadoEdit) <= 0}
+                    className="w-full sm:w-auto"
                   >
                     Ajustar
                   </Button>
@@ -1069,7 +1088,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             {/* Términos */}
             <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
               <h4 className="font-medium text-slate-700">Términos</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <Label className="text-sm">Puerto Embarque</Label>
                   <Input
@@ -1129,13 +1148,13 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
             {/* Tabla de productos */}
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
                 <h4 className="font-medium">Productos</h4>
                 <Button
                   type="button"
                   size="sm"
                   onClick={openAddItemDialog}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 w-full sm:w-auto"
                 >
                   <Plus className="h-4 w-4" />
                   Agregar Producto
@@ -1151,6 +1170,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 const hasPrecioXCaja = items.some(i => i.precioXCaja);
                 
                 return (
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -1200,21 +1220,27 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                             })()}
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 );
               })()}
             </div>
 
             {/* Resumen totales */}
             <div className="flex justify-end">
-              <div className="w-80 space-y-2 text-sm p-4 bg-emerald-50 rounded-lg">
+              <div className="w-full sm:w-80 space-y-2 text-sm p-4 bg-emerald-50 rounded-lg">
                 <div className="flex justify-between">
                   <span>FOB (productos):</span>
                   <span className="font-medium">
