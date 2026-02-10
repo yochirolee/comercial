@@ -124,6 +124,7 @@ export default function OfertasClientePage(): React.ReactElement {
       const { numero } = await ofertasClienteApi.getNextNumber();
       setFormData({
         numero,
+        fecha: "",
         clienteId: clientes[0]?.id || "",
         observaciones: "",
         campoExtra1: "OFERTA VALIDA POR 30 DIAS",
