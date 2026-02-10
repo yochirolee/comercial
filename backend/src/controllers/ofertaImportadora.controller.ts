@@ -78,6 +78,7 @@ const itemSchema = z.object({
 const crearDesdeOfertaSchema = z.object({
   ofertaClienteId: z.string().min(1, 'Oferta cliente es requerida'),
   numero: z.string().optional(),
+  fecha: z.string().optional(),
   flete: z.number().min(0, 'Flete debe ser positivo'),
   seguro: z.number().min(0).optional(),
   tieneSeguro: z.boolean().optional(),
@@ -228,7 +229,7 @@ export const OfertaImportadoraController = {
     }
 
     const { 
-      ofertaClienteId, flete, seguro, tieneSeguro, incluyeFirmaCliente, totalCifDeseado,
+      ofertaClienteId, fecha, flete, seguro, tieneSeguro, incluyeFirmaCliente, totalCifDeseado,
       puertoEmbarque, origen, moneda, terminosPago, items: itemsProporcionados,
     } = validation.data;
     
@@ -347,6 +348,7 @@ export const OfertaImportadoraController = {
     const ofertaImportadora = await prisma.ofertaImportadora.create({
       data: {
         numero,
+        fecha: fecha ? new Date(fecha) : new Date(),
         clienteId: ofertaCliente.clienteId,
         ofertaClienteId,
         codigoMincex: ofertaCliente.codigoMincex,

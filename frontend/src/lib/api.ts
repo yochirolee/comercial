@@ -780,6 +780,7 @@ export interface OfertaImportadoraInput {
 export interface CrearDesdeOfertaClienteInput {
   ofertaClienteId: string;
   numero?: string;
+  fecha?: string;
   flete: number;
   seguro?: number;
   tieneSeguro?: boolean;

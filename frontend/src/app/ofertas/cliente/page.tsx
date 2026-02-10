@@ -51,6 +51,7 @@ export default function OfertasClientePage(): React.ReactElement {
   // Form state para nueva oferta
   const [formData, setFormData] = useState({
     numero: "",
+    fecha: "",
     clienteId: "",
     observaciones: "",
     campoExtra1: "OFERTA VALIDA POR 30 DIAS",
@@ -266,6 +267,7 @@ export default function OfertasClientePage(): React.ReactElement {
   // Estado para edición de oferta existente
   const [editFormData, setEditFormData] = useState({
     numero: "",
+    fecha: "",
     observaciones: "",
     campoExtra1: "",
   });
@@ -275,6 +277,7 @@ export default function OfertasClientePage(): React.ReactElement {
     setSelectedOferta(updated);
     setEditFormData({
       numero: updated.numero || "",
+      fecha: updated.fecha ? new Date(updated.fecha).toISOString().split('T')[0] : "",
       observaciones: updated.observaciones || "",
       campoExtra1: updated.campoExtra1 || "OFERTA VALIDA POR 30 DIAS",
     });
@@ -556,7 +559,16 @@ export default function OfertasClientePage(): React.ReactElement {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="sm:col-span-2 space-y-1">
+              <div className="space-y-1">
+                <Label className="text-xs sm:text-sm">Fecha</Label>
+                <Input
+                  type="date"
+                  value={formData.fecha}
+                  onChange={(e) => setFormData((p) => ({ ...p, fecha: e.target.value }))}
+                  className="h-9 sm:h-10"
+                />
+              </div>
+              <div className="space-y-1">
                 <Label className="text-xs sm:text-sm">Observaciones</Label>
                 <Input
                   value={formData.observaciones}
@@ -784,8 +796,8 @@ export default function OfertasClientePage(): React.ReactElement {
 
       {/* Detail/Edit Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[1000px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="w-[95vw] max-w-[1000px] max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="text-base sm:text-lg">Editar Oferta: {selectedOferta?.numero}</DialogTitle>
             <div className="flex flex-wrap gap-2 pt-2">
               <Button 
@@ -813,162 +825,176 @@ export default function OfertasClientePage(): React.ReactElement {
             </div>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {/* Información básica editable */}
-            <div className="border rounded-lg p-4 space-y-4">
-              <h3 className="font-semibold">Información de la Oferta</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="space-y-2">
-                  <Label>Número de Oferta</Label>
-                  <Input
-                    value={editFormData.numero}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, numero: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Cliente</Label>
-                  <Input
-                    value={`${selectedOferta?.cliente.nombre || ""} ${selectedOferta?.cliente.apellidos || ""}`}
-                    disabled
-                    className="bg-slate-100"
-                  />
-                </div>
-                <div className="sm:col-span-2 space-y-2">
-                  <Label>Observaciones</Label>
-                  <Input
-                    value={editFormData.observaciones}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, observaciones: e.target.value }))}
-                  />
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="space-y-3 sm:space-y-4 md:space-y-6 pr-2">
+              {/* Información básica editable */}
+              <div className="border rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3 md:space-y-4">
+                <h3 className="font-semibold text-sm sm:text-base">Información de la Oferta</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label className="text-xs sm:text-sm">Número de Oferta</Label>
+                    <Input
+                      value={editFormData.numero}
+                      onChange={(e) => setEditFormData((p) => ({ ...p, numero: e.target.value }))}
+                      className="h-9 sm:h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label className="text-xs sm:text-sm">Cliente</Label>
+                    <Input
+                      value={`${selectedOferta?.cliente.nombre || ""} ${selectedOferta?.cliente.apellidos || ""}`}
+                      disabled
+                      className="bg-slate-100 h-9 sm:h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label className="text-xs sm:text-sm">Fecha</Label>
+                    <Input
+                      type="date"
+                      value={editFormData.fecha}
+                      onChange={(e) => setEditFormData((p) => ({ ...p, fecha: e.target.value }))}
+                      className="h-9 sm:h-10 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label className="text-xs sm:text-sm">Observaciones</Label>
+                    <Input
+                      value={editFormData.observaciones}
+                      onChange={(e) => setEditFormData((p) => ({ ...p, observaciones: e.target.value }))}
+                      className="h-9 sm:h-10 text-sm"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Campo de validez */}
-            <div className="border rounded-lg p-4 space-y-2">
-              <Label className="text-sm">Texto de Validez</Label>
-              <Input
-                value={editFormData.campoExtra1}
-                onChange={(e) => setEditFormData((p) => ({ ...p, campoExtra1: e.target.value }))}
-                placeholder="OFERTA VALIDA POR 30 DIAS"
-              />
-            </div>
-
-            {/* Productos */}
-            <div className="border rounded-lg p-4 space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-semibold">Productos</h3>
-                <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
-                  <Button size="sm" onClick={() => setItemDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Agregar Producto
-                  </Button>
-                  <DialogContent className="w-full max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>Agregar Producto</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleAddItem} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Producto *</Label>
-                        <Select
-                          value={itemFormStrings.productoId}
-                          onValueChange={handleSelectProduct}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar producto" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {productos.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.nombre} ({p.unidadMedida.abreviatura})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        <div className="space-y-2">
-                          <Label>Cantidad *</Label>
-                          <Input
-                            placeholder="0"
-                            value={itemFormStrings.cantidad}
-                            onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidad: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Precio por UM *</Label>
-                          <Input
-                            placeholder="0.00"
-                            value={itemFormStrings.precioUnitario}
-                            onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioUnitario: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                      {/* Campos informativos opcionales */}
-                      <div className="border-t pt-4">
-                        <p className="text-sm text-slate-500 mb-3">Campos informativos (opcionales)</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Cant. Sacos</Label>
-                            <Input
-                              placeholder="-"
-                              value={itemFormStrings.cantidadSacos}
-                              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Peso x Saco</Label>
-                            <Input
-                              placeholder="-"
-                              value={itemFormStrings.pesoXSaco}
-                              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Precio x Saco</Label>
-                            <Input
-                              placeholder="-"
-                              value={itemFormStrings.precioXSaco}
-                              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXSaco: e.target.value }))}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Cant. Cajas</Label>
-                            <Input
-                              placeholder="-"
-                              value={itemFormStrings.cantidadCajas}
-                              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Peso x Caja</Label>
-                            <Input
-                              placeholder="-"
-                              value={itemFormStrings.pesoXCaja}
-                              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Precio x Caja</Label>
-                            <Input
-                              placeholder="-"
-                              value={itemFormStrings.precioXCaja}
-                              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <Button type="button" variant="outline" onClick={() => setItemDialogOpen(false)}>
-                          Cancelar
-                        </Button>
-                        <Button type="submit">Agregar</Button>
-                      </div>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+              {/* Campo de validez */}
+              <div className="border rounded-lg p-3 sm:p-4 space-y-1 sm:space-y-2">
+                <Label className="text-xs sm:text-sm">Texto de Validez</Label>
+                <Input
+                  value={editFormData.campoExtra1}
+                  onChange={(e) => setEditFormData((p) => ({ ...p, campoExtra1: e.target.value }))}
+                  placeholder="OFERTA VALIDA POR 30 DIAS"
+                  className="h-9 sm:h-10 text-sm"
+                />
               </div>
 
-              <Table>
+              {/* Productos */}
+              <div className="border rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-semibold text-sm sm:text-base">Productos</h3>
+                  <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
+                    <Button size="sm" onClick={() => setItemDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar Producto
+                    </Button>
+                    <DialogContent className="w-full max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle>Agregar Producto</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleAddItem} className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Producto *</Label>
+                          <Select
+                            value={itemFormStrings.productoId}
+                            onValueChange={handleSelectProduct}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar producto" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {productos.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.nombre} ({p.unidadMedida.abreviatura})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                          <div className="space-y-2">
+                            <Label>Cantidad *</Label>
+                            <Input
+                              placeholder="0"
+                              value={itemFormStrings.cantidad}
+                              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidad: e.target.value }))}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Precio por UM *</Label>
+                            <Input
+                              placeholder="0.00"
+                              value={itemFormStrings.precioUnitario}
+                              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioUnitario: e.target.value }))}
+                            />
+                          </div>
+                        </div>
+                        {/* Campos informativos opcionales */}
+                        <div className="border-t pt-4">
+                          <p className="text-sm text-slate-500 mb-3">Campos informativos (opcionales)</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Cant. Sacos</Label>
+                              <Input
+                                placeholder="-"
+                                value={itemFormStrings.cantidadSacos}
+                                onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Peso x Saco</Label>
+                              <Input
+                                placeholder="-"
+                                value={itemFormStrings.pesoXSaco}
+                                onChange={(e) => setItemFormStrings((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Precio x Saco</Label>
+                              <Input
+                                placeholder="-"
+                                value={itemFormStrings.precioXSaco}
+                                onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXSaco: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Cant. Cajas</Label>
+                              <Input
+                                placeholder="-"
+                                value={itemFormStrings.cantidadCajas}
+                                onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Peso x Caja</Label>
+                              <Input
+                                placeholder="-"
+                                value={itemFormStrings.pesoXCaja}
+                                onChange={(e) => setItemFormStrings((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Precio x Caja</Label>
+                              <Input
+                                placeholder="-"
+                                value={itemFormStrings.precioXCaja}
+                                onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" onClick={() => setItemDialogOpen(false)}>
+                            Cancelar
+                          </Button>
+                          <Button type="submit">Agregar</Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Producto</TableHead>
@@ -1011,42 +1037,46 @@ export default function OfertasClientePage(): React.ReactElement {
                   )}
                 </TableBody>
               </Table>
+              </div>
 
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <div className="text-lg font-bold">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div className="text-base sm:text-lg font-bold">
                     Total Actual: {formatCurrency(selectedOferta?.total || 0)}
                   </div>
                   <Button
                     size="sm"
                     variant={showAdjustPrices ? "secondary" : "outline"}
                     onClick={() => setShowAdjustPrices(!showAdjustPrices)}
+                    className="w-full sm:w-auto"
                   >
                     {showAdjustPrices ? "Cancelar" : "Ajustar a Total"}
                   </Button>
                 </div>
 
                 {showAdjustPrices && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
-                    <p className="text-sm text-amber-800">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3">
+                    <p className="text-xs sm:text-sm text-amber-800">
                       Ingresa el total deseado y los precios de los productos se ajustarán proporcionalmente.
                     </p>
-                    <div className="flex gap-3 items-end">
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-sm">Total Deseado ($)</Label>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-end">
+                      <div className="flex-1 space-y-1 w-full">
+                        <Label className="text-xs sm:text-sm">Total Deseado ($)</Label>
                         <Input
                           placeholder="Ej: 5000"
                           value={totalDeseado}
                           onChange={(e) => setTotalDeseado(e.target.value)}
+                          className="h-9 sm:h-10 text-sm"
                         />
                       </div>
-                      <Button onClick={handleAdjustPrices}>
+                      <Button onClick={handleAdjustPrices} className="w-full sm:w-auto">
                         Aplicar Ajuste
                       </Button>
                     </div>
                   </div>
                 )}
               </div>
+            </div>
             </div>
           </div>
         </DialogContent>

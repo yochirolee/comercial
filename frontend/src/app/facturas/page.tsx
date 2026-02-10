@@ -853,7 +853,7 @@ export default function FacturasPage(): React.ReactElement {
 
           <div className="space-y-4 min-w-0">
             {/* Info básica */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg min-w-0">
               <div>
                 <Label className="text-slate-500">Cliente</Label>
                 <p className="font-medium">
@@ -873,6 +873,24 @@ export default function FacturasPage(): React.ReactElement {
                 />
               </div>
               <div>
+                <Label className="text-slate-500">Fecha</Label>
+                <Input
+                  type="date"
+                  className="mt-1"
+                  value={editFormData.fecha}
+                  onChange={(e) => setEditFormData((p) => ({ ...p, fecha: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label className="text-slate-500">Número de Contrato (opcional)</Label>
+                <Input
+                  className="mt-1"
+                  value={editFormData.nroContrato}
+                  onChange={(e) => setEditFormData((p) => ({ ...p, nroContrato: e.target.value }))}
+                  placeholder="Número de contrato"
+                />
+              </div>
+              <div>
                 <Label className="text-slate-500">Estado</Label>
                 <Select
                   value={editFormData.estado}
@@ -888,15 +906,6 @@ export default function FacturasPage(): React.ReactElement {
                     <SelectItem value="cancelada">Cancelada</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label className="text-slate-500">Número de Contrato (opcional)</Label>
-                <Input
-                  className="mt-1"
-                  value={editFormData.nroContrato}
-                  onChange={(e) => setEditFormData((p) => ({ ...p, nroContrato: e.target.value }))}
-                  placeholder="Número de contrato"
-                />
               </div>
             </div>
 
@@ -968,16 +977,7 @@ export default function FacturasPage(): React.ReactElement {
             {/* Términos */}
             <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
               <h4 className="font-medium text-slate-700">Términos</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div>
-                  <Label className="text-sm">Fecha</Label>
-                  <Input
-                    type="date"
-                    className="mt-1"
-                    value={editFormData.fecha}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, fecha: e.target.value }))}
-                  />
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
                   <Label className="text-sm">Puerto Embarque</Label>
                   <Input

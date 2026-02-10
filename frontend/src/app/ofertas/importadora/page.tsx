@@ -59,6 +59,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   const [selectedOfertaClienteId, setSelectedOfertaClienteId] = useState("");
   const [selectedOfertaCliente, setSelectedOfertaCliente] = useState<OfertaCliente | null>(null);
   const [numeroOferta, setNumeroOferta] = useState("");
+  const [fechaOferta, setFechaOferta] = useState("");
   const [flete, setFlete] = useState("");
   const [seguro, setSeguro] = useState("");
   const [tieneSeguro, setTieneSeguro] = useState(false);
@@ -141,6 +142,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setSelectedOfertaClienteId(primeraOferta?.id || "");
     setSelectedOfertaCliente(primeraOferta || null);
     setNumeroOferta(primeraOferta?.numero || "");
+    setFechaOferta("");
     setFlete("");
     setSeguro("");
     setTieneSeguro(false);
@@ -240,6 +242,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       await ofertasImportadoraApi.createFromOfertaCliente({
         ofertaClienteId: selectedOfertaClienteId,
         numero: numeroOferta,
+        fecha: fechaOferta || undefined,
         flete: fleteNum,
         seguro: seguroNum,
         tieneSeguro,
@@ -297,6 +300,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     try {
       await ofertasImportadoraApi.update(selectedOferta.id, {
         numero: selectedOferta.numero,
+        fecha: selectedOferta.fecha,
         flete: selectedOferta.flete,
         seguro: selectedOferta.seguro,
         tieneSeguro: selectedOferta.tieneSeguro,
@@ -565,161 +569,180 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 Nueva desde Oferta Cliente
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[80vw] xl:w-[75vw] max-w-[1400px] max-h-[90vh] overflow-y-auto p-3 sm:p-4 md:p-6">
-              <DialogHeader className="pb-2 sm:pb-3">
+            <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[80vw] xl:w-[75vw] max-w-[1400px] max-h-[90vh] flex flex-col overflow-hidden p-3 sm:p-4 md:p-6">
+              <DialogHeader className="flex-shrink-0 pb-2 sm:pb-3">
                 <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <Ship className="h-4 w-4 sm:h-5 sm:w-5" />
                   Nueva Oferta a Importadora
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-                {/* Seleccionar oferta cliente */}
-                <div className="space-y-1.5 sm:space-y-2">
-                  <Label className="text-sm sm:text-base">Oferta al Cliente *</Label>
-                  <Select
-                    value={selectedOfertaClienteId}
-                    onValueChange={handleSelectOfertaCliente}
-                  >
-                    <SelectTrigger className="text-sm sm:text-base h-9 sm:h-10">
-                      <SelectValue placeholder="Seleccionar oferta" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ofertasCliente.map((o) => (
-                        <SelectItem key={o.id} value={o.id} className="text-sm sm:text-base">
-                          {o.numero} - {o.cliente.nombre} ({formatCurrency(o.total)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Info de la oferta seleccionada */}
-                {selectedOfertaCliente && (
-                  <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border">
-                    <h4 className="font-medium mb-2 text-sm sm:text-base">📋 Datos de la Oferta Cliente</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm sm:text-base">
-                      <div className="text-slate-600">Cliente:</div>
-                      <div className="font-medium">{selectedOfertaCliente.cliente.nombre}</div>
-                      <div className="text-slate-600">Productos:</div>
-                      <div className="font-medium">{selectedOfertaCliente.items.length} items</div>
-                      <div className="text-slate-600">Total acordado:</div>
-                      <div className="font-bold text-slate-700">{formatCurrency(selectedOfertaCliente.total)}</div>
-                    </div>
+              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto min-h-0">
+                <div className="space-y-2 sm:space-y-3 pr-2">
+                  {/* Seleccionar oferta cliente */}
+                  <div className="space-y-1 sm:space-y-1.5">
+                    <Label className="text-xs sm:text-sm">Oferta al Cliente *</Label>
+                    <Select
+                      value={selectedOfertaClienteId}
+                      onValueChange={handleSelectOfertaCliente}
+                    >
+                      <SelectTrigger className="text-sm h-9 sm:h-10">
+                        <SelectValue placeholder="Seleccionar oferta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ofertasCliente.map((o) => (
+                          <SelectItem key={o.id} value={o.id} className="text-sm">
+                            {o.numero} - {o.cliente.nombre} ({formatCurrency(o.total)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                )}
 
-                {/* Número de oferta */}
-                <div className="space-y-1.5 sm:space-y-2">
-                  <Label className="text-sm sm:text-base">Número de Oferta</Label>
-                  <Input
-                    value={numeroOferta}
-                    onChange={(e) => setNumeroOferta(e.target.value)}
-                    placeholder="Ej: Z26001"
-                    className="text-sm sm:text-base h-9 sm:h-10"
-                  />
-                </div>
-
-                {/* Flete y Seguro */}
-                {selectedOfertaCliente && (
-                  <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3 sm:space-y-4">
-                    <h4 className="font-medium text-slate-700 text-sm sm:text-base">Costos de Envío</h4>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                      <div className="space-y-2">
-                        <Label>Flete ($)</Label>
-                        <Input
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          value={flete}
-                          onChange={(e) => setFlete(e.target.value)}
-                        />
+                  {/* Info de la oferta seleccionada */}
+                  {selectedOfertaCliente && (
+                    <div className="p-2 sm:p-3 bg-slate-50 rounded-lg border">
+                      <h4 className="font-medium mb-1.5 sm:mb-2 text-xs sm:text-sm">📋 Datos de la Oferta Cliente</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                        <div className="text-slate-600">Cliente:</div>
+                        <div className="font-medium">{selectedOfertaCliente.cliente.nombre}</div>
+                        <div className="text-slate-600">Productos:</div>
+                        <div className="font-medium">{selectedOfertaCliente.items.length} items</div>
+                        <div className="text-slate-600">Total acordado:</div>
+                        <div className="font-bold text-slate-700">{formatCurrency(selectedOfertaCliente.total)}</div>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={tieneSeguro}
-                            onChange={(e) => setTieneSeguro(e.target.checked)}
-                          />
-                          Seguro ($)
-                        </Label>
-                        {tieneSeguro && (
+                    </div>
+                  )}
+
+                  {/* Número de oferta */}
+                  <div className="space-y-1 sm:space-y-1.5">
+                    <Label className="text-xs sm:text-sm">Número de Oferta</Label>
+                    <Input
+                      value={numeroOferta}
+                      onChange={(e) => setNumeroOferta(e.target.value)}
+                      placeholder="Ej: Z26001"
+                      className="text-sm h-9 sm:h-10"
+                    />
+                  </div>
+
+                  {/* Fecha */}
+                  <div className="space-y-1 sm:space-y-1.5">
+                    <Label className="text-xs sm:text-sm">Fecha</Label>
+                    <Input
+                      type="date"
+                      value={fechaOferta}
+                      onChange={(e) => setFechaOferta(e.target.value)}
+                      className="text-sm h-9 sm:h-10"
+                    />
+                  </div>
+
+                  {/* Flete y Seguro */}
+                  {selectedOfertaCliente && (
+                    <div className="p-2 sm:p-3 md:p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-2 sm:space-y-3">
+                      <h4 className="font-medium text-slate-700 text-xs sm:text-sm">Costos de Envío</h4>
+                      
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        <div className="space-y-1 sm:space-y-1.5">
+                          <Label className="text-xs sm:text-sm">Flete ($)</Label>
                           <Input
                             inputMode="decimal"
                             placeholder="0.00"
-                            value={seguro}
-                            onChange={(e) => setSeguro(e.target.value)}
+                            value={flete}
+                            onChange={(e) => setFlete(e.target.value)}
+                            className="h-9 sm:h-10 text-sm"
                           />
-                        )}
+                        </div>
+                        <div className="space-y-1 sm:space-y-1.5">
+                          <Label className="text-xs sm:text-sm flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={tieneSeguro}
+                              onChange={(e) => setTieneSeguro(e.target.checked)}
+                              className="h-4 w-4 rounded border-gray-300"
+                            />
+                            Seguro ($)
+                          </Label>
+                          {tieneSeguro && (
+                            <Input
+                              inputMode="decimal"
+                              placeholder="0.00"
+                              value={seguro}
+                              onChange={(e) => setSeguro(e.target.value)}
+                              className="h-9 sm:h-10 text-sm"
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+                  {/* Términos */}
+                  {selectedOfertaCliente && (
+                    <div className="p-2 sm:p-3 md:p-4 bg-slate-50 rounded-lg border space-y-2 sm:space-y-3">
+                      <h4 className="font-medium text-slate-700 text-xs sm:text-sm">Términos</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs sm:text-sm">Puerto de Embarque</Label>
+                          <Input
+                            value={puertoEmbarque}
+                            onChange={(e) => setPuertoEmbarque(e.target.value)}
+                            placeholder="NEW ORLEANS, LA"
+                            className="h-9 sm:h-10 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs sm:text-sm">Origen</Label>
+                          <Input
+                            value={origen}
+                            onChange={(e) => setOrigen(e.target.value)}
+                            placeholder="ESTADOS UNIDOS"
+                            className="h-9 sm:h-10 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs sm:text-sm">Moneda</Label>
+                          <Input
+                            value={moneda}
+                            onChange={(e) => setMoneda(e.target.value)}
+                            placeholder="USD"
+                            className="h-9 sm:h-10 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs sm:text-sm">Términos de Pago</Label>
+                          <Input
+                            value={terminosPago}
+                            onChange={(e) => setTerminosPago(e.target.value)}
+                            placeholder="100% antes del embarque"
+                            className="h-9 sm:h-10 text-sm"
+                          />
+                        </div>
                       </div>
                     </div>
+                  )}
 
-                  </div>
-                )}
-
-                {/* Términos */}
-                {selectedOfertaCliente && (
-                  <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-3">
-                    <h4 className="font-medium text-slate-700 text-sm sm:text-base">Términos</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-sm">Puerto de Embarque</Label>
-                        <Input
-                          value={puertoEmbarque}
-                          onChange={(e) => setPuertoEmbarque(e.target.value)}
-                          placeholder="NEW ORLEANS, LA"
+                  {/* Firma Cliente */}
+                  {selectedOfertaCliente && (
+                    <div className="p-2 sm:p-3 md:p-4 bg-amber-50 rounded-lg border border-amber-200">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id="incluyeFirma"
+                          checked={incluyeFirmaCliente}
+                          onChange={(e) => setIncluyeFirmaCliente(e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300"
                         />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-sm">Origen</Label>
-                        <Input
-                          value={origen}
-                          onChange={(e) => setOrigen(e.target.value)}
-                          placeholder="ESTADOS UNIDOS"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-sm">Moneda</Label>
-                        <Input
-                          value={moneda}
-                          onChange={(e) => setMoneda(e.target.value)}
-                          placeholder="USD"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-sm">Términos de Pago</Label>
-                        <Input
-                          value={terminosPago}
-                          onChange={(e) => setTerminosPago(e.target.value)}
-                          placeholder="100% antes del embarque"
-                        />
+                        <Label htmlFor="incluyeFirma" className="cursor-pointer font-medium text-amber-800 text-xs sm:text-sm">
+                          Incluir firma del cliente en la plantilla
+                        </Label>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Firma Cliente */}
-                {selectedOfertaCliente && (
-                  <div className="p-3 sm:p-4 bg-amber-50 rounded-lg border border-amber-200">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="incluyeFirma"
-                        checked={incluyeFirmaCliente}
-                        onChange={(e) => setIncluyeFirmaCliente(e.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
-                      <Label htmlFor="incluyeFirma" className="cursor-pointer font-medium text-amber-800 text-sm sm:text-base">
-                        Incluir firma del cliente en la plantilla
-                      </Label>
-                    </div>
-                  </div>
-                )}
-
-                {/* Tabla de productos editables */}
-                {selectedOfertaCliente && itemsEditables.length > 0 && (
-                  <div className="p-2 sm:p-3 md:p-4 bg-white rounded-lg border border-slate-200">
-                    <h4 className="font-medium mb-2 sm:mb-3 text-slate-700 text-sm sm:text-base">📦 Productos</h4>
+                  {/* Tabla de productos editables */}
+                  {selectedOfertaCliente && itemsEditables.length > 0 && (
+                    <div className="p-2 sm:p-3 md:p-4 bg-white rounded-lg border border-slate-200">
+                      <h4 className="font-medium mb-2 sm:mb-3 text-slate-700 text-xs sm:text-sm">📦 Productos</h4>
                     <div className="overflow-x-auto -mx-1 sm:-mx-2 md:mx-0">
                       <div className="inline-block min-w-full align-middle px-1 sm:px-2 md:px-0">
                         <Table className="min-w-full">
@@ -788,68 +811,70 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   </div>
                 )}
 
-                {/* Resumen CIF y ajuste */}
-                {selectedOfertaCliente && (
-                  <div className="p-3 sm:p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-3">
-                    <h4 className="font-medium text-emerald-800 text-sm sm:text-base">Resumen CIF</h4>
-                    
-                    <div className="space-y-2 text-sm sm:text-base">
-                      <div className="flex justify-between">
-                        <span>Productos (FOB):</span>
-                        <span className="font-medium">{formatCurrency(subtotalProductos)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>+ Flete:</span>
-                        <span>{formatCurrency(fleteNum)}</span>
-                      </div>
-                      {tieneSeguro && (
+                  {/* Resumen CIF y ajuste */}
+                  {selectedOfertaCliente && (
+                    <div className="p-2 sm:p-3 md:p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-2 sm:space-y-3">
+                      <h4 className="font-medium text-emerald-800 text-xs sm:text-sm">Resumen CIF</h4>
+                      
+                      <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                         <div className="flex justify-between">
-                          <span>+ Seguro:</span>
-                          <span>{formatCurrency(seguroNum)}</span>
+                          <span>Productos (FOB):</span>
+                          <span className="font-medium">{formatCurrency(subtotalProductos)}</span>
                         </div>
-                      )}
+                        <div className="flex justify-between">
+                          <span>+ Flete:</span>
+                          <span>{formatCurrency(fleteNum)}</span>
+                        </div>
+                        {tieneSeguro && (
+                          <div className="flex justify-between">
+                            <span>+ Seguro:</span>
+                            <span>{formatCurrency(seguroNum)}</span>
+                          </div>
+                        )}
+                        <Separator />
+                        <div className="flex justify-between font-bold text-emerald-700 text-sm sm:text-base">
+                          <span>= CIF Total:</span>
+                          <span>{formatCurrency(cifCalculado)}</span>
+                        </div>
+                      </div>
+
                       <Separator />
-                      <div className="flex justify-between font-bold text-emerald-700">
-                        <span>= CIF Total:</span>
-                        <span>{formatCurrency(cifCalculado)}</span>
+
+                      <div className="space-y-1.5 sm:space-y-2">
+                        <Label className="font-medium text-xs sm:text-sm">Ajustar Total CIF</Label>
+                        <Input
+                          placeholder={`Dejar vacío para ${formatCurrency(cifCalculado)}`}
+                          value={totalCifDeseado}
+                          onChange={(e) => setTotalCifDeseado(e.target.value)}
+                          className="h-9 sm:h-10 text-sm"
+                        />
+                        {totalCifDeseado && parseFloat(totalCifDeseado) > 0 && parseFloat(totalCifDeseado) !== cifCalculado && (
+                          <p className="text-xs text-amber-600 font-medium">
+                            ⚠️ Los precios se ajustarán para que CIF = ${parseFloat(totalCifDeseado).toLocaleString()}
+                          </p>
+                        )}
                       </div>
                     </div>
+                  )}
 
-                    <Separator />
-
-                    <div className="space-y-2">
-                      <Label className="font-medium">Ajustar Total CIF</Label>
-                      <Input
-                        placeholder={`Dejar vacío para ${formatCurrency(cifCalculado)}`}
-                        value={totalCifDeseado}
-                        onChange={(e) => setTotalCifDeseado(e.target.value)}
-                      />
-                      {totalCifDeseado && parseFloat(totalCifDeseado) > 0 && parseFloat(totalCifDeseado) !== cifCalculado && (
-                        <p className="text-xs text-amber-600 font-medium">
-                          ⚠️ Los precios se ajustarán para que CIF = ${parseFloat(totalCifDeseado).toLocaleString()}
-                        </p>
-                      )}
-                    </div>
+                  {/* Botones */}
+                  <div className="flex flex-col sm:flex-row justify-end gap-2 pt-2 sm:pt-3 flex-shrink-0">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setDialogOpen(false)}
+                      className="w-full sm:w-auto h-9 sm:h-10 text-sm"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={saving || !selectedOfertaClienteId}
+                      className="w-full sm:w-auto h-9 sm:h-10 text-sm"
+                    >
+                      {saving ? "Creando..." : "Crear Oferta"}
+                    </Button>
                   </div>
-                )}
-
-                {/* Botones */}
-                <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-2 pt-2 sm:pt-3">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setDialogOpen(false)}
-                    className="w-full sm:w-auto text-sm sm:text-base"
-                  >
-                    Cancelar
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={saving || !selectedOfertaClienteId}
-                    className="w-full sm:w-auto text-sm sm:text-base"
-                  >
-                    {saving ? "Creando..." : "Crear Oferta"}
-                  </Button>
                 </div>
               </form>
             </DialogContent>
@@ -944,8 +969,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
       {/* Diálogo de detalle/edición */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="w-[90vw] max-w-[1200px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <DialogContent className="w-[90vw] max-w-[1200px] max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="flex-shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               <Ship className="h-5 w-5" />
               Oferta: {selectedOferta?.numero}
@@ -981,197 +1006,209 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             </div>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {/* Info básica */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg">
-              <div>
-                <Label className="text-slate-500">Cliente</Label>
-                <p className="font-medium">
-                  {`${selectedOferta?.cliente.nombre || ""} ${selectedOferta?.cliente.apellidos || ""}`.trim()}
-                </p>
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="space-y-3 sm:space-y-4 pr-2">
+              {/* Info básica */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
+                <div>
+                  <Label className="text-slate-500 text-xs sm:text-sm">Cliente</Label>
+                  <p className="font-medium text-xs sm:text-sm mt-1">
+                    {`${selectedOferta?.cliente.nombre || ""} ${selectedOferta?.cliente.apellidos || ""}`.trim()}
+                  </p>
+                </div>
+                <div>
+                  <Label className="text-slate-500 text-xs sm:text-sm">Número</Label>
+                  <Input
+                    className="mt-1 h-9 sm:h-10 text-sm"
+                    value={selectedOferta?.numero || ""}
+                    onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, numero: e.target.value } : null)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-slate-500 text-xs sm:text-sm">Fecha</Label>
+                  <Input
+                    type="date"
+                    className="mt-1 h-9 sm:h-10 text-sm"
+                    value={selectedOferta?.fecha ? new Date(selectedOferta.fecha).toISOString().split('T')[0] : ""}
+                    onChange={(e) => {
+                      const fechaValue = e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString();
+                      setSelectedOferta(prev => prev ? { ...prev, fecha: fechaValue } : null);
+                    }}
+                  />
+                </div>
+                <div>
+                  <Label className="text-slate-500 text-xs sm:text-sm">Estado</Label>
+                  <Select
+                    value={selectedOferta?.estado || "pendiente"}
+                    onValueChange={(value) => setSelectedOferta(prev => prev ? { ...prev, estado: value } : null)}
+                  >
+                    <SelectTrigger className="mt-1 h-9 sm:h-10 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendiente">Pendiente</SelectItem>
+                      <SelectItem value="aceptada">Aceptada</SelectItem>
+                      <SelectItem value="rechazada">Rechazada</SelectItem>
+                      <SelectItem value="vencida">Vencida</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div>
-                <Label className="text-slate-500">Número</Label>
-                <Input
-                  className="mt-1"
-                  value={selectedOferta?.numero || ""}
-                  onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, numero: e.target.value } : null)}
-                />
-              </div>
-              <div>
-                <Label className="text-slate-500">Estado</Label>
-                <Select
-                  value={selectedOferta?.estado || "pendiente"}
-                  onValueChange={(value) => setSelectedOferta(prev => prev ? { ...prev, estado: value } : null)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pendiente">Pendiente</SelectItem>
-                    <SelectItem value="aceptada">Aceptada</SelectItem>
-                    <SelectItem value="rechazada">Rechazada</SelectItem>
-                    <SelectItem value="vencida">Vencida</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-              </div>
-            </div>
 
-            {/* Flete, Seguro y Ajuste */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              {/* Costos de envío */}
-              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
-                <h4 className="font-medium text-slate-700">Costos de Envío</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-sm">Flete ($)</Label>
+              {/* Flete, Seguro y Ajuste */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+                {/* Costos de envío */}
+                <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-2 sm:space-y-3">
+                  <h4 className="font-medium text-slate-700 text-sm sm:text-base">Costos de Envío</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                    <div>
+                      <Label className="text-xs sm:text-sm">Flete ($)</Label>
+                      <Input
+                        inputMode="decimal"
+                        className="mt-1 h-9 sm:h-10 text-sm"
+                        value={selectedOferta?.flete || ""}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setSelectedOferta(prev => prev ? { ...prev, flete: val } : null);
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs sm:text-sm flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedOferta?.tieneSeguro || false}
+                          onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, tieneSeguro: e.target.checked } : null)}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        Seguro ($)
+                      </Label>
+                      {selectedOferta?.tieneSeguro && (
+                        <Input
+                          inputMode="decimal"
+                          className="mt-1 h-9 sm:h-10 text-sm"
+                          value={selectedOferta?.seguro || ""}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setSelectedOferta(prev => prev ? { ...prev, seguro: val } : null);
+                          }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ajustar al total */}
+                <div className="p-3 sm:p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-2 sm:space-y-3">
+                  <h4 className="font-medium text-emerald-800 text-sm sm:text-base">Ajustar al Total CIF</h4>
+                  <p className="text-xs text-slate-600">
+                    Si quieres que el CIF sea un valor específico, escríbelo aquí. Los precios de los productos se ajustarán.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <Input
-                      inputMode="decimal"
-                      className="mt-1"
-                      value={selectedOferta?.flete || ""}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value) || 0;
-                        setSelectedOferta(prev => prev ? { ...prev, flete: val } : null);
-                      }}
+                      className="flex-1 h-9 sm:h-10 text-sm"
+                      placeholder={`Actual: ${formatCurrency(selectedOferta?.precioCIF || 0)}`}
+                      value={totalDeseadoEdit}
+                      onChange={(e) => setTotalDeseadoEdit(e.target.value)}
+                    />
+                    <Button 
+                      onClick={handleAdjustPrices}
+                      disabled={!totalDeseadoEdit || parseFloat(totalDeseadoEdit) <= 0}
+                      className="w-full sm:w-auto h-9 sm:h-10 text-sm"
+                    >
+                      Ajustar
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Términos */}
+              <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-2 sm:space-y-3">
+                <h4 className="font-medium text-slate-700 text-sm sm:text-base">Términos</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                  <div>
+                    <Label className="text-xs sm:text-sm">Puerto Embarque</Label>
+                    <Input
+                      className="mt-1 h-9 sm:h-10 text-sm"
+                      value={selectedOferta?.puertoEmbarque || ""}
+                      onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, puertoEmbarque: e.target.value } : null)}
+                      placeholder="NEW ORLEANS, LA"
                     />
                   </div>
                   <div>
-                    <Label className="text-sm flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedOferta?.tieneSeguro || false}
-                        onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, tieneSeguro: e.target.checked } : null)}
-                      />
-                      Seguro ($)
-                    </Label>
-                    {selectedOferta?.tieneSeguro && (
-                      <Input
-                        inputMode="decimal"
-                        className="mt-1"
-                        value={selectedOferta?.seguro || ""}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setSelectedOferta(prev => prev ? { ...prev, seguro: val } : null);
-                        }}
-                      />
-                    )}
+                    <Label className="text-xs sm:text-sm">Origen</Label>
+                    <Input
+                      className="mt-1 h-9 sm:h-10 text-sm"
+                      value={selectedOferta?.origen || ""}
+                      onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, origen: e.target.value } : null)}
+                      placeholder="ESTADOS UNIDOS"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs sm:text-sm">Moneda</Label>
+                    <Input
+                      className="mt-1 h-9 sm:h-10 text-sm"
+                      value={selectedOferta?.moneda || ""}
+                      onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, moneda: e.target.value } : null)}
+                      placeholder="USD"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs sm:text-sm">Términos de Pago</Label>
+                    <Input
+                      className="mt-1 h-9 sm:h-10 text-sm"
+                      value={selectedOferta?.terminosPago || ""}
+                      onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, terminosPago: e.target.value } : null)}
+                      placeholder="100% antes del embarque"
+                    />
                   </div>
                 </div>
               </div>
 
-              {/* Ajustar al total */}
-              <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-3">
-                <h4 className="font-medium text-emerald-800">Ajustar al Total CIF</h4>
-                <p className="text-xs text-slate-600">
-                  Si quieres que el CIF sea un valor específico, escríbelo aquí. Los precios de los productos se ajustarán.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    className="flex-1"
-                    placeholder={`Actual: ${formatCurrency(selectedOferta?.precioCIF || 0)}`}
-                    value={totalDeseadoEdit}
-                    onChange={(e) => setTotalDeseadoEdit(e.target.value)}
+              {/* Firma Cliente */}
+              <div className="p-3 sm:p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="editIncluyeFirmaImportadora"
+                    checked={selectedOferta?.incluyeFirmaCliente !== false}
+                    onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, incluyeFirmaCliente: e.target.checked } : null)}
+                    className="h-4 w-4 rounded border-gray-300"
                   />
-                  <Button 
-                    onClick={handleAdjustPrices}
-                    disabled={!totalDeseadoEdit || parseFloat(totalDeseadoEdit) <= 0}
-                    className="w-full sm:w-auto"
-                  >
-                    Ajustar
-                  </Button>
+                  <Label htmlFor="editIncluyeFirmaImportadora" className="cursor-pointer font-medium text-amber-800 text-xs sm:text-sm">
+                    Incluir firma del cliente en la plantilla
+                  </Label>
                 </div>
               </div>
-            </div>
-
-            {/* Términos */}
-            <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
-              <h4 className="font-medium text-slate-700">Términos</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div>
-                  <Label className="text-sm">Puerto Embarque</Label>
-                  <Input
-                    className="mt-1"
-                    value={selectedOferta?.puertoEmbarque || ""}
-                    onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, puertoEmbarque: e.target.value } : null)}
-                    placeholder="NEW ORLEANS, LA"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Origen</Label>
-                  <Input
-                    className="mt-1"
-                    value={selectedOferta?.origen || ""}
-                    onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, origen: e.target.value } : null)}
-                    placeholder="ESTADOS UNIDOS"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Moneda</Label>
-                  <Input
-                    className="mt-1"
-                    value={selectedOferta?.moneda || ""}
-                    onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, moneda: e.target.value } : null)}
-                    placeholder="USD"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Términos de Pago</Label>
-                  <Input
-                    className="mt-1"
-                    value={selectedOferta?.terminosPago || ""}
-                    onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, terminosPago: e.target.value } : null)}
-                    placeholder="100% antes del embarque"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Firma Cliente */}
-            <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="editIncluyeFirmaImportadora"
-                  checked={selectedOferta?.incluyeFirmaCliente !== false}
-                  onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, incluyeFirmaCliente: e.target.checked } : null)}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label htmlFor="editIncluyeFirmaImportadora" className="cursor-pointer font-medium text-amber-800">
-                  Incluir firma del cliente en la plantilla
-                </Label>
-              </div>
-            </div>
 
             <Separator />
 
-            {/* Tabla de productos */}
-            <div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
-                <h4 className="font-medium">Productos</h4>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={openAddItemDialog}
-                  className="flex items-center gap-2 w-full sm:w-auto"
-                >
-                  <Plus className="h-4 w-4" />
-                  Agregar Producto
-                </Button>
-              </div>
-              {(() => {
-                const items = selectedOferta?.items || [];
-                const hasCantidadCajas = items.some(i => i.cantidadCajas);
-                const hasCantidadSacos = items.some(i => i.cantidadSacos);
-                const hasPesoXSaco = items.some(i => i.pesoXSaco);
-                const hasPrecioXSaco = items.some(i => i.precioXSaco);
-                const hasPesoXCaja = items.some(i => i.pesoXCaja);
-                const hasPrecioXCaja = items.some(i => i.precioXCaja);
-                
-                return (
-                  <div className="overflow-x-auto">
-                  <Table>
+              {/* Tabla de productos */}
+              <div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2 sm:mb-3">
+                  <h4 className="font-medium text-sm sm:text-base">Productos</h4>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={openAddItemDialog}
+                    className="flex items-center gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm"
+                  >
+                    <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    Agregar Producto
+                  </Button>
+                </div>
+                {(() => {
+                  const items = selectedOferta?.items || [];
+                  const hasCantidadCajas = items.some(i => i.cantidadCajas);
+                  const hasCantidadSacos = items.some(i => i.cantidadSacos);
+                  const hasPesoXSaco = items.some(i => i.pesoXSaco);
+                  const hasPrecioXSaco = items.some(i => i.precioXSaco);
+                  const hasPesoXCaja = items.some(i => i.pesoXCaja);
+                  const hasPrecioXCaja = items.some(i => i.precioXCaja);
+                  
+                  return (
+                    <div className="overflow-x-auto">
+                    <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Producto</TableHead>
@@ -1233,14 +1270,14 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                       ))}
                     </TableBody>
                   </Table>
-                  </div>
-                );
-              })()}
-            </div>
+                    </div>
+                  );
+                })()}
+              </div>
 
-            {/* Resumen totales */}
-            <div className="flex justify-end">
-              <div className="w-full sm:w-80 space-y-2 text-sm p-4 bg-emerald-50 rounded-lg">
+              {/* Resumen totales */}
+              <div className="flex justify-end">
+                <div className="w-full sm:w-80 space-y-2 text-xs sm:text-sm p-3 sm:p-4 bg-emerald-50 rounded-lg">
                 <div className="flex justify-between">
                   <span>FOB (productos):</span>
                   <span className="font-medium">
@@ -1265,7 +1302,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   </div>
                 )}
                 <Separator />
-                <div className="flex justify-between text-lg font-bold text-emerald-700">
+                <div className="flex justify-between text-base sm:text-lg font-bold text-emerald-700">
                   <span>= CIF Total:</span>
                   <span>
                     {formatCurrency(
@@ -1279,6 +1316,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   </span>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </DialogContent>
