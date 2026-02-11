@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +63,7 @@ interface SearchResults {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DetailData = any;
 
-export default function BuscarUniversalPage(): JSX.Element {
+export default function BuscarUniversalPage(): React.ReactElement {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
@@ -446,7 +446,7 @@ function ResultSection({ title, icon, count, color, children }: {
   count: number;
   color: string;
   children: React.ReactNode;
-}): JSX.Element {
+}): React.ReactElement {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
@@ -468,7 +468,7 @@ function ResultItem({ onClick, icon, iconColor, title, subtitle, badges }: {
   title: string;
   subtitle: string;
   badges?: React.ReactNode[];
-}): JSX.Element {
+}): React.ReactElement {
   return (
     <button
       onClick={onClick}
@@ -492,7 +492,7 @@ function ResultItem({ onClick, icon, iconColor, title, subtitle, badges }: {
 // ==================== Componentes de detalle ====================
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DetailImportadora({ data, router }: { data: any; router: any }): JSX.Element {
+function DetailImportadora({ data, router }: { data: any; router: any }): React.ReactElement {
   const rel = data.relaciones;
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -664,7 +664,7 @@ function DetailImportadora({ data, router }: { data: any; router: any }): JSX.El
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DetailCliente({ data, router }: { data: any; router: any }): JSX.Element {
+function DetailCliente({ data, router }: { data: any; router: any }): React.ReactElement {
   const rel = data.relaciones;
   const entity = data.entity;
   return (
@@ -839,7 +839,7 @@ function DetailCliente({ data, router }: { data: any; router: any }): JSX.Elemen
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DetailProducto({ data, router }: { data: any; router: any }): JSX.Element {
+function DetailProducto({ data, router }: { data: any; router: any }): React.ReactElement {
   const rel = data.relaciones;
   const entity = data.entity;
   return (
@@ -1022,7 +1022,7 @@ function DetailProducto({ data, router }: { data: any; router: any }): JSX.Eleme
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DetailOperacion({ data, router }: { data: any; router: any }): JSX.Element {
+function DetailOperacion({ data, router }: { data: any; router: any }): React.ReactElement {
   const rel = data.relaciones;
   const entity = data.entity;
   return (
@@ -1155,7 +1155,7 @@ function DetailOperacion({ data, router }: { data: any; router: any }): JSX.Elem
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DetailFactura({ data, router }: { data: any; router: any }): JSX.Element {
+function DetailFactura({ data, router }: { data: any; router: any }): React.ReactElement {
   const rel = data.relaciones;
   const entity = data.entity;
   return (
@@ -1282,7 +1282,7 @@ function DetailFactura({ data, router }: { data: any; router: any }): JSX.Elemen
 
 // ==================== Componentes reutilizables ====================
 
-function KpiCard({ title, value, icon, isText }: { title: string; value: string | number; icon: React.ReactNode; isText?: boolean }): JSX.Element {
+function KpiCard({ title, value, icon, isText }: { title: string; value: string | number; icon: React.ReactNode; isText?: boolean }): React.ReactElement {
   return (
     <Card className="bg-white/80 backdrop-blur border-slate-200 shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -1296,7 +1296,7 @@ function KpiCard({ title, value, icon, isText }: { title: string; value: string 
   );
 }
 
-function StatBox({ label, value, color, icon }: { label: string; value: number; color: string; icon: React.ReactNode }): JSX.Element {
+function StatBox({ label, value, color, icon }: { label: string; value: number; color: string; icon: React.ReactNode }): React.ReactElement {
   const colorMap: Record<string, string> = {
     blue: 'from-blue-50 to-blue-100 border-blue-200',
     amber: 'from-amber-50 to-amber-100 border-amber-200',
