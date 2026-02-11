@@ -735,18 +735,22 @@ export const OperationController = {
       sequenceNo: nextSequenceNo,
     };
     
-    // Convertir fechas de string a DateTime
-    if (data.etdEstimated) {
-      data.etdEstimated = new Date(data.etdEstimated);
+    // Convertir fechas de string a DateTime, limpiar strings vacíos
+    const dateFields = ['etdEstimated', 'etaEstimated', 'etdActual', 'etaActual'];
+    for (const field of dateFields) {
+      if (data[field] && data[field].trim() !== '') {
+        data[field] = new Date(data[field]);
+      } else {
+        delete data[field];
+      }
     }
-    if (data.etaEstimated) {
-      data.etaEstimated = new Date(data.etaEstimated);
-    }
-    if (data.etdActual) {
-      data.etdActual = new Date(data.etdActual);
-    }
-    if (data.etaActual) {
-      data.etaActual = new Date(data.etaActual);
+    
+    // Limpiar strings vacíos en campos opcionales
+    const optionalStringFields = ['currentLocation', 'containerNo', 'bookingNo', 'blNo', 'originPort', 'destinationPort'];
+    for (const field of optionalStringFields) {
+      if (data[field] !== undefined && data[field].trim() === '') {
+        delete data[field];
+      }
     }
     
     const container = await prisma.operationContainer.create({
