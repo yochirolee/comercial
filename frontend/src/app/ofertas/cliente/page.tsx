@@ -278,7 +278,7 @@ export default function OfertasClientePage(): React.ReactElement {
     setSelectedOferta(updated);
     setEditFormData({
       numero: updated.numero || "",
-      fecha: updated.fecha ? new Date(updated.fecha).toISOString().split('T')[0] : "",
+      fecha: updated.fecha ? updated.fecha.split('T')[0] : "",
       observaciones: updated.observaciones || "",
       campoExtra1: updated.campoExtra1 || "OFERTA VALIDA POR 30 DIAS",
     });
@@ -426,7 +426,12 @@ export default function OfertasClientePage(): React.ReactElement {
   }
 
   function formatDate(date: string): string {
-    return new Date(date).toLocaleDateString("es-ES");
+    // Usar solo la parte de fecha (YYYY-MM-DD) para evitar problemas de timezone
+    // Formato: mm/dd/yyyy
+    if (!date) return "";
+    const dateOnly = date.split("T")[0];
+    const [year, month, day] = dateOnly.split("-");
+    return `${month}/${day}/${year}`;
   }
 
   const estadoColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {

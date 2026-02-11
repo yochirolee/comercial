@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { createOperationEvent } from './operation.controller.js';
 
 const facturaSchema = z.object({
   numero: z.string().min(1, 'Número de factura es requerido'),
   fecha: z.string().optional(),
   fechaVencimiento: z.string().optional(),
   clienteId: z.string().min(1, 'Cliente es requerido'),
+  importadoraId: z.string().min(1, 'Importadora es requerida'),
   observaciones: z.string().optional(),
   estado: z.enum(['pendiente', 'pagada', 'vencida', 'cancelada']).optional(),
   // Costos
@@ -117,6 +119,7 @@ async function calcularTotales(facturaId: string): Promise<void> {
 
 const includeFactura = {
   cliente: true,
+  importadora: true,
   items: {
     include: {
       producto: {
@@ -332,12 +335,27 @@ export const FacturaController = {
       }
     }
 
+    // Obtener importadoraId: de ofertaImportadora si existe, o buscar la primera asociada al cliente
+    let importadoraId: string | null = null;
+    if (ofertaImportadora && ofertaImportadora.importadoraId) {
+      importadoraId = ofertaImportadora.importadoraId;
+    } else {
+      // Buscar primera importadora asociada al cliente
+      const clienteImportadora = await prisma.clienteImportadora.findFirst({
+        where: { clienteId: ofertaCliente.clienteId },
+      });
+      if (clienteImportadora) {
+        importadoraId = clienteImportadora.importadoraId;
+      }
+    }
+
     // Crear factura con items
     const factura = await prisma.factura.create({
       data: {
         numero: numeroFactura,
         fecha: fecha ? new Date(fecha) : new Date(),
         clienteId: ofertaCliente.clienteId,
+        importadoraId,
         tipoOfertaOrigen: ofertaImportadora ? 'importadora' : 'cliente',
         ofertaOrigenId: ofertaImportadora ? ofertaImportadora.id : ofertaClienteId,
         flete,
@@ -360,6 +378,30 @@ export const FacturaController = {
     });
 
     await calcularTotales(factura.id);
+
+    // Buscar operación relacionada y crear evento automático
+    try {
+      const operation = await prisma.operation.findFirst({
+        where: { offerCustomerId: ofertaClienteId },
+      });
+      
+      if (operation) {
+        console.log(`[Factura] Creando evento para operación ${operation.id}, factura ${factura.numero}, fecha: ${factura.fecha}`);
+        await createOperationEvent(
+          operation.id,
+          'commercial',
+          'Factura Creada',
+          `Factura ${factura.numero} creada`,
+          factura.fecha
+        );
+        console.log(`[Factura] Evento creado exitosamente`);
+      } else {
+        console.log(`[Factura] No se encontró operación para ofertaClienteId: ${ofertaClienteId}`);
+      }
+    } catch (error) {
+      // No fallar si no se puede crear el evento
+      console.error('[Factura] Error al crear evento automático en operación:', error);
+    }
 
     const facturaActualizada = await prisma.factura.findUnique({
       where: { id: factura.id },
@@ -506,6 +548,7 @@ export const FacturaController = {
         numero: numeroFactura,
         fecha: fecha ? new Date(fecha) : new Date(),
         clienteId: ofertaImportadora.clienteId,
+        importadoraId: ofertaImportadora.importadoraId,
         tipoOfertaOrigen: 'importadora',
         ofertaOrigenId: ofertaImportadoraId,
         flete: fleteFinal,
@@ -530,6 +573,37 @@ export const FacturaController = {
     });
 
     await calcularTotales(factura.id);
+
+    // Buscar operación relacionada y crear evento automático
+    try {
+      // Buscar operación a través de la oferta cliente asociada a la oferta importadora
+      if (ofertaImportadora.ofertaClienteId) {
+        const operation = await prisma.operation.findFirst({
+          where: { 
+            offerCustomerId: ofertaImportadora.ofertaClienteId,
+          },
+        });
+        
+        if (operation) {
+          console.log(`[Factura] Creando evento para operación ${operation.id}, factura ${factura.numero}, fecha: ${factura.fecha}`);
+          await createOperationEvent(
+            operation.id,
+            'commercial',
+            'Factura Creada',
+            `Factura ${factura.numero} creada`,
+            factura.fecha
+          );
+          console.log(`[Factura] Evento creado exitosamente`);
+        } else {
+          console.log(`[Factura] No se encontró operación para ofertaClienteId: ${ofertaImportadora.ofertaClienteId}`);
+        }
+      } else {
+        console.log(`[Factura] Oferta importadora ${ofertaImportadoraId} no tiene ofertaClienteId asociado`);
+      }
+    } catch (error) {
+      // No fallar si no se puede crear el evento
+      console.error('[Factura] Error al crear evento automático en operación:', error);
+    }
 
     const facturaActualizada = await prisma.factura.findUnique({
       where: { id: factura.id },

@@ -80,6 +80,7 @@ model Cliente {
   ofertasCliente        OfertaCliente[]
   ofertasImportadora    OfertaImportadora[]
   facturas              Factura[]
+  importadoras          ClienteImportadora[]
 }
 
 model UnidadMedida {
@@ -128,7 +129,8 @@ model OfertaGeneral {
   fecha            DateTime @default(now())
   vigenciaHasta    DateTime?
   observaciones    String?
-  estado           String   @default("activa")
+  estado           String   @default("pendiente")
+  total            Float    @default(0)
   campoExtra1      String?
   campoExtra2      String?
   campoExtra3      String?
@@ -146,14 +148,19 @@ model ItemOfertaGeneral {
   ofertaGeneral    OfertaGeneral @relation(fields: [ofertaGeneralId], references: [id], onDelete: Cascade)
   productoId       String
   producto         Producto @relation(fields: [productoId], references: [id])
+  descripcion      String?
   cantidad         Float    @default(1)
+  precioUnitario   Float
+  subtotal         Float?
   cantidadCajas    Float?
   cantidadSacos    Float?
-  precioUnitario   Float
+  pesoNeto         Float?
+  pesoBruto        Float?
   pesoXSaco        Float?
   precioXSaco      Float?
   pesoXCaja        Float?
   precioXCaja      Float?
+  codigoArancelario String?
   campoExtra1      String?
   campoExtra2      String?
   campoExtra3      String?
@@ -189,6 +196,7 @@ model OfertaCliente {
 
   items            ItemOfertaCliente[]
   ofertasImportadora OfertaImportadora[]
+  operations       Operation[]
 }
 
 model ItemOfertaCliente {
@@ -197,13 +205,14 @@ model ItemOfertaCliente {
   ofertaCliente    OfertaCliente @relation(fields: [ofertaClienteId], references: [id], onDelete: Cascade)
   productoId       String
   producto         Producto @relation(fields: [productoId], references: [id])
+  descripcion      String?
   cantidad         Float
+  precioUnitario   Float
+  subtotal         Float
   cantidadCajas    Float?
   cantidadSacos    Float?
   pesoNeto         Float?
   pesoBruto        Float?
-  precioUnitario   Float
-  subtotal         Float
   pesoXSaco        Float?
   precioXSaco      Float?
   pesoXCaja        Float?
@@ -225,6 +234,8 @@ model OfertaImportadora {
   vigenciaHasta    DateTime?
   clienteId        String
   cliente          Cliente  @relation(fields: [clienteId], references: [id])
+  importadoraId    String?
+  importadora      Importadora? @relation(fields: [importadoraId], references: [id])
   observaciones    String?
   estado           String   @default("pendiente")
   ofertaClienteId  String?
@@ -259,6 +270,7 @@ model ItemOfertaImportadora {
   ofertaImportadora    OfertaImportadora @relation(fields: [ofertaImportadoraId], references: [id], onDelete: Cascade)
   productoId           String
   producto             Producto @relation(fields: [productoId], references: [id])
+  descripcion          String?
   cantidad             Float
   cantidadCajas        Float?
   cantidadSacos        Float?
@@ -288,6 +300,8 @@ model Factura {
   fechaVencimiento DateTime?
   clienteId        String
   cliente          Cliente  @relation(fields: [clienteId], references: [id])
+  importadoraId    String?
+  importadora      Importadora? @relation(fields: [importadoraId], references: [id])
   observaciones    String?
   estado           String   @default("pendiente")
   
@@ -327,6 +341,7 @@ model Factura {
   updatedAt        DateTime @updatedAt
 
   items            ItemFactura[]
+  operations       Operation[]
 }
 
 model ItemFactura {
@@ -355,4 +370,126 @@ model ItemFactura {
   
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+// ==========================================
+// OPERATIONS - Tracking de operaciones
+// ==========================================
+model Operation {
+  id                String   @id @default(cuid())
+  operationNo       String   @unique
+  operationType     String   // COMMERCIAL | PARCEL
+  offerCustomerId   String?
+  offerCustomer     OfertaCliente? @relation(fields: [offerCustomerId], references: [id])
+  importadoraId     String?
+  importadora       Importadora? @relation(fields: [importadoraId], references: [id])
+  invoiceId         String?
+  invoice           Factura? @relation(fields: [invoiceId], references: [id])
+  status            String
+  currentLocation   String?
+  originPort        String?
+  destinationPort   String?
+  notes             String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  containers        OperationContainer[]
+  events            OperationEvent[]
+}
+
+model OperationContainer {
+  id                String   @id @default(cuid())
+  operationId       String
+  operation         Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  sequenceNo        Int
+  containerNo       String?
+  bookingNo         String?
+  blNo              String?
+  originPort        String?
+  destinationPort   String?
+  etdEstimated      DateTime?
+  etaEstimated      DateTime?
+  etdActual         DateTime?
+  etaActual         DateTime?
+  status            String
+  currentLocation   String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  events            ContainerEvent[]
+}
+
+model OperationEvent {
+  id                String   @id @default(cuid())
+  operationId       String
+  operation         Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  eventType         String
+  title             String
+  description       String?
+  eventDate         DateTime
+  fromStatus        String?
+  toStatus          String?
+  createdBy         String?
+  
+  createdAt         DateTime @default(now())
+}
+
+model ContainerEvent {
+  id                String   @id @default(cuid())
+  operationContainerId String
+  operationContainer OperationContainer @relation(fields: [operationContainerId], references: [id], onDelete: Cascade)
+  eventType         String
+  title             String
+  description       String?
+  eventDate         DateTime
+  fromStatus        String?
+  toStatus          String?
+  location          String?
+  createdBy         String?
+  
+  createdAt         DateTime @default(now())
+}
+
+// ==========================================
+// IMPORTADORA - Consignee
+// ==========================================
+model Importadora {
+  id                    String   @id @default(cuid())
+  nombre                String
+  direccion             String?
+  pais                  String?  @default("Cuba")
+  puertoDestinoDefault  String?  @default("MARIEL, Cuba")
+  contacto              String?
+  telefono              String?
+  email                 String?
+  notas                 String?
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  
+  clientes              ClienteImportadora[]
+  ofertasImportadora    OfertaImportadora[]
+  facturas              Factura[]
+  operaciones           Operation[]
+  
+  @@index([nombre])
+}
+
+// ==========================================
+// RELACIÓN MUCHOS-A-MUCHOS: Cliente ↔ Importadora
+// ==========================================
+model ClienteImportadora {
+  id            String   @id @default(cuid())
+  clienteId     String
+  cliente       Cliente  @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  importadoraId String
+  importadora   Importadora @relation(fields: [importadoraId], references: [id], onDelete: Cascade)
+  
+  createdAt     DateTime @default(now())
+  
+  @@unique([clienteId, importadoraId])
+  @@index([clienteId])
+  @@index([importadoraId])
 }

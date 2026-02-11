@@ -14,6 +14,9 @@ import { facturaRouter } from './routes/factura.routes.js';
 import { exportRouter } from './routes/export.routes.js';
 import { uploadRouter } from './routes/upload.routes.js';
 import { documentoRouter } from './routes/documento.routes.js';
+import { operationRouter } from './routes/operation.routes.js';
+import { importadoraRouter } from './routes/importadora.routes.js';
+import { searchRouter } from './routes/search.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,6 +45,9 @@ app.use('/api/facturas', facturaRouter);
 app.use('/api/export', exportRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/documentos', documentoRouter);
+app.use('/api/operations', operationRouter);
+app.use('/api/importadoras', importadoraRouter);
+app.use('/api/search', searchRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

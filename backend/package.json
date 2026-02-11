@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "npm run setup && prisma generate && tsx watch src/index.ts",
-    "build": "npm run setup && prisma generate && tsc",
+    "build": "npm run setup && prisma generate && prisma db push && tsc",
     "start": "node dist/index.js",
     "setup": "node scripts/setup-schema.js",
     "db:generate": "npm run setup && prisma generate",

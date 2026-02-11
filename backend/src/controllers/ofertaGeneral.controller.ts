@@ -147,6 +147,7 @@ export const OfertaGeneralController = {
             productoId: item.productoId,
             cantidad: item.cantidad,
             precioUnitario: item.precioUnitario,
+            subtotal: item.cantidad * item.precioUnitario,
             cantidadCajas: item.cantidadCajas,
             cantidadSacos: item.cantidadSacos,
             pesoXSaco: item.pesoXSaco,
@@ -241,10 +242,12 @@ export const OfertaGeneralController = {
       return;
     }
 
+    const itemData = validation.data;
     const item = await prisma.itemOfertaGeneral.create({
       data: {
         ofertaGeneralId: id,
-        ...validation.data,
+        ...itemData,
+        subtotal: itemData.cantidad * itemData.precioUnitario,
       },
       include: {
         producto: {

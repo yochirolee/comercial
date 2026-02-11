@@ -23,8 +23,21 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Error desconocido' }));
-    throw new Error(error.error || `Error ${response.status}`);
+    const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+    
+    // Si es un array de errores de validación (Zod), formatearlos
+    if (Array.isArray(errorData.error)) {
+      const errorMessages = errorData.error.map((err: any) => {
+        if (typeof err === 'string') return err;
+        if (err.path && err.message) {
+          return `${err.path.join('.')}: ${err.message}`;
+        }
+        return err.message || JSON.stringify(err);
+      });
+      throw new Error(errorMessages.join(', '));
+    }
+    
+    throw new Error(errorData.error || `Error ${response.status}`);
   }
 
   // Handle 204 No Content
@@ -320,6 +333,35 @@ export const exportApi = {
 // ==========================================
 // DOCUMENTOS
 // ==========================================
+export const importadorasApi = {
+  getAll: (search?: string) => {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    return fetchApi<Importadora[]>(`/importadoras${query}`);
+  },
+  getById: (id: string) => fetchApi<Importadora>(`/importadoras/${id}`),
+  create: (data: ImportadoraInput) =>
+    fetchApi<Importadora>('/importadoras', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: Partial<ImportadoraInput>) =>
+    fetchApi<Importadora>(`/importadoras/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) => fetchApi<void>(`/importadoras/${id}`, { method: 'DELETE' }),
+  addCliente: (id: string, clienteId: string) =>
+    fetchApi<ClienteImportadora>(`/importadoras/${id}/clientes`, {
+      method: 'POST',
+      body: JSON.stringify({ clienteId }),
+    }),
+  removeCliente: (id: string, clienteId: string) =>
+    fetchApi<void>(`/importadoras/${id}/clientes`, {
+      method: 'DELETE',
+      body: JSON.stringify({ clienteId }),
+    }),
+};
+
 export const documentosApi = {
   downloadEndUserDocument: async (ofertaClienteId: string): Promise<void> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
@@ -509,6 +551,80 @@ export interface EmpresaInput {
   logo?: string;
   firmaPresidente?: string;
   cunoEmpresa?: string;
+}
+
+// ==========================================
+// IMPORTADORA
+// ==========================================
+export interface Importadora {
+  id: string;
+  nombre: string;
+  direccion?: string;
+  pais?: string;
+  puertoDestinoDefault?: string;
+  contacto?: string;
+  telefono?: string;
+  email?: string;
+  notas?: string;
+  createdAt: string;
+  updatedAt: string;
+  // Relaciones opcionales (cuando se incluyen)
+  clientes?: Array<{
+    id: string;
+    cliente: {
+      id: string;
+      nombre: string;
+      apellidos?: string;
+      nombreCompania?: string;
+      email?: string;
+      telefono?: string;
+      direccion?: string;
+    };
+  }>;
+  ofertasImportadora?: OfertaImportadora[];
+  facturas?: Factura[];
+  operaciones?: Operation[];
+  // Estadísticas (cuando se obtiene por ID)
+  productos?: Array<{
+    producto: {
+      id: string;
+      codigo?: string;
+      nombre: string;
+      codigoArancelario?: string;
+    };
+    cantidad: number;
+    importe: number;
+  }>;
+  estadisticas?: {
+    totalClientes: number;
+    totalOfertas: number;
+    totalFacturas: number;
+    totalOperaciones: number;
+    containersEnTransito: number;
+    containersEnAduana: number;
+    containersEntregados: number;
+    totalContainers: number;
+  };
+}
+
+export interface ImportadoraInput {
+  nombre: string;
+  direccion?: string;
+  pais?: string;
+  puertoDestinoDefault?: string;
+  contacto?: string;
+  telefono?: string;
+  email?: string;
+  notas?: string;
+}
+
+export interface ClienteImportadora {
+  id: string;
+  clienteId: string;
+  cliente?: Cliente;
+  importadoraId: string;
+  importadora?: Importadora;
+  createdAt: string;
 }
 
 export interface Cliente {
@@ -728,6 +844,8 @@ export interface OfertaImportadora {
   vigenciaHasta?: string;
   clienteId: string;
   cliente: Cliente;
+  importadoraId: string;
+  importadora?: Importadora;
   observaciones?: string;
   estado: string;
   // Referencia a oferta cliente origen
@@ -761,6 +879,7 @@ export interface OfertaImportadoraInput {
   fecha?: string;
   vigenciaHasta?: string;
   clienteId?: string;
+  importadoraId?: string;
   observaciones?: string;
   estado?: string;
   ofertaClienteId?: string;
@@ -779,6 +898,7 @@ export interface OfertaImportadoraInput {
 
 export interface CrearDesdeOfertaClienteInput {
   ofertaClienteId: string;
+  importadoraId: string;
   numero?: string;
   fecha?: string;
   flete: number;
@@ -860,6 +980,8 @@ export interface Factura {
   fechaVencimiento?: string;
   clienteId: string;
   cliente: Cliente;
+  importadoraId: string;
+  importadora?: Importadora;
   observaciones?: string;
   estado: string;
   // Costos
@@ -894,6 +1016,7 @@ export interface FacturaInput {
   fechaVencimiento?: string;
   estado?: string;
   clienteId: string;
+  importadoraId: string;
   observaciones?: string;
   // Costos
   flete?: number;
@@ -997,3 +1120,225 @@ export interface ItemFacturaInput {
   precioXCaja?: number | null;
   codigoArancelario?: string | null;
 }
+
+// ==========================================
+// OPERATIONS - Tracking de operaciones
+// ==========================================
+export interface Operation {
+  id: string;
+  operationNo: string;
+  operationType: 'COMMERCIAL' | 'PARCEL';
+  offerCustomerId?: string;
+  offerCustomer?: {
+    id: string;
+    numero: string;
+    cliente: {
+      id: string;
+      nombre: string;
+      apellidos?: string;
+      nombreCompania?: string;
+    };
+  };
+  importadoraId: string;
+  importadora?: Importadora;
+  invoiceId?: string;
+  invoice?: {
+    id: string;
+    numero: string;
+  };
+  status: string;
+  currentLocation?: string;
+  originPort?: string;
+  destinationPort?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  containers?: OperationContainer[];
+  events?: OperationEvent[];
+}
+
+export interface OperationContainer {
+  id: string;
+  operationId: string;
+  sequenceNo: number;
+  containerNo?: string;
+  bookingNo?: string;
+  blNo?: string;
+  originPort?: string;
+  destinationPort?: string;
+  etdEstimated?: string;
+  etaEstimated?: string;
+  etdActual?: string;
+  etaActual?: string;
+  status: string;
+  currentLocation?: string;
+  createdAt: string;
+  updatedAt: string;
+  events?: ContainerEvent[];
+}
+
+export interface OperationEvent {
+  id: string;
+  operationId: string;
+  eventType: string;
+  title: string;
+  description?: string;
+  eventDate: string;
+  fromStatus?: string;
+  toStatus?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+export interface ContainerEvent {
+  id: string;
+  operationContainerId: string;
+  eventType: string;
+  title: string;
+  description?: string;
+  eventDate: string;
+  fromStatus?: string;
+  toStatus?: string;
+  location?: string;
+  createdBy?: string;
+  createdAt: string;
+}
+
+export interface OperationInput {
+  operationNo?: string;
+  operationType: 'COMMERCIAL' | 'PARCEL';
+  offerCustomerId?: string;
+  importadoraId: string;
+  invoiceId?: string;
+  status: string;
+  currentLocation?: string;
+  originPort?: string;
+  destinationPort?: string;
+  notes?: string;
+}
+
+export interface OperationContainerInput {
+  sequenceNo?: number;
+  containerNo?: string;
+  bookingNo?: string;
+  blNo?: string;
+  originPort?: string;
+  destinationPort?: string;
+  etdEstimated?: string;
+  etaEstimated?: string;
+  etdActual?: string;
+  etaActual?: string;
+  status: string;
+  currentLocation?: string;
+}
+
+export interface OperationEventInput {
+  eventType: string;
+  title: string;
+  description?: string;
+  eventDate: string;
+  fromStatus?: string;
+  toStatus?: string;
+  createdBy?: string;
+}
+
+export interface ContainerEventInput {
+  eventType: string;
+  title: string;
+  description?: string;
+  eventDate: string;
+  fromStatus?: string;
+  toStatus?: string;
+  location?: string;
+  createdBy?: string;
+}
+
+export const operationsApi = {
+  // Crear operación desde Oferta a Cliente
+  createFromOffer: (offerCustomerId: string, importadoraId: string) =>
+    fetchApi<Operation>('/operations/from-offer', {
+      method: 'POST',
+      body: JSON.stringify({ offerCustomerId, importadoraId }),
+    }),
+
+  // Listar operaciones con filtros
+  getAll: (params?: { type?: 'COMMERCIAL' | 'PARCEL'; status?: string; search?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.type) queryParams.append('type', params.type);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.search) queryParams.append('search', params.search);
+    const query = queryParams.toString();
+    return fetchApi<Operation[]>(`/operations${query ? `?${query}` : ''}`);
+  },
+
+  // Obtener operación por ID
+  getById: (id: string) => fetchApi<Operation>(`/operations/${id}`),
+
+  // Crear operación manual
+  create: (data: OperationInput) =>
+    fetchApi<Operation>('/operations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Actualizar operación
+  update: (id: string, data: Partial<OperationInput>) =>
+    fetchApi<Operation>(`/operations/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  // Eliminar operación
+  delete: (id: string) => fetchApi<void>(`/operations/${id}`, { method: 'DELETE' }),
+
+  // Agregar contenedor
+  addContainer: (operationId: string, data: OperationContainerInput) =>
+    fetchApi<OperationContainer>(`/operations/${operationId}/containers`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Actualizar contenedor
+  updateContainer: (operationId: string, containerId: string, data: Partial<OperationContainerInput>) =>
+    fetchApi<OperationContainer>(`/operations/${operationId}/containers/${containerId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  // Eliminar contenedor
+  deleteContainer: (operationId: string, containerId: string) =>
+    fetchApi<void>(`/operations/${operationId}/containers/${containerId}`, {
+      method: 'DELETE',
+    }),
+
+  // Agregar evento a operación
+  addEvent: (operationId: string, data: OperationEventInput) =>
+    fetchApi<OperationEvent>(`/operations/${operationId}/events`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Agregar evento a contenedor
+  addContainerEvent: (operationId: string, containerId: string, data: ContainerEventInput) =>
+    fetchApi<ContainerEvent>(`/operations/${operationId}/containers/${containerId}/events`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+// ==================== SEARCH (Búsqueda Universal) ====================
+export const searchApi = {
+  search: (q: string) =>
+    fetchApi<{
+      importadoras: Array<{ id: string; nombre: string; pais: string | null; contacto: string | null; puertoDestinoDefault: string | null }>;
+      clientes: Array<{ id: string; nombre: string; apellidos: string | null; nombreCompania: string | null; email: string | null; telefono: string | null }>;
+      productos: Array<{ id: string; nombre: string; codigo: string | null; precioBase: number; codigoArancelario: string | null }>;
+      operaciones: Array<{ id: string; operationNo: string; operationType: string; status: string; currentLocation: string | null }>;
+      facturas: Array<{ id: string; numero: string; fecha: string; total: number; estado: string }>;
+      ofertasImportadora: Array<{ id: string; numero: string; fecha: string; estado: string; precioCIF: number | null }>;
+    }>(`/search?q=${encodeURIComponent(q)}`),
+
+  detail: (type: string, id: string) =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fetchApi<any>(`/search/${type}/${id}`),
+};

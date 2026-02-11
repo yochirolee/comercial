@@ -36,19 +36,22 @@ import {
   ofertasClienteApi, 
   clientesApi, 
   productosApi, 
-  exportApi 
+  exportApi,
+  importadorasApi
 } from "@/lib/api";
 import type { 
   OfertaImportadora, 
   OfertaCliente, 
   Cliente, 
-  Producto
+  Producto,
+  Importadora
 } from "@/lib/api";
 
 export default function OfertasImportadoraPage(): React.ReactElement {
   const [ofertas, setOfertas] = useState<OfertaImportadora[]>([]);
   const [ofertasCliente, setOfertasCliente] = useState<OfertaCliente[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [importadoras, setImportadoras] = useState<Importadora[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,6 +61,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   // Form para crear desde oferta cliente
   const [selectedOfertaClienteId, setSelectedOfertaClienteId] = useState("");
   const [selectedOfertaCliente, setSelectedOfertaCliente] = useState<OfertaCliente | null>(null);
+  const [selectedImportadoraId, setSelectedImportadoraId] = useState("");
   const [numeroOferta, setNumeroOferta] = useState("");
   const [fechaOferta, setFechaOferta] = useState("");
   const [flete, setFlete] = useState("");
@@ -113,16 +117,18 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
   async function loadData(): Promise<void> {
     try {
-      const [ofertasData, ofertasClienteData, clientesData, productosData] = await Promise.all([
+      const [ofertasData, ofertasClienteData, clientesData, importadorasData, productosData] = await Promise.all([
         ofertasImportadoraApi.getAll(),
         ofertasClienteApi.getAll(),
         clientesApi.getAll(),
+        importadorasApi.getAll(),
         productosApi.getAll(),
       ]);
       setOfertas(ofertasData);
       // Filtrar ofertas cliente que no estén rechazadas ni vencidas
       setOfertasCliente(ofertasClienteData.filter(o => o.estado !== 'rechazada' && o.estado !== 'vencida'));
       setClientes(clientesData);
+      setImportadoras(importadorasData);
       setProductos(productosData.filter((p) => p.activo));
     } catch (error) {
       toast.error("Error al cargar datos");
@@ -141,6 +147,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     const primeraOferta = ofertasCliente[0];
     setSelectedOfertaClienteId(primeraOferta?.id || "");
     setSelectedOfertaCliente(primeraOferta || null);
+    setSelectedImportadoraId(importadoras[0]?.id || "");
     setNumeroOferta(primeraOferta?.numero || "");
     setFechaOferta("");
     setFlete("");
@@ -223,24 +230,43 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       const cifDeseado = parseFloat(totalCifDeseado);
       
       // Preparar items para enviar (convertir a formato del API)
-      const itemsParaEnviar = itemsEditables.map(item => ({
-        productoId: item.productoId,
-        cantidad: item.cantidad,
-        precioUnitario: item.precioUnitario, // Precio original
-        precioAjustado: item.precioAjustado, // Precio ajustado (puede ser diferente)
-        cantidadCajas: item.cantidadCajas,
-        cantidadSacos: item.cantidadSacos,
-        pesoNeto: item.pesoNeto,
-        pesoBruto: item.pesoBruto,
-        pesoXSaco: item.pesoXSaco,
-        precioXSaco: item.precioXSaco,
-        pesoXCaja: item.pesoXCaja,
-        precioXCaja: item.precioXCaja,
-        codigoArancelario: item.codigoArancelario,
-      }));
+      const itemsParaEnviar = itemsEditables.map(item => {
+        // Validar que cantidad y precios sean válidos
+        if (item.cantidad <= 0) {
+          throw new Error(`La cantidad del producto ${item.producto.nombre} debe ser mayor a 0`);
+        }
+        if (item.precioUnitario <= 0) {
+          throw new Error(`El precio unitario del producto ${item.producto.nombre} debe ser mayor a 0`);
+        }
+        if (item.precioAjustado <= 0) {
+          throw new Error(`El precio ajustado del producto ${item.producto.nombre} debe ser mayor a 0`);
+        }
+        
+        return {
+          productoId: item.productoId,
+          cantidad: item.cantidad,
+          precioUnitario: item.precioUnitario, // Precio original
+          precioAjustado: item.precioAjustado, // Precio ajustado (puede ser diferente)
+          cantidadCajas: item.cantidadCajas ?? null,
+          cantidadSacos: item.cantidadSacos ?? null,
+          pesoNeto: item.pesoNeto ?? null,
+          pesoBruto: item.pesoBruto ?? null,
+          pesoXSaco: item.pesoXSaco ?? null,
+          precioXSaco: item.precioXSaco ?? null,
+          pesoXCaja: item.pesoXCaja ?? null,
+          precioXCaja: item.precioXCaja ?? null,
+          codigoArancelario: item.codigoArancelario ?? null,
+        };
+      });
       
+      if (!selectedImportadoraId) {
+        toast.error("Selecciona una importadora");
+        return;
+      }
+
       await ofertasImportadoraApi.createFromOfertaCliente({
         ofertaClienteId: selectedOfertaClienteId,
+        importadoraId: selectedImportadoraId,
         numero: numeroOferta,
         fecha: fechaOferta || undefined,
         flete: fleteNum,
@@ -297,10 +323,16 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   async function handleSaveChanges(): Promise<void> {
     if (!selectedOferta) return;
 
+    if (!selectedOferta.importadoraId) {
+      toast.error("Selecciona una importadora");
+      return;
+    }
+
     try {
       await ofertasImportadoraApi.update(selectedOferta.id, {
         numero: selectedOferta.numero,
         fecha: selectedOferta.fecha,
+        importadoraId: selectedOferta.importadoraId,
         flete: selectedOferta.flete,
         seguro: selectedOferta.seguro,
         tieneSeguro: selectedOferta.tieneSeguro,
@@ -489,7 +521,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   }
 
   function formatDate(date: string): string {
-    return new Date(date).toLocaleDateString("es-ES");
+    // Usar solo la parte de fecha (YYYY-MM-DD) para evitar problemas de timezone
+    // Formato: mm/dd/yyyy
+    if (!date) return "";
+    const dateOnly = date.split("T")[0];
+    const [year, month, day] = dateOnly.split("-");
+    return `${month}/${day}/${year}`;
   }
 
   // Funciones para editar items en creación
@@ -592,6 +629,26 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                         {ofertasCliente.map((o) => (
                           <SelectItem key={o.id} value={o.id} className="text-sm">
                             {o.numero} - {o.cliente.nombre} ({formatCurrency(o.total)})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Seleccionar importadora */}
+                  <div className="space-y-1 sm:space-y-1.5">
+                    <Label className="text-xs sm:text-sm">Importadora *</Label>
+                    <Select
+                      value={selectedImportadoraId}
+                      onValueChange={setSelectedImportadoraId}
+                    >
+                      <SelectTrigger className="text-sm h-9 sm:h-10">
+                        <SelectValue placeholder="Seleccionar importadora" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {importadoras.map((imp) => (
+                          <SelectItem key={imp.id} value={imp.id} className="text-sm">
+                            {imp.nombre}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1015,6 +1072,24 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   <p className="font-medium text-xs sm:text-sm mt-1">
                     {`${selectedOferta?.cliente.nombre || ""} ${selectedOferta?.cliente.apellidos || ""}`.trim()}
                   </p>
+                </div>
+                <div>
+                  <Label className="text-slate-500 text-xs sm:text-sm">Importadora *</Label>
+                  <Select
+                    value={selectedOferta?.importadoraId || ""}
+                    onValueChange={(value) => setSelectedOferta(prev => prev ? { ...prev, importadoraId: value } : null)}
+                  >
+                    <SelectTrigger className="mt-1 h-9 sm:h-10 text-sm">
+                      <SelectValue placeholder="Seleccionar importadora" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {importadoras.map((imp) => (
+                        <SelectItem key={imp.id} value={imp.id} className="text-sm">
+                          {imp.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label className="text-slate-500 text-xs sm:text-sm">Número</Label>

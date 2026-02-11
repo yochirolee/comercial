@@ -4,11 +4,11 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Configurar Prisma con logging para queries lentos
+// Configurar Prisma con logging solo para errores y warnings
 const prismaClientOptions: ConstructorParameters<typeof PrismaClient>[0] = {
   log: process.env.NODE_ENV === 'production' 
     ? [{ emit: 'event', level: 'query' }]
-    : ['query', 'error', 'warn'],
+    : ['error', 'warn'], // Solo errores y warnings, no queries
 };
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient(prismaClientOptions);

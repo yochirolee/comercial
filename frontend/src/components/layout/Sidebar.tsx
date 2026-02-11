@@ -18,6 +18,8 @@ import {
   Settings,
   UserCog,
   FileCheck,
+  MapPin,
+  Search,
 } from "lucide-react";
 
 interface NavItem {
@@ -32,6 +34,7 @@ const navigation: NavItem[] = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Empresa", href: "/empresa", icon: Building2 },
   { name: "Clientes", href: "/clientes", icon: Users },
+  { name: "Importadoras", href: "/importadoras", icon: Ship },
   { name: "Productos", href: "/productos", icon: Package },
   { 
     name: "Ofertas", 
@@ -43,6 +46,8 @@ const navigation: NavItem[] = [
     ]
   },
   { name: "Facturas", href: "/facturas", icon: Receipt },
+  { name: "Operations", href: "/operations", icon: MapPin },
+  { name: "Buscar", href: "/importadoras/buscar", icon: Search },
   { name: "Documentación", href: "/documentacion", icon: FileCheck, adminOnly: true },
   { 
     name: "Configuración", 

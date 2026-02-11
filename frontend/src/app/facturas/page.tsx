@@ -169,7 +169,12 @@ export default function FacturasPage(): React.ReactElement {
   }
 
   function formatDate(date: string): string {
-    return new Date(date).toLocaleDateString("es-ES");
+    // Usar solo la parte de fecha (YYYY-MM-DD) para evitar problemas de timezone
+    // Formato: mm/dd/yyyy
+    if (!date) return "";
+    const dateOnly = date.split("T")[0];
+    const [year, month, day] = dateOnly.split("-");
+    return `${month}/${day}/${year}`;
   }
 
   // Get selected oferta importadora

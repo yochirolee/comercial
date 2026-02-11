@@ -1,12 +1,14 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { createOperationEvent } from './operation.controller.js';
 
 const ofertaImportadoraSchema = z.object({
   numero: z.string().optional(),
   fecha: z.string().optional(),
   vigenciaHasta: z.string().optional(),
   clienteId: z.string().min(1, 'Cliente es requerido'),
+  importadoraId: z.string().min(1, 'Importadora es requerida'),
   observaciones: z.string().optional(),
   estado: z.enum(['pendiente', 'aceptada', 'rechazada', 'vencida']).optional(),
   ofertaClienteId: z.string().optional(),
@@ -58,25 +60,26 @@ async function generarNumeroOferta(): Promise<string> {
 const itemSchema = z.object({
   productoId: z.string().min(1, 'Producto es requerido'),
   cantidad: z.number().positive('La cantidad debe ser positiva'),
-  cantidadCajas: z.number().optional(),
-  cantidadSacos: z.number().optional(),
-  pesoNeto: z.number().optional(),
-  pesoBruto: z.number().optional(),
+  cantidadCajas: z.number().nullable().optional(),
+  cantidadSacos: z.number().nullable().optional(),
+  pesoNeto: z.number().nullable().optional(),
+  pesoBruto: z.number().nullable().optional(),
   precioUnitario: z.number().positive('El precio debe ser positivo'),
-  precioAjustado: z.number().positive('El precio debe ser positivo').optional(), // Para edición directa
-  pesoXSaco: z.number().optional(),
-  precioXSaco: z.number().optional(),
-  pesoXCaja: z.number().optional(),
-  precioXCaja: z.number().optional(),
-  codigoArancelario: z.string().optional(), // Partida arancelaria
-  campoExtra1: z.string().optional(),
-  campoExtra2: z.string().optional(),
-  campoExtra3: z.string().optional(),
-  campoExtra4: z.string().optional(),
+  precioAjustado: z.number().positive('El precio debe ser positivo').nullable().optional(), // Para edición directa
+  pesoXSaco: z.number().nullable().optional(),
+  precioXSaco: z.number().nullable().optional(),
+  pesoXCaja: z.number().nullable().optional(),
+  precioXCaja: z.number().nullable().optional(),
+  codigoArancelario: z.string().nullable().optional(), // Partida arancelaria
+  campoExtra1: z.string().nullable().optional(),
+  campoExtra2: z.string().nullable().optional(),
+  campoExtra3: z.string().nullable().optional(),
+  campoExtra4: z.string().nullable().optional(),
 });
 
 const crearDesdeOfertaSchema = z.object({
   ofertaClienteId: z.string().min(1, 'Oferta cliente es requerida'),
+  importadoraId: z.string().min(1, 'Importadora es requerida'),
   numero: z.string().optional(),
   fecha: z.string().optional(),
   flete: z.number().min(0, 'Flete debe ser positivo'),
@@ -135,6 +138,7 @@ export const OfertaImportadoraController = {
       },
       include: {
         cliente: true,
+        importadora: true,
         ofertaCliente: true,
         items: {
           include: {
@@ -157,6 +161,7 @@ export const OfertaImportadoraController = {
       where: { id },
       include: {
         cliente: true,
+        importadora: true,
         ofertaCliente: true,
         items: {
           include: {
@@ -229,7 +234,7 @@ export const OfertaImportadoraController = {
     }
 
     const { 
-      ofertaClienteId, fecha, flete, seguro, tieneSeguro, incluyeFirmaCliente, totalCifDeseado,
+      ofertaClienteId, importadoraId, fecha, flete, seguro, tieneSeguro, incluyeFirmaCliente, totalCifDeseado,
       puertoEmbarque, origen, moneda, terminosPago, items: itemsProporcionados,
     } = validation.data;
     
@@ -344,12 +349,32 @@ export const OfertaImportadoraController = {
     // CIF = Subtotal productos + Flete + Seguro
     const cifCalculado = subtotalProductos + flete + seguroFinal;
 
+    // Crear/actualizar relación ClienteImportadora si no existe
+    try {
+      await prisma.clienteImportadora.upsert({
+        where: {
+          clienteId_importadoraId: {
+            clienteId: ofertaCliente.clienteId,
+            importadoraId,
+          },
+        },
+        create: {
+          clienteId: ofertaCliente.clienteId,
+          importadoraId,
+        },
+        update: {},
+      });
+    } catch (error) {
+      // Si ya existe, no hacer nada
+    }
+
     // Crear oferta importadora con los items determinados
     const ofertaImportadora = await prisma.ofertaImportadora.create({
       data: {
         numero,
         fecha: fecha ? new Date(fecha) : new Date(),
         clienteId: ofertaCliente.clienteId,
+        importadoraId,
         ofertaClienteId,
         codigoMincex: ofertaCliente.codigoMincex,
         // Usar valores proporcionados si existen, si no usar los de oferta cliente
@@ -369,6 +394,7 @@ export const OfertaImportadoraController = {
       },
       include: {
         cliente: true,
+        importadora: true,
         ofertaCliente: true,
         items: {
           include: {
@@ -429,11 +455,32 @@ export const OfertaImportadoraController = {
       }
     }
 
+    // Buscar operación relacionada y crear evento automático
+    try {
+      const operation = await prisma.operation.findFirst({
+        where: { offerCustomerId: ofertaClienteId },
+      });
+      
+      if (operation) {
+        await createOperationEvent(
+          operation.id,
+          'commercial',
+          'Oferta a Importadora Creada',
+          `Oferta ${ofertaImportadora.numero} creada`,
+          ofertaImportadora.fecha
+        );
+      }
+    } catch (error) {
+      // No fallar si no se puede crear el evento
+      console.error('Error al crear evento automático en operación:', error);
+    }
+
     // Retornar la oferta actualizada
     const ofertaFinal = await prisma.ofertaImportadora.findUnique({
       where: { id: ofertaImportadora.id },
       include: {
         cliente: true,
+        importadora: true,
         ofertaCliente: true,
         items: {
           include: {
