@@ -65,23 +65,37 @@ export const OfertaGeneralController = {
   },
 
   async getAll(req: Request, res: Response): Promise<void> {
-    const { estado } = req.query;
-    
-    const ofertas = await prisma.ofertaGeneral.findMany({
-      where: estado ? { estado: String(estado) } : undefined,
-      include: {
-        items: {
-          include: {
-            producto: {
-              include: { unidadMedida: true },
+    try {
+      const { estado } = req.query;
+      
+      // Construir where clause de manera segura
+      const where: any = {};
+      if (estado && String(estado).trim() !== '') {
+        where.estado = String(estado);
+      }
+      
+      const ofertas = await prisma.ofertaGeneral.findMany({
+        where: Object.keys(where).length > 0 ? where : undefined,
+        include: {
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
             },
           },
         },
-      },
-      orderBy: { fecha: 'desc' },
-    });
-    
-    res.json(ofertas);
+        orderBy: { fecha: 'desc' },
+      });
+      
+      res.json(ofertas);
+    } catch (error: any) {
+      console.error('Error en getAll ofertas generales:', error);
+      res.status(500).json({ 
+        error: 'Error al obtener ofertas generales',
+        message: error.message 
+      });
+    }
   },
 
   async getById(req: Request, res: Response): Promise<void> {
