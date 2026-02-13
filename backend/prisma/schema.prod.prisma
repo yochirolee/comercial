@@ -109,6 +109,18 @@ model Producto {
   unidadMedida     UnidadMedida @relation(fields: [unidadMedidaId], references: [id])
   codigoArancelario String?
   activo           Boolean  @default(true)
+  
+  // Campos informativos para precarga en ofertas
+  cantidad         Float?
+  cantidadCajas    Float?
+  cantidadSacos    Float?
+  pesoNeto         Float?
+  pesoBruto        Float?
+  pesoXSaco        Float?
+  precioXSaco      Float?
+  pesoXCaja        Float?
+  precioXCaja      Float?
+  
   campoExtra1      String?
   campoExtra2      String?
   campoExtra3      String?

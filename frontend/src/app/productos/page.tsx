@@ -40,6 +40,15 @@ const emptyProducto: ProductoInput = {
   precioBase: 0,
   unidadMedidaId: "",
   codigoArancelario: "",
+  cantidad: null,
+  cantidadCajas: null,
+  cantidadSacos: null,
+  pesoNeto: null,
+  pesoBruto: null,
+  pesoXSaco: null,
+  precioXSaco: null,
+  pesoXCaja: null,
+  precioXCaja: null,
 };
 
 export default function ProductosPage() {
@@ -52,6 +61,19 @@ export default function ProductosPage() {
   const [formData, setFormData] = useState<ProductoInput>(emptyProducto);
   const [precioString, setPrecioString] = useState(""); // Para permitir escribir decimales como "0.69"
   const [saving, setSaving] = useState(false);
+  
+  // Estados para campos informativos (como strings para evitar pérdida de foco)
+  const [infoFields, setInfoFields] = useState({
+    cantidad: "",
+    cantidadCajas: "",
+    cantidadSacos: "",
+    pesoNeto: "",
+    pesoBruto: "",
+    pesoXSaco: "",
+    precioXSaco: "",
+    pesoXCaja: "",
+    precioXCaja: "",
+  });
 
   async function loadData(): Promise<void> {
     try {
@@ -84,6 +106,17 @@ export default function ProductosPage() {
   async function openNewDialog(): Promise<void> {
     setEditingId(null);
     setPrecioString("");
+    setInfoFields({
+      cantidad: "",
+      cantidadCajas: "",
+      cantidadSacos: "",
+      pesoNeto: "",
+      pesoBruto: "",
+      pesoXSaco: "",
+      precioXSaco: "",
+      pesoXCaja: "",
+      precioXCaja: "",
+    });
     try {
       // Obtener siguiente código consecutivo
       const { codigo } = await productosApi.getNextCode();
@@ -110,8 +143,28 @@ export default function ProductosPage() {
       precioBase: producto.precioBase,
       unidadMedidaId: producto.unidadMedidaId,
       codigoArancelario: producto.codigoArancelario || "",
+      cantidad: producto.cantidad ?? null,
+      cantidadCajas: producto.cantidadCajas ?? null,
+      cantidadSacos: producto.cantidadSacos ?? null,
+      pesoNeto: producto.pesoNeto ?? null,
+      pesoBruto: producto.pesoBruto ?? null,
+      pesoXSaco: producto.pesoXSaco ?? null,
+      precioXSaco: producto.precioXSaco ?? null,
+      pesoXCaja: producto.pesoXCaja ?? null,
+      precioXCaja: producto.precioXCaja ?? null,
     });
     setPrecioString(producto.precioBase.toString());
+    setInfoFields({
+      cantidad: producto.cantidad?.toString() || "",
+      cantidadCajas: producto.cantidadCajas?.toString() || "",
+      cantidadSacos: producto.cantidadSacos?.toString() || "",
+      pesoNeto: producto.pesoNeto?.toString() || "",
+      pesoBruto: producto.pesoBruto?.toString() || "",
+      pesoXSaco: producto.pesoXSaco?.toString() || "",
+      precioXSaco: producto.precioXSaco?.toString() || "",
+      pesoXCaja: producto.pesoXCaja?.toString() || "",
+      precioXCaja: producto.precioXCaja?.toString() || "",
+    });
     setDialogOpen(true);
   }
 
@@ -119,10 +172,37 @@ export default function ProductosPage() {
     e.preventDefault();
     setSaving(true);
 
-    // Convertir precio string a número
-    const dataToSend = {
+    // Convertir precio string a número y campos informativos
+    const dataToSend: ProductoInput = {
       ...formData,
       precioBase: parseFloat(precioString) || 0,
+      cantidad: infoFields.cantidad && infoFields.cantidad.trim() !== "" 
+        ? parseFloat(infoFields.cantidad) 
+        : null,
+      cantidadCajas: infoFields.cantidadCajas && infoFields.cantidadCajas.trim() !== "" 
+        ? parseFloat(infoFields.cantidadCajas) 
+        : null,
+      cantidadSacos: infoFields.cantidadSacos && infoFields.cantidadSacos.trim() !== "" 
+        ? parseFloat(infoFields.cantidadSacos) 
+        : null,
+      pesoNeto: infoFields.pesoNeto && infoFields.pesoNeto.trim() !== "" 
+        ? parseFloat(infoFields.pesoNeto) 
+        : null,
+      pesoBruto: infoFields.pesoBruto && infoFields.pesoBruto.trim() !== "" 
+        ? parseFloat(infoFields.pesoBruto) 
+        : null,
+      pesoXSaco: infoFields.pesoXSaco && infoFields.pesoXSaco.trim() !== "" 
+        ? parseFloat(infoFields.pesoXSaco) 
+        : null,
+      precioXSaco: infoFields.precioXSaco && infoFields.precioXSaco.trim() !== "" 
+        ? parseFloat(infoFields.precioXSaco) 
+        : null,
+      pesoXCaja: infoFields.pesoXCaja && infoFields.pesoXCaja.trim() !== "" 
+        ? parseFloat(infoFields.pesoXCaja) 
+        : null,
+      precioXCaja: infoFields.precioXCaja && infoFields.precioXCaja.trim() !== "" 
+        ? parseFloat(infoFields.precioXCaja) 
+        : null,
     };
 
     try {
@@ -135,6 +215,17 @@ export default function ProductosPage() {
       }
       setDialogOpen(false);
       setPrecioString("");
+      setInfoFields({
+        cantidad: "",
+        cantidadCajas: "",
+        cantidadSacos: "",
+        pesoNeto: "",
+        pesoBruto: "",
+        pesoXSaco: "",
+        precioXSaco: "",
+        pesoXCaja: "",
+        precioXCaja: "",
+      });
       loadData();
     } catch (error) {
       toast.error("Error al guardar producto");
@@ -261,6 +352,95 @@ export default function ProductosPage() {
                     />
                   </div>
                 </div>
+                
+                {/* Campos informativos para precarga en ofertas */}
+                <div className="border-t pt-4 space-y-3">
+                  <p className="text-sm font-medium text-slate-700">Campos Informativos (para precarga en ofertas)</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Cantidad</Label>
+                      <Input
+                        placeholder="-"
+                        value={infoFields.cantidad}
+                        onChange={(e) => setInfoFields((prev) => ({ ...prev, cantidad: e.target.value }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Cant. Cajas</Label>
+                      <Input
+                        placeholder="-"
+                        value={infoFields.cantidadCajas}
+                        onChange={(e) => setInfoFields((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Cant. Sacos</Label>
+                      <Input
+                        placeholder="-"
+                        value={infoFields.cantidadSacos}
+                        onChange={(e) => setInfoFields((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Peso Neto</Label>
+                      <Input
+                        placeholder="-"
+                        value={infoFields.pesoNeto}
+                        onChange={(e) => setInfoFields((prev) => ({ ...prev, pesoNeto: e.target.value }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Peso Bruto</Label>
+                      <Input
+                        placeholder="-"
+                        value={infoFields.pesoBruto}
+                        onChange={(e) => setInfoFields((prev) => ({ ...prev, pesoBruto: e.target.value }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Peso x Saco</Label>
+                      <Input
+                        placeholder="-"
+                        value={infoFields.pesoXSaco}
+                        onChange={(e) => setInfoFields((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Precio x Saco</Label>
+                      <Input
+                        placeholder="-"
+                        value={infoFields.precioXSaco}
+                        onChange={(e) => setInfoFields((prev) => ({ ...prev, precioXSaco: e.target.value }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Peso x Caja</Label>
+                      <Input
+                        placeholder="-"
+                        value={infoFields.pesoXCaja}
+                        onChange={(e) => setInfoFields((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Precio x Caja</Label>
+                      <Input
+                        placeholder="-"
+                        value={infoFields.precioXCaja}
+                        onChange={(e) => setInfoFields((prev) => ({ ...prev, precioXCaja: e.target.value }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
                   <Button
                     type="button"

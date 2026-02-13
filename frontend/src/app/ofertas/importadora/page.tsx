@@ -529,6 +529,16 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     return `${month}/${day}/${year}`;
   }
 
+  function formatProductos(items: OfertaImportadora["items"]): string {
+    if (!items || items.length === 0) return "Sin productos";
+    const primerosDos = items.slice(0, 2);
+    const nombres = primerosDos.map(item => item.producto.nombre).join(", ");
+    if (items.length > 2) {
+      return `${nombres} (+${items.length - 2} más)`;
+    }
+    return nombres;
+  }
+
   // Funciones para editar items en creación
   function openEditItemDialogCreate(index: number): void {
     setEditingItemIndex(index);
@@ -948,6 +958,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 <TableHead>Número</TableHead>
                 <TableHead>Desde Oferta</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Productos</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead className="text-right">FOB</TableHead>
                 <TableHead className="text-right">Flete</TableHead>
@@ -960,11 +971,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8">Cargando...</TableCell>
+                  <TableCell colSpan={11} className="text-center py-8">Cargando...</TableCell>
                 </TableRow>
               ) : ofertas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-slate-500">
+                  <TableCell colSpan={11} className="text-center py-8 text-slate-500">
                     No hay ofertas. Crea una desde una oferta al cliente.
                   </TableCell>
                 </TableRow>
@@ -981,6 +992,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                     </TableCell>
                     <TableCell>
                       {`${oferta.cliente.nombre || ""} ${oferta.cliente.apellidos || ""}`.trim()}
+                    </TableCell>
+                    <TableCell className="max-w-[200px]">
+                      <div className="text-sm text-slate-700 truncate" title={formatProductos(oferta.items)}>
+                        {formatProductos(oferta.items)}
+                      </div>
                     </TableCell>
                     <TableCell>{formatDate(oferta.fecha)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(oferta.subtotalProductos)}</TableCell>

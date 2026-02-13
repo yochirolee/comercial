@@ -166,17 +166,20 @@ export default function OfertasClientePage(): React.ReactElement {
       }
     }
     
+    // Solo precargar si el campo está vacío (no sobrescribir valores existentes)
+    // Prioridad: 1) Oferta General, 2) Valores del producto, 3) Mantener valor actual si existe
     setItemFormStrings((prev) => ({
       ...prev,
       productoId,
-      precioUnitario: itemOfertaGeneral?.precioUnitario?.toString() || prod?.precioBase?.toString() || "",
-      cantidadSacos: itemOfertaGeneral?.cantidadSacos?.toString() || "",
-      pesoXSaco: itemOfertaGeneral?.pesoXSaco?.toString() || "",
-      precioXSaco: itemOfertaGeneral?.precioXSaco?.toString() || "",
-      cantidadCajas: itemOfertaGeneral?.cantidadCajas?.toString() || "",
-      pesoXCaja: itemOfertaGeneral?.pesoXCaja?.toString() || "",
-      precioXCaja: itemOfertaGeneral?.precioXCaja?.toString() || "",
-      codigoArancelario: prod?.codigoArancelario || "",
+      cantidad: prev.cantidad || itemOfertaGeneral?.cantidad?.toString() || prod?.cantidad?.toString() || "",
+      precioUnitario: prev.precioUnitario || itemOfertaGeneral?.precioUnitario?.toString() || prod?.precioBase?.toString() || "",
+      cantidadSacos: prev.cantidadSacos || itemOfertaGeneral?.cantidadSacos?.toString() || prod?.cantidadSacos?.toString() || "",
+      pesoXSaco: prev.pesoXSaco || itemOfertaGeneral?.pesoXSaco?.toString() || prod?.pesoXSaco?.toString() || "",
+      precioXSaco: prev.precioXSaco || itemOfertaGeneral?.precioXSaco?.toString() || prod?.precioXSaco?.toString() || "",
+      cantidadCajas: prev.cantidadCajas || itemOfertaGeneral?.cantidadCajas?.toString() || prod?.cantidadCajas?.toString() || "",
+      pesoXCaja: prev.pesoXCaja || itemOfertaGeneral?.pesoXCaja?.toString() || prod?.pesoXCaja?.toString() || "",
+      precioXCaja: prev.precioXCaja || itemOfertaGeneral?.precioXCaja?.toString() || prod?.precioXCaja?.toString() || "",
+      codigoArancelario: prev.codigoArancelario || prod?.codigoArancelario || "",
     }));
   }
 
@@ -434,6 +437,16 @@ export default function OfertasClientePage(): React.ReactElement {
     return `${month}/${day}/${year}`;
   }
 
+  function formatProductos(items: OfertaCliente["items"]): string {
+    if (!items || items.length === 0) return "Sin productos";
+    const primerosDos = items.slice(0, 2);
+    const nombres = primerosDos.map(item => item.producto.nombre).join(", ");
+    if (items.length > 2) {
+      return `${nombres} (+${items.length - 2} más)`;
+    }
+    return nombres;
+  }
+
   const estadoColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     pendiente: "outline",
     aceptada: "default",
@@ -466,6 +479,7 @@ export default function OfertasClientePage(): React.ReactElement {
               <TableRow>
                 <TableHead>Número</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Productos</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Estado</TableHead>
@@ -475,11 +489,11 @@ export default function OfertasClientePage(): React.ReactElement {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">Cargando...</TableCell>
+                  <TableCell colSpan={7} className="text-center py-8">Cargando...</TableCell>
                 </TableRow>
               ) : ofertas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-slate-500">
                     No hay ofertas
                   </TableCell>
                 </TableRow>
@@ -488,6 +502,11 @@ export default function OfertasClientePage(): React.ReactElement {
                   <TableRow key={oferta.id}>
                     <TableCell className="font-medium">{oferta.numero}</TableCell>
                     <TableCell>{oferta.cliente.nombre} {oferta.cliente.apellidos}</TableCell>
+                    <TableCell className="max-w-[200px]">
+                      <div className="text-sm text-slate-700 truncate" title={formatProductos(oferta.items)}>
+                        {formatProductos(oferta.items)}
+                      </div>
+                    </TableCell>
                     <TableCell>{formatDate(oferta.fecha)}</TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(oferta.total)}

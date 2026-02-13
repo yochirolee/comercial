@@ -177,6 +177,16 @@ export default function FacturasPage(): React.ReactElement {
     return `${month}/${day}/${year}`;
   }
 
+  function formatProductos(items: Factura["items"]): string {
+    if (!items || items.length === 0) return "Sin productos";
+    const primerosDos = items.slice(0, 2);
+    const nombres = primerosDos.map(item => item.producto.nombre).join(", ");
+    if (items.length > 2) {
+      return `${nombres} (+${items.length - 2} más)`;
+    }
+    return nombres;
+  }
+
   // Get selected oferta importadora
   function getSelectedOfertaImportadora(): OfertaImportadora | undefined {
     return ofertasImportadora.find((o) => o.id === selectedOfertaImportadoraId);
@@ -387,10 +397,21 @@ export default function FacturasPage(): React.ReactElement {
   // Open edit item dialog
   function openEditItemDialog(item: Factura["items"][0]): void {
     setEditingItemId(item.id);
+    
+    // Precargar pesoNeto y pesoBruto desde el producto si están vacíos
+    // Solo precargar si el campo está vacío (no sobrescribir valores existentes)
+    const pesoNetoValue = item.pesoNeto 
+      ? String(item.pesoNeto) 
+      : (item.producto?.pesoNeto ? String(item.producto.pesoNeto) : String(item.cantidad));
+    
+    const pesoBrutoValue = item.pesoBruto 
+      ? String(item.pesoBruto) 
+      : (item.producto?.pesoBruto ? String(item.producto.pesoBruto) : "");
+    
     setEditItemForm({
       cantidad: String(item.cantidad),
-      pesoNeto: String(item.pesoNeto || item.cantidad),
-      pesoBruto: String(item.pesoBruto || ""),
+      pesoNeto: pesoNetoValue,
+      pesoBruto: pesoBrutoValue,
       precioUnitario: String(item.precioUnitario),
       cantidadCajas: String(item.cantidadCajas || ""),
       cantidadSacos: String(item.cantidadSacos || ""),
@@ -755,6 +776,7 @@ export default function FacturasPage(): React.ReactElement {
               <TableRow>
                 <TableHead>Número</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Productos</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead className="text-right">FOB</TableHead>
                 <TableHead className="text-right">Flete</TableHead>
@@ -767,11 +789,11 @@ export default function FacturasPage(): React.ReactElement {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8">Cargando...</TableCell>
+                  <TableCell colSpan={10} className="text-center py-8">Cargando...</TableCell>
                 </TableRow>
               ) : facturas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-slate-500">
+                  <TableCell colSpan={10} className="text-center py-8 text-slate-500">
                     No hay facturas
                   </TableCell>
                 </TableRow>
@@ -780,6 +802,11 @@ export default function FacturasPage(): React.ReactElement {
                   <TableRow key={factura.id}>
                     <TableCell className="font-medium">{factura.numero}</TableCell>
                     <TableCell>{factura.cliente.nombre} {factura.cliente.apellidos}</TableCell>
+                    <TableCell className="max-w-[200px]">
+                      <div className="text-sm text-slate-700 truncate" title={formatProductos(factura.items)}>
+                        {formatProductos(factura.items)}
+                      </div>
+                    </TableCell>
                     <TableCell>{formatDate(factura.fecha)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(factura.subtotal)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(factura.flete)}</TableCell>

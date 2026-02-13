@@ -679,6 +679,16 @@ export interface Producto {
   unidadMedida: UnidadMedida;
   codigoArancelario?: string;
   activo: boolean;
+  // Campos informativos para precarga en ofertas
+  cantidad?: number | null;
+  cantidadCajas?: number | null;
+  cantidadSacos?: number | null;
+  pesoNeto?: number | null;
+  pesoBruto?: number | null;
+  pesoXSaco?: number | null;
+  precioXSaco?: number | null;
+  pesoXCaja?: number | null;
+  precioXCaja?: number | null;
   campoExtra1?: string;
   campoExtra2?: string;
   campoExtra3?: string;
@@ -692,6 +702,16 @@ export interface ProductoInput {
   precioBase: number;
   unidadMedidaId: string;
   codigoArancelario?: string;
+  // Campos informativos para precarga en ofertas
+  cantidad?: number | null;
+  cantidadCajas?: number | null;
+  cantidadSacos?: number | null;
+  pesoNeto?: number | null;
+  pesoBruto?: number | null;
+  pesoXSaco?: number | null;
+  precioXSaco?: number | null;
+  pesoXCaja?: number | null;
+  precioXCaja?: number | null;
 }
 
 export interface OfertaGeneral {

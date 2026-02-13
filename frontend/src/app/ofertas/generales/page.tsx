@@ -144,10 +144,18 @@ export default function OfertasGeneralesPage(): React.ReactElement {
 
   function handleSelectProduct(productoId: string): void {
     const prod = productos.find((p) => p.id === productoId);
+    // Solo precargar si el campo está vacío (no sobrescribir valores existentes)
     setItemFormStrings((prev) => ({
       ...prev,
       productoId,
-      precioUnitario: prod?.precioBase?.toString() || "",
+      cantidad: prev.cantidad || prod?.cantidad?.toString() || "",
+      precioUnitario: prev.precioUnitario || prod?.precioBase?.toString() || "",
+      cantidadCajas: prev.cantidadCajas || prod?.cantidadCajas?.toString() || "",
+      cantidadSacos: prev.cantidadSacos || prod?.cantidadSacos?.toString() || "",
+      pesoXSaco: prev.pesoXSaco || prod?.pesoXSaco?.toString() || "",
+      precioXSaco: prev.precioXSaco || prod?.precioXSaco?.toString() || "",
+      pesoXCaja: prev.pesoXCaja || prod?.pesoXCaja?.toString() || "",
+      precioXCaja: prev.precioXCaja || prod?.precioXCaja?.toString() || "",
     }));
   }
 
