@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { createContainsFilter } from '../lib/search-utils.js';
 
 const productoSchema = z.object({
   codigo: z.string().optional(),
@@ -61,14 +62,16 @@ export const ProductoController = {
   async getAll(req: Request, res: Response): Promise<void> {
     const { search, activo } = req.query;
     
+    const searchFilter = search ? createContainsFilter(String(search)) : null;
+    
     const productos = await prisma.producto.findMany({
       where: {
         AND: [
-          search ? {
+          searchFilter ? {
             OR: [
-              { nombre: { contains: String(search) } },
-              { codigo: { contains: String(search) } },
-              { descripcion: { contains: String(search) } },
+              { nombre: searchFilter },
+              { codigo: searchFilter },
+              { descripcion: searchFilter },
             ],
           } : {},
           activo !== undefined ? { activo: activo === 'true' } : {},

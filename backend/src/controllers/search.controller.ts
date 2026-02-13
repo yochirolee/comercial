@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { createContainsFilter } from '../lib/search-utils.js';
 
 export const SearchController = {
   // Búsqueda universal: busca en importadoras, clientes, productos, operaciones, facturas
@@ -12,15 +13,16 @@ export const SearchController = {
     }
     
     const term = String(q).trim();
+    const containsFilter = createContainsFilter(term);
     
     const [importadoras, clientes, productos, operaciones, facturas, ofertasImportadora] = await Promise.all([
       // Importadoras
       prisma.importadora.findMany({
         where: {
           OR: [
-            { nombre: { contains: term } },
-            { contacto: { contains: term } },
-            { email: { contains: term } },
+            { nombre: containsFilter },
+            { contacto: containsFilter },
+            { email: containsFilter },
           ],
         },
         select: {
@@ -37,10 +39,10 @@ export const SearchController = {
       prisma.cliente.findMany({
         where: {
           OR: [
-            { nombre: { contains: term } },
-            { apellidos: { contains: term } },
-            { nombreCompania: { contains: term } },
-            { email: { contains: term } },
+            { nombre: containsFilter },
+            { apellidos: containsFilter },
+            { nombreCompania: containsFilter },
+            { email: containsFilter },
           ],
         },
         select: {
@@ -58,9 +60,9 @@ export const SearchController = {
       prisma.producto.findMany({
         where: {
           OR: [
-            { nombre: { contains: term } },
-            { codigo: { contains: term } },
-            { codigoArancelario: { contains: term } },
+            { nombre: containsFilter },
+            { codigo: containsFilter },
+            { codigoArancelario: containsFilter },
           ],
         },
         select: {
@@ -77,8 +79,8 @@ export const SearchController = {
       prisma.operation.findMany({
         where: {
           OR: [
-            { operationNo: { contains: term } },
-            { notes: { contains: term } },
+            { operationNo: containsFilter },
+            { notes: containsFilter },
           ],
         },
         select: {
@@ -95,8 +97,8 @@ export const SearchController = {
       prisma.factura.findMany({
         where: {
           OR: [
-            { numero: { contains: term } },
-            { observaciones: { contains: term } },
+            { numero: containsFilter },
+            { observaciones: containsFilter },
           ],
         },
         select: {
@@ -113,7 +115,7 @@ export const SearchController = {
       prisma.ofertaImportadora.findMany({
         where: {
           OR: [
-            { numero: { contains: term } },
+            { numero: containsFilter },
           ],
         },
         select: {

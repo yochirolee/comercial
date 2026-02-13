@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { createContainsFilter } from '../lib/search-utils.js';
 
 const importadoraSchema = z.object({
   nombre: z.string().min(1, 'Nombre es requerido'),
@@ -17,12 +18,14 @@ export const ImportadoraController = {
   async getAll(req: Request, res: Response): Promise<void> {
     const { search } = req.query;
     
+    const searchFilter = search ? createContainsFilter(String(search)) : null;
+    
     const importadoras = await prisma.importadora.findMany({
-      where: search ? {
+      where: searchFilter ? {
         OR: [
-          { nombre: { contains: String(search) } },
-          { contacto: { contains: String(search) } },
-          { email: { contains: String(search) } },
+          { nombre: searchFilter },
+          { contacto: searchFilter },
+          { email: searchFilter },
         ],
       } : undefined,
       orderBy: { nombre: 'asc' },

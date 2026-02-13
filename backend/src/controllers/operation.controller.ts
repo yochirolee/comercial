@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { createContainsFilter } from '../lib/search-utils.js';
 import { z } from 'zod';
 
 // Statuses válidos
@@ -419,9 +420,10 @@ export const OperationController = {
     }
     
     if (search) {
+      const searchFilter = createContainsFilter(String(search));
       where.OR = [
-        { operationNo: { contains: String(search) } },
-        { currentLocation: { contains: String(search) } },
+        { operationNo: searchFilter },
+        { currentLocation: searchFilter },
       ];
     }
     
