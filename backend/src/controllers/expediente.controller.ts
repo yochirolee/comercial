@@ -70,6 +70,18 @@ export const ExpedienteController = {
                   },
                 },
               },
+              invoice: {
+                include: {
+                  cliente: {
+                    select: {
+                      id: true,
+                      nombre: true,
+                      apellidos: true,
+                      nombreCompania: true,
+                    },
+                  },
+                },
+              },
               containers: {
                 include: {
                   events: {
@@ -92,18 +104,53 @@ export const ExpedienteController = {
         return;
       }
 
+      // Obtener facturas relacionadas indirectamente a través de operaciones
+      const facturasIdsDirectas = importadora.facturas.map(f => f.id);
+      const facturasIdsIndirectas = importadora.operaciones
+        .filter(op => op.invoiceId && !facturasIdsDirectas.includes(op.invoiceId))
+        .map(op => op.invoiceId) as string[];
+      
+      const facturasIndirectas = facturasIdsIndirectas.length > 0 ? await prisma.factura.findMany({
+        where: { id: { in: facturasIdsIndirectas } },
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              apellidos: true,
+              nombreCompania: true,
+            },
+          },
+          items: {
+            include: {
+              producto: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  codigo: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { fecha: 'desc' },
+      }) : [];
+
+      // Combinar facturas directas e indirectas
+      const todasLasFacturas = [...importadora.facturas, ...facturasIndirectas];
+
       // Calcular métricas
       const containers = importadora.operaciones.flatMap(op => op.containers);
       const metrics = {
         totalClientes: importadora.clientes.length,
         totalOfertas: importadora.ofertasImportadora.length,
-        totalFacturas: importadora.facturas.length,
+        totalFacturas: todasLasFacturas.length,
         totalOperaciones: importadora.operaciones.length,
         totalContainers: containers.length,
         containersEnTransito: containers.filter(c => ['Departed US', 'Arrived Cuba'].includes(c.status)).length,
         containersEnAduana: containers.filter(c => c.status === 'Customs').length,
         containersEntregados: containers.filter(c => ['Delivered', 'Closed'].includes(c.status)).length,
-        totalFacturado: importadora.facturas.reduce((sum, f) => sum + f.total, 0),
+        totalFacturado: todasLasFacturas.reduce((sum, f) => sum + f.total, 0),
         totalOfertasCIF: importadora.ofertasImportadora.reduce((sum, o) => sum + (o.precioCIF || 0), 0),
       };
 
@@ -117,11 +164,11 @@ export const ExpedienteController = {
       archive.pipe(res);
 
       // Generar PDF
-      const pdfBuffer = await generatePDF(importadora, metrics);
+      const pdfBuffer = await generatePDF(importadora, metrics, todasLasFacturas);
       archive.append(pdfBuffer, { name: 'resumen.pdf' });
 
       // Generar Excel
-      const excelBuffer = await generateExcel(importadora, containers);
+      const excelBuffer = await generateExcel(importadora, containers, todasLasFacturas);
       archive.append(excelBuffer, { name: 'datos.xlsx' });
 
       // Finalizar ZIP
@@ -137,7 +184,7 @@ export const ExpedienteController = {
 };
 
 // Función para generar PDF
-async function generatePDF(importadora: any, metrics: any): Promise<Buffer> {
+async function generatePDF(importadora: any, metrics: any, todasLasFacturas: any[]): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50 });
     const chunks: Buffer[] = [];
@@ -217,7 +264,7 @@ async function generatePDF(importadora: any, metrics: any): Promise<Buffer> {
 }
 
 // Función para generar Excel
-async function generateExcel(importadora: any, containers: any[]): Promise<Buffer> {
+async function generateExcel(importadora: any, containers: any[], todasLasFacturas: any[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   
   // Hoja: Clientes
@@ -279,7 +326,7 @@ async function generateExcel(importadora: any, containers: any[]): Promise<Buffe
     { header: 'Observaciones', key: 'observaciones', width: 40 },
   ];
   
-  importadora.facturas.forEach((factura: any) => {
+  todasLasFacturas.forEach((factura: any) => {
     facturasSheet.addRow({
       numero: factura.numero,
       fecha: factura.fecha ? new Date(factura.fecha).toLocaleDateString('es-ES') : '',

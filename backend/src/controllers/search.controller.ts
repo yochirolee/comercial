@@ -189,6 +189,11 @@ export const SearchController = {
           take: 10,
           include: {
             containers: { orderBy: { sequenceNo: 'asc' } },
+            invoice: {
+              include: {
+                cliente: { select: { id: true, nombre: true, apellidos: true, nombreCompania: true } },
+              },
+            },
           },
         },
       },
@@ -199,8 +204,18 @@ export const SearchController = {
       return;
     }
     
+    // Obtener facturas relacionadas indirectamente a través de operaciones
+    const facturasIdsDirectas = importadora.facturas.map(f => f.id);
+    const facturasIndirectas = importadora.operaciones
+      .filter(op => op.invoiceId && !facturasIdsDirectas.includes(op.invoiceId))
+      .map(op => op.invoice)
+      .filter((f): f is NonNullable<typeof f> => f !== null);
+    
+    // Combinar facturas directas e indirectas
+    const todasLasFacturas = [...importadora.facturas, ...facturasIndirectas];
+    
     // Productos top
-    const facturasIds = importadora.facturas.map(f => f.id);
+    const facturasIds = todasLasFacturas.map(f => f.id);
     const itemsFactura = facturasIds.length > 0 ? await prisma.itemFactura.findMany({
       where: { facturaId: { in: facturasIds } },
       include: { producto: { select: { id: true, codigo: true, nombre: true } } },
@@ -226,7 +241,7 @@ export const SearchController = {
       relaciones: {
         clientes: importadora.clientes.map(c => c.cliente),
         ofertas: importadora.ofertasImportadora,
-        facturas: importadora.facturas,
+        facturas: todasLasFacturas,
         operaciones: importadora.operaciones,
         productos,
         containers: {
