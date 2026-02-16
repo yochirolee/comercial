@@ -51,6 +51,7 @@ import {
   ofertasClienteApi,
   ofertasImportadoraApi,
   exportApi,
+  importadorasApi,
 } from "@/lib/api";
 import type {
   Factura,
@@ -58,12 +59,14 @@ import type {
   OfertaImportadora,
   FacturaFromOfertaClienteInput,
   FacturaFromOfertaImportadoraInput,
+  Importadora,
 } from "@/lib/api";
 
 export default function FacturasPage(): React.ReactElement {
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [ofertasCliente, setOfertasCliente] = useState<OfertaCliente[]>([]);
   const [ofertasImportadora, setOfertasImportadora] = useState<OfertaImportadora[]>([]);
+  const [importadoras, setImportadoras] = useState<Importadora[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Dialogs
@@ -107,6 +110,7 @@ export default function FacturasPage(): React.ReactElement {
     numeroFactura: "",
     fecha: "",
     estado: "pendiente",
+    importadoraId: "",
     flete: "0",
     seguro: "0",
     tieneSeguro: false,
@@ -141,14 +145,16 @@ export default function FacturasPage(): React.ReactElement {
 
   async function loadData(): Promise<void> {
     try {
-      const [facturasData, ocData, oiData] = await Promise.all([
+      const [facturasData, ocData, oiData, importadorasData] = await Promise.all([
         facturasApi.getAll(),
         ofertasClienteApi.getAll(),
         ofertasImportadoraApi.getAll(),
+        importadorasApi.getAll(),
       ]);
       setFacturas(facturasData);
       setOfertasCliente(ocData.filter((o) => o.estado === "aceptada" || o.estado === "pendiente"));
       setOfertasImportadora(oiData.filter((o) => o.estado === "aceptada" || o.estado === "pendiente"));
+      setImportadoras(importadorasData);
     } catch (error) {
       toast.error("Error al cargar datos");
       console.error(error);
@@ -325,6 +331,7 @@ export default function FacturasPage(): React.ReactElement {
       numeroFactura: factura.numero || "",
       fecha: factura.fecha ? factura.fecha.split("T")[0] : "",
       estado: factura.estado || "pendiente",
+      importadoraId: factura.importadoraId || "",
       flete: String(factura.flete || 0),
       seguro: String(factura.seguro || 0),
       tieneSeguro: factura.tieneSeguro || false,
@@ -351,6 +358,7 @@ export default function FacturasPage(): React.ReactElement {
         numero: editFormData.numeroFactura || undefined,
         fecha: editFormData.fecha || undefined,
         estado: editFormData.estado || undefined,
+        importadoraId: editFormData.importadoraId || undefined,
         flete: parseFloat(editFormData.flete) || 0,
         seguro: parseFloat(editFormData.seguro) || 0,
         tieneSeguro: editFormData.tieneSeguro,
@@ -906,7 +914,7 @@ export default function FacturasPage(): React.ReactElement {
 
           <div className="space-y-4 min-w-0">
             {/* Info básica */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg min-w-0">
               <div>
                 <Label className="text-slate-500">Cliente</Label>
                 <p className="font-medium">
@@ -915,6 +923,24 @@ export default function FacturasPage(): React.ReactElement {
                 {selectedFactura?.cliente.nit && (
                   <p className="text-slate-500 text-sm mt-1">NIT: {selectedFactura.cliente.nit}</p>
                 )}
+              </div>
+              <div>
+                <Label className="text-slate-500">Importadora</Label>
+                <Select
+                  value={editFormData.importadoraId}
+                  onValueChange={(value) => setEditFormData((p) => ({ ...p, importadoraId: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Seleccionar importadora" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {importadoras.map((imp) => (
+                      <SelectItem key={imp.id} value={imp.id}>
+                        {imp.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label className="text-slate-500">Número</Label>
@@ -935,7 +961,7 @@ export default function FacturasPage(): React.ReactElement {
                 />
               </div>
               <div>
-                <Label className="text-slate-500">Número de Contrato (opcional)</Label>
+                <Label className="text-slate-500">Número de Contrato</Label>
                 <Input
                   className="mt-1"
                   value={editFormData.nroContrato}

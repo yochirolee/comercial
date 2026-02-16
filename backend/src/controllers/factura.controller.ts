@@ -8,7 +8,7 @@ const facturaSchema = z.object({
   fecha: z.string().optional(),
   fechaVencimiento: z.string().optional(),
   clienteId: z.string().min(1, 'Cliente es requerido'),
-  importadoraId: z.string().min(1, 'Importadora es requerida'),
+  importadoraId: z.string().min(1, 'Importadora es requerida').nullable().optional(),
   observaciones: z.string().optional(),
   estado: z.enum(['pendiente', 'pagada', 'vencida', 'cancelada']).optional(),
   // Costos
@@ -642,13 +642,22 @@ export const FacturaController = {
       }
     }
 
+    const updateData: any = {
+      ...validation.data,
+      fecha: validation.data.fecha ? new Date(validation.data.fecha) : undefined,
+      fechaVencimiento: validation.data.fechaVencimiento ? new Date(validation.data.fechaVencimiento) : undefined,
+    };
+    
+    // Manejar importadoraId explícitamente para permitir null
+    if ('importadoraId' in validation.data) {
+      updateData.importadoraId = validation.data.importadoraId === null || validation.data.importadoraId === '' 
+        ? null 
+        : validation.data.importadoraId;
+    }
+
     await prisma.factura.update({
       where: { id },
-      data: {
-        ...validation.data,
-        fecha: validation.data.fecha ? new Date(validation.data.fecha) : undefined,
-        fechaVencimiento: validation.data.fechaVencimiento ? new Date(validation.data.fechaVencimiento) : undefined,
-      },
+      data: updateData,
     });
     
     await calcularTotales(id);
