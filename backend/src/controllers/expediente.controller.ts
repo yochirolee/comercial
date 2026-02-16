@@ -341,10 +341,10 @@ async function generateExcel(importadora: any, containers: any[]): Promise<Buffe
     // Buscar la operación del contenedor
     const operation = Array.from(operationMap.values()).find((op: any) => 
       op.containers.some((c: any) => c.id === container.id)
-    );
+    ) as any;
     
     containersSheet.addRow({
-      operationNo: operation?.operationNo || '',
+      operationNo: (operation && operation.operationNo) ? operation.operationNo : '',
       sequenceNo: container.sequenceNo,
       containerNo: container.containerNo || '',
       bookingNo: container.bookingNo || '',
@@ -404,12 +404,12 @@ async function generateExcel(importadora: any, containers: any[]): Promise<Buffe
   containers.forEach((container: any) => {
     const operation = Array.from(operationMap.values()).find((op: any) => 
       op.containers.some((c: any) => c.id === container.id)
-    );
+    ) as any;
     
     container.events.forEach((event: any) => {
       timelineContSheet.addRow({
         containerNo: container.containerNo || '',
-        operationNo: operation?.operationNo || '',
+        operationNo: (operation && operation.operationNo) ? operation.operationNo : '',
         eventDate: new Date(event.eventDate).toLocaleString('es-ES'),
         eventType: event.eventType,
         title: event.title,

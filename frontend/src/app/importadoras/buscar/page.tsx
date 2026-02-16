@@ -197,7 +197,7 @@ export default function BuscarUniversalPage(): React.ReactElement {
                     <Search className="h-4 w-4 mr-1" />
                     Volver
                   </Button>
-                  {selectedType === 'importadora' && (
+                  {selectedType === 'importadora' && selectedId && (
                     <>
                       <Button size="sm" onClick={() => router.push(`/importadoras/${selectedId}`)}>
                         Ver detalle
@@ -206,6 +206,7 @@ export default function BuscarUniversalPage(): React.ReactElement {
                         size="sm" 
                         variant="outline"
                         onClick={async () => {
+                          if (!selectedId) return;
                           try {
                             await importadorasApi.downloadExpediente(selectedId);
                             toast.success("Expediente descargado correctamente");
@@ -220,8 +221,8 @@ export default function BuscarUniversalPage(): React.ReactElement {
                       </Button>
                     </>
                   )}
-                  {selectedType === 'operacion' && (
-                    <Button size="sm" onClick={() => router.push(`/operations/${selectedId}`)}>
+                  {selectedType === 'operacion' && selectedId && (
+                    <Button size="sm" onClick={() => selectedId && router.push(`/operations/${selectedId}`)}>
                       Ver detalle
                     </Button>
                   )}

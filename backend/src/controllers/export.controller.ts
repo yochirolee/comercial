@@ -751,14 +751,14 @@ export const ExportController = {
       ];
 
       ofertas.forEach(oferta => {
-        oferta.items.forEach(item => {
+        oferta.items.forEach((item: any) => {
           itemsSheet.addRow({
             oferta: oferta.numero,
             producto: item.producto?.nombre || '',
             codigo: item.producto?.codigo || '',
             descripcion: item.descripcion || item.producto?.descripcion || '',
             cantidad: item.cantidad,
-            precioUnitario: item.precioUnitario,
+            precioUnitario: item.precioAjustado || item.precioOriginal || 0,
             subtotal: item.subtotal,
             cantidadCajas: item.cantidadCajas || '',
             cantidadSacos: item.cantidadSacos || '',
