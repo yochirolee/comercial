@@ -207,11 +207,7 @@ export const SearchController = {
       return;
     }
     
-    // Obtener IDs de clientes relacionados directamente con esta importadora
-    const clientesIdsRelacionados = importadora.clientes.map(c => c.clienteId);
-    const clientesIdsRelacionadosSet = new Set(clientesIdsRelacionados);
-    
-    // Obtener facturas relacionadas indirectamente a través de múltiples vías:
+    // Obtener facturas relacionadas a través de múltiples vías:
     // 1. Facturas con importadoraId directamente asignado (TODAS, no solo las primeras 10)
     // 2. Operaciones que tienen invoiceId y el cliente de la factura está relacionado
     // 3. Facturas creadas desde Ofertas a Importadora de esta importadora
@@ -230,9 +226,10 @@ export const SearchController = {
     
     const facturasIdsDirectas = facturasDirectas.map(f => f.id);
     
-    // 2. Facturas a través de operaciones, pero solo si el cliente está relacionado
+    // 2. Facturas a través de operaciones de esta importadora
+    // Si la operación pertenece a esta importadora, su factura también pertenece
     const facturasPorOperaciones = importadora.operaciones
-      .filter(op => op.invoiceId && op.invoice && clientesIdsRelacionadosSet.has(op.invoice.clienteId))
+      .filter(op => op.invoiceId && op.invoice)
       .map(op => op.invoice)
       .filter((f): f is NonNullable<typeof f> => f !== null && !facturasIdsDirectas.includes(f.id));
     
@@ -259,12 +256,11 @@ export const SearchController = {
       .filter((id): id is string => id !== null);
     
     // 6. Buscar facturas creadas desde estas Ofertas a Cliente
-    // PERO solo si el cliente de la factura está relacionado con esta importadora
+    // Si la oferta a cliente generó una oferta a importadora de esta importadora, la factura pertenece
     const facturasPorOfertasCliente = ofertasClienteIds.length > 0 ? await prisma.factura.findMany({
       where: {
         tipoOfertaOrigen: 'cliente',
         ofertaOrigenId: { in: ofertasClienteIds },
-        clienteId: { in: clientesIdsRelacionados }, // Solo clientes relacionados con esta importadora
         id: { notIn: [...facturasIdsDirectas, ...facturasPorOperaciones.map(f => f.id), ...facturasPorOfertasImportadora.map(f => f.id)] },
       },
       include: {
@@ -287,8 +283,9 @@ export const SearchController = {
     );
     
     // Ordenar por fecha descendente y limitar a 10 para mostrar
+    // No filtrar por clienteId aquí - todas las facturas en facturasUnicas ya están
+    // validadas como pertenecientes a esta importadora (directas, por operaciones, o por ofertas)
     const facturasFiltradas = facturasUnicas
-      .filter(factura => clientesIdsRelacionadosSet.has(factura.clienteId))
       .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
       .slice(0, 10);
     
@@ -313,9 +310,8 @@ export const SearchController = {
       where: { operation: { importadoraId: id } },
     });
     
-    // Filtrar ofertas a importadora para asegurar que solo muestren clientes relacionados directamente
+    // Mostrar todas las ofertas a importadora de esta importadora (ya pertenecen por definición)
     const ofertasFiltradas = importadora.ofertasImportadora
-      .filter(oferta => clientesIdsRelacionadosSet.has(oferta.clienteId))
       .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
       .slice(0, 10);
     
