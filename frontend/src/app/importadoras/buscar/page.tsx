@@ -31,8 +31,9 @@ import {
   Activity,
   DollarSign,
   Hash,
+  Download,
 } from "lucide-react";
-import { searchApi } from "@/lib/api";
+import { searchApi, importadorasApi } from "@/lib/api";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -197,9 +198,27 @@ export default function BuscarUniversalPage(): React.ReactElement {
                     Volver
                   </Button>
                   {selectedType === 'importadora' && (
-                    <Button size="sm" onClick={() => router.push(`/importadoras/${selectedId}`)}>
-                      Ver detalle
-                    </Button>
+                    <>
+                      <Button size="sm" onClick={() => router.push(`/importadoras/${selectedId}`)}>
+                        Ver detalle
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                            await importadorasApi.downloadExpediente(selectedId);
+                            toast.success("Expediente descargado correctamente");
+                          } catch (error) {
+                            toast.error("Error al descargar expediente");
+                            console.error(error);
+                          }
+                        }}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Descargar expediente
+                      </Button>
+                    </>
                   )}
                   {selectedType === 'operacion' && (
                     <Button size="sm" onClick={() => router.push(`/operations/${selectedId}`)}>
@@ -306,14 +325,35 @@ export default function BuscarUniversalPage(): React.ReactElement {
                 color="indigo"
               >
                 {results.importadoras.map((imp) => (
-                  <ResultItem
-                    key={imp.id}
-                    onClick={() => selectEntity('importadora', imp.id, imp.nombre)}
-                    icon={<Building2 className="h-4 w-4" />}
-                    iconColor="bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white"
-                    title={imp.nombre}
-                    subtitle={[imp.pais, imp.contacto, imp.puertoDestinoDefault].filter(Boolean).join(' • ')}
-                  />
+                  <div key={imp.id} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <ResultItem
+                        onClick={() => selectEntity('importadora', imp.id, imp.nombre)}
+                        icon={<Building2 className="h-4 w-4" />}
+                        iconColor="bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white"
+                        title={imp.nombre}
+                        subtitle={[imp.pais, imp.contacto, imp.puertoDestinoDefault].filter(Boolean).join(' • ')}
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-shrink-0"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await importadorasApi.downloadExpediente(imp.id);
+                          toast.success("Expediente descargado correctamente");
+                        } catch (error) {
+                          toast.error("Error al descargar expediente");
+                          console.error(error);
+                        }
+                      }}
+                      title="Descargar expediente"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
                 ))}
               </ResultSection>
             )}

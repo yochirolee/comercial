@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ImportadoraController } from '../controllers/importadora.controller.js';
+import { ExpedienteController } from '../controllers/expediente.controller.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';
 
 export const importadoraRouter = Router();
@@ -9,6 +10,9 @@ importadoraRouter.use(authMiddleware);
 
 // GET /api/importadoras - Listar todas las importadoras
 importadoraRouter.get('/', ImportadoraController.getAll);
+
+// GET /api/importadoras/:id/expediente - Descargar expediente completo
+importadoraRouter.get('/:id/expediente', ExpedienteController.downloadExpediente);
 
 // GET /api/importadoras/:id - Obtener importadora por ID con detalles
 importadoraRouter.get('/:id', ImportadoraController.getById);

@@ -44,6 +44,7 @@ import {
   DollarSign,
   Ship,
   Package,
+  Download,
 } from "lucide-react";
 import {
   facturasApi,
@@ -75,6 +76,11 @@ export default function FacturasPage(): React.ReactElement {
   const [selectedFactura, setSelectedFactura] = useState<Factura | null>(null);
   const [selectedOfertaImportadoraId, setSelectedOfertaImportadoraId] = useState("");
   const [editingItemId, setEditingItemId] = useState("");
+  
+  // Estado para diálogo de exportación con rango de fechas
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
 
   // Form data for new factura
   const [newFormData, setNewFormData] = useState({
@@ -530,14 +536,26 @@ export default function FacturasPage(): React.ReactElement {
         title="Facturas"
         description="Crear facturas desde ofertas a importadora."
         actions={
-          <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openNewDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva Factura
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-auto">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFechaDesde("");
+                setFechaHasta("");
+                setExportDialogOpen(true);
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Descargar Excel
+            </Button>
+            <Dialog open={newDialogOpen} onOpenChange={setNewDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openNewDialog}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nueva Factura
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Receipt className="h-5 w-5" />
@@ -766,6 +784,7 @@ export default function FacturasPage(): React.ReactElement {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         }
       />
 
@@ -1293,6 +1312,72 @@ export default function FacturasPage(): React.ReactElement {
               </Button>
               <Button onClick={handleUpdateItem} disabled={saving}>
                 {saving ? "Guardando..." : "Guardar"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para exportar con rango de fechas */}
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Exportar Facturas</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Selecciona un rango de fechas para filtrar las facturas (opcional). Si no seleccionas fechas, se exportarán todas las facturas.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fechaDesde">Fecha Desde</Label>
+                <Input
+                  id="fechaDesde"
+                  type="date"
+                  value={fechaDesde}
+                  onChange={(e) => setFechaDesde(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fechaHasta">Fecha Hasta</Label>
+                <Input
+                  id="fechaHasta"
+                  type="date"
+                  value={fechaHasta}
+                  onChange={(e) => setFechaHasta(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setExportDialogOpen(false);
+                  setFechaDesde("");
+                  setFechaHasta("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    await exportApi.exportAllFacturas(
+                      fechaDesde || undefined,
+                      fechaHasta || undefined
+                    );
+                    toast.success("Facturas exportadas correctamente");
+                    setExportDialogOpen(false);
+                    setFechaDesde("");
+                    setFechaHasta("");
+                  } catch (error) {
+                    toast.error("Error al exportar facturas");
+                    console.error(error);
+                  }
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
               </Button>
             </div>
           </div>

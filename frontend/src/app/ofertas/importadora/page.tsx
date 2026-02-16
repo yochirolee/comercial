@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight, Pencil, Save } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight, Pencil, Save, Download } from "lucide-react";
 import { 
   ofertasImportadoraApi, 
   ofertasClienteApi, 
@@ -74,6 +74,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   const [moneda, setMoneda] = useState("USD");
   const [terminosPago, setTerminosPago] = useState("");
   const [saving, setSaving] = useState(false);
+  
+  // Estado para diálogo de exportación con rango de fechas
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
 
   // Estado para ajustar precios en edición
   const [totalDeseadoEdit, setTotalDeseadoEdit] = useState("");
@@ -609,13 +614,29 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         title="Ofertas a Importadora"
         description="Crear ofertas CIF desde ofertas al cliente."
         actions={
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openNewDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva desde Oferta Cliente
-              </Button>
-            </DialogTrigger>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs md:text-sm whitespace-nowrap"
+              onClick={() => {
+                setFechaDesde("");
+                setFechaHasta("");
+                setExportDialogOpen(true);
+              }}
+            >
+              <Download className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+              <span className="hidden md:inline">Descargar Excel</span>
+              <span className="md:hidden">Excel</span>
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openNewDialog} size="sm" className="text-xs md:text-sm whitespace-nowrap">
+                  <Plus className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+                  <span className="hidden md:inline">Nueva desde Oferta Cliente</span>
+                  <span className="md:hidden">Nueva</span>
+                </Button>
+              </DialogTrigger>
             <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[80vw] xl:w-[75vw] max-w-[1400px] max-h-[90vh] flex flex-col overflow-hidden p-3 sm:p-4 md:p-6">
               <DialogHeader className="flex-shrink-0 pb-2 sm:pb-3">
                 <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -946,6 +967,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         }
       />
 
@@ -1575,6 +1597,72 @@ export default function OfertasImportadoraPage(): React.ReactElement {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para exportar con rango de fechas */}
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Exportar Ofertas a Importadora</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Selecciona un rango de fechas para filtrar las ofertas (opcional). Si no seleccionas fechas, se exportarán todas las ofertas.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fechaDesde">Fecha Desde</Label>
+                <Input
+                  id="fechaDesde"
+                  type="date"
+                  value={fechaDesde}
+                  onChange={(e) => setFechaDesde(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fechaHasta">Fecha Hasta</Label>
+                <Input
+                  id="fechaHasta"
+                  type="date"
+                  value={fechaHasta}
+                  onChange={(e) => setFechaHasta(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setExportDialogOpen(false);
+                  setFechaDesde("");
+                  setFechaHasta("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    await exportApi.exportAllOfertasImportadora(
+                      fechaDesde || undefined,
+                      fechaHasta || undefined
+                    );
+                    toast.success("Ofertas a importadora exportadas correctamente");
+                    setExportDialogOpen(false);
+                    setFechaDesde("");
+                    setFechaHasta("");
+                  } catch (error) {
+                    toast.error("Error al exportar ofertas a importadora");
+                    console.error(error);
+                  }
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -328,6 +328,166 @@ export const exportApi = {
   downloadExcel: (tipo: string, id: string) => {
     window.open(`${API_URL}/export/${tipo}/${id}/excel`, '_blank');
   },
+  // Exportar todos los datos (listas completas)
+  exportAllClientes: async (search?: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+    if (!token) throw new Error('No hay token de autenticación');
+    
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    const response = await fetch(`${API_URL}/export/clientes${query}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    
+    if (!response.ok) throw new Error('Error al exportar clientes');
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `clientes_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+  exportAllProductos: async (search?: string, activo?: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+    if (!token) throw new Error('No hay token de autenticación');
+    
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (activo !== undefined) params.append('activo', activo);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    
+    const response = await fetch(`${API_URL}/export/productos${query}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    
+    if (!response.ok) throw new Error('Error al exportar productos');
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `productos_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+  exportAllOfertasCliente: async (fechaDesde?: string, fechaHasta?: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+    if (!token) throw new Error('No hay token de autenticación');
+    
+    const params = new URLSearchParams();
+    if (fechaDesde) params.append('fechaDesde', fechaDesde);
+    if (fechaHasta) params.append('fechaHasta', fechaHasta);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    
+    const response = await fetch(`${API_URL}/export/ofertas-cliente/all${query}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    
+    if (!response.ok) throw new Error('Error al exportar ofertas a cliente');
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const fechaSuffix = fechaDesde && fechaHasta 
+      ? `_${fechaDesde}_${fechaHasta}` 
+      : `_${new Date().toISOString().split('T')[0]}`;
+    a.href = url;
+    a.download = `ofertas_cliente${fechaSuffix}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+  exportAllOfertasGenerales: async (estado?: string, fechaDesde?: string, fechaHasta?: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+    if (!token) throw new Error('No hay token de autenticación');
+    
+    const params = new URLSearchParams();
+    if (estado) params.append('estado', estado);
+    if (fechaDesde) params.append('fechaDesde', fechaDesde);
+    if (fechaHasta) params.append('fechaHasta', fechaHasta);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    
+    const response = await fetch(`${API_URL}/export/ofertas-generales/all${query}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    
+    if (!response.ok) throw new Error('Error al exportar ofertas generales');
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const fechaSuffix = fechaDesde && fechaHasta 
+      ? `_${fechaDesde}_${fechaHasta}` 
+      : `_${new Date().toISOString().split('T')[0]}`;
+    a.href = url;
+    a.download = `ofertas_generales${fechaSuffix}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+  exportAllOfertasImportadora: async (fechaDesde?: string, fechaHasta?: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+    if (!token) throw new Error('No hay token de autenticación');
+    
+    const params = new URLSearchParams();
+    if (fechaDesde) params.append('fechaDesde', fechaDesde);
+    if (fechaHasta) params.append('fechaHasta', fechaHasta);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    
+    const response = await fetch(`${API_URL}/export/ofertas-importadora/all${query}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    
+    if (!response.ok) throw new Error('Error al exportar ofertas a importadora');
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const fechaSuffix = fechaDesde && fechaHasta 
+      ? `_${fechaDesde}_${fechaHasta}` 
+      : `_${new Date().toISOString().split('T')[0]}`;
+    a.href = url;
+    a.download = `ofertas_importadora${fechaSuffix}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+  exportAllFacturas: async (fechaDesde?: string, fechaHasta?: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+    if (!token) throw new Error('No hay token de autenticación');
+    
+    const params = new URLSearchParams();
+    if (fechaDesde) params.append('fechaDesde', fechaDesde);
+    if (fechaHasta) params.append('fechaHasta', fechaHasta);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    
+    const response = await fetch(`${API_URL}/export/facturas/all${query}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    
+    if (!response.ok) throw new Error('Error al exportar facturas');
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const fechaSuffix = fechaDesde && fechaHasta 
+      ? `_${fechaDesde}_${fechaHasta}` 
+      : `_${new Date().toISOString().split('T')[0]}`;
+    a.href = url;
+    a.download = `facturas${fechaSuffix}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
 };
 
 // ==========================================
@@ -350,6 +510,34 @@ export const importadorasApi = {
       body: JSON.stringify(data),
     }),
   delete: (id: string) => fetchApi<void>(`/importadoras/${id}`, { method: 'DELETE' }),
+  downloadExpediente: async (id: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+    
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+    
+    const response = await fetch(`${API_URL}/importadoras/${id}/expediente`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      throw new Error(errorData.error || 'Error al descargar expediente');
+    }
+    
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expediente_${id}_${new Date().toISOString().split('T')[0]}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
   addCliente: (id: string, clienteId: string) =>
     fetchApi<ClienteImportadora>(`/importadoras/${id}/clientes`, {
       method: 'POST',

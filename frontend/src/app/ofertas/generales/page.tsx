@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save, Download } from "lucide-react";
 import { ofertasGeneralesApi, productosApi, exportApi } from "@/lib/api";
 import type { OfertaGeneral, Producto, ItemOfertaGeneralInput } from "@/lib/api";
 
@@ -94,6 +94,11 @@ export default function OfertasGeneralesPage(): React.ReactElement {
   // Estado para ajustar precios por total deseado
   const [showAdjustPrices, setShowAdjustPrices] = useState(false);
   const [totalDeseado, setTotalDeseado] = useState("");
+  
+  // Estado para diálogo de exportación con rango de fechas
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
 
   async function loadData(): Promise<void> {
     try {
@@ -539,10 +544,23 @@ export default function OfertasGeneralesPage(): React.ReactElement {
         title="Lista de Precios"
         description="Ofertas generales"
         actions={
-          <Button onClick={openNewDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nueva Lista
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFechaDesde("");
+                setFechaHasta("");
+                setExportDialogOpen(true);
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Descargar Excel
+            </Button>
+            <Button onClick={openNewDialog}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nueva Lista
+            </Button>
+          </div>
         }
       />
 
@@ -1034,6 +1052,73 @@ export default function OfertasGeneralesPage(): React.ReactElement {
               <Button type="submit">Guardar</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo para exportar con rango de fechas */}
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Exportar Ofertas Generales</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Selecciona un rango de fechas para filtrar las ofertas (opcional). Si no seleccionas fechas, se exportarán todas las ofertas.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fechaDesde">Fecha Desde</Label>
+                <Input
+                  id="fechaDesde"
+                  type="date"
+                  value={fechaDesde}
+                  onChange={(e) => setFechaDesde(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fechaHasta">Fecha Hasta</Label>
+                <Input
+                  id="fechaHasta"
+                  type="date"
+                  value={fechaHasta}
+                  onChange={(e) => setFechaHasta(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setExportDialogOpen(false);
+                  setFechaDesde("");
+                  setFechaHasta("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    await exportApi.exportAllOfertasGenerales(
+                      undefined, // estado
+                      fechaDesde || undefined,
+                      fechaHasta || undefined
+                    );
+                    toast.success("Ofertas generales exportadas correctamente");
+                    setExportDialogOpen(false);
+                    setFechaDesde("");
+                    setFechaHasta("");
+                  } catch (error) {
+                    toast.error("Error al exportar ofertas generales");
+                    console.error(error);
+                  }
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

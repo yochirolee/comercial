@@ -21,8 +21,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
-import { clientesApi } from "@/lib/api";
+import { Plus, Pencil, Trash2, Search, Download } from "lucide-react";
+import { clientesApi, exportApi } from "@/lib/api";
 import type { Cliente, ClienteInput } from "@/lib/api";
 
 const emptyCliente: ClienteInput = {
@@ -128,13 +128,29 @@ export default function ClientesPage() {
         title="Clientes"
         description="Gestiona tus clientes"
         actions={
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openNewDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Cliente
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  await exportApi.exportAllClientes(search);
+                  toast.success("Clientes exportados correctamente");
+                } catch (error) {
+                  toast.error("Error al exportar clientes");
+                  console.error(error);
+                }
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Descargar Excel
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openNewDialog}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nuevo Cliente
+                </Button>
+              </DialogTrigger>
             <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
@@ -235,6 +251,7 @@ export default function ClientesPage() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         }
       />
 

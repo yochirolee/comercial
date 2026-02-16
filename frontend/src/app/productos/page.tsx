@@ -29,8 +29,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search } from "lucide-react";
-import { productosApi, unidadesApi } from "@/lib/api";
+import { Plus, Pencil, Trash2, Search, Download } from "lucide-react";
+import { productosApi, unidadesApi, exportApi } from "@/lib/api";
 import type { Producto, ProductoInput, UnidadMedida } from "@/lib/api";
 
 const emptyProducto: ProductoInput = {
@@ -261,14 +261,30 @@ export default function ProductosPage() {
         title="Productos"
         description="Gestiona tus productos"
         actions={
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openNewDialog}>
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Producto
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  await exportApi.exportAllProductos(search);
+                  toast.success("Productos exportados correctamente");
+                } catch (error) {
+                  toast.error("Error al exportar productos");
+                  console.error(error);
+                }
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Descargar Excel
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openNewDialog}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nuevo Producto
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Editar Producto" : "Nuevo Producto"}
@@ -456,6 +472,7 @@ export default function ProductosPage() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         }
       />
 
