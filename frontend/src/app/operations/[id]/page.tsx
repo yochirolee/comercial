@@ -356,6 +356,10 @@ export default function OperationDetailPage(): React.ReactElement {
                 <p className="font-medium mt-1">{operation.status}</p>
               </div>
               <div>
+                <Label className="text-slate-500">Importadora</Label>
+                <p className="font-medium mt-1">{operation.importadora?.nombre || "-"}</p>
+              </div>
+              <div>
                 <Label className="text-slate-500">Ubicación Actual</Label>
                 <p className="font-medium mt-1">{operation.currentLocation || "-"}</p>
               </div>

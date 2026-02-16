@@ -536,6 +536,7 @@ export default function OperationsPage(): React.ReactElement {
                     )}
                   </div>
                 </TableHead>
+                <TableHead className="min-w-[150px]">Importadora</TableHead>
                 <TableHead className="min-w-[60px] text-center">Seq</TableHead>
                 <TableHead 
                   className="min-w-[140px] cursor-pointer hover:bg-slate-100 select-none"
@@ -622,13 +623,13 @@ export default function OperationsPage(): React.ReactElement {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8">
+                <TableCell colSpan={14} className="text-center py-8">
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : sortedContainerRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={14} className="text-center py-8 text-slate-500">
                   No hay contenedores para mostrar
                 </TableCell>
               </TableRow>
@@ -653,7 +654,20 @@ export default function OperationsPage(): React.ReactElement {
                     </Badge>
                   </TableCell>
                   <TableCell className="font-medium py-3">
-                    <span className="font-semibold text-slate-900">{operation.operationNo}</span>
+                    {isFirstContainer ? (
+                      <span className="font-semibold text-slate-900">{operation.operationNo}</span>
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="py-3">
+                    {isFirstContainer && operation.importadora ? (
+                      <span className="text-sm text-slate-700 font-medium">
+                        {operation.importadora.nombre}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-center py-3">
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
