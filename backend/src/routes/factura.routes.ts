@@ -39,3 +39,8 @@ facturaRouter.delete('/:id/items/:itemId', FacturaController.removeItem);
 // PUT /api/facturas/:id/estado - Cambiar estado de factura
 facturaRouter.put('/:id/estado', FacturaController.updateEstado);
 
+// POST /api/facturas/fix-importadora-ids - Corregir importadoraId en facturas existentes
+facturaRouter.post('/fix-importadora-ids', FacturaController.fixImportadoraIds);
+
+// POST /api/facturas/fix-importadora-ids - Corregir importadoraId en facturas existentes
+facturaRouter.post('/fix-importadora-ids', FacturaController.fixImportadoraIds);

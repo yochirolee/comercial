@@ -473,6 +473,12 @@ export const FacturaController = {
       return;
     }
 
+    // Verificar que la oferta importadora tenga importadoraId asignado
+    if (!ofertaImportadora.importadoraId) {
+      res.status(400).json({ error: 'La oferta importadora no tiene importadora asignada' });
+      return;
+    }
+
     // Usar valores de la oferta importadora si no se proporcionaron
     const fleteFinal = flete !== undefined ? flete : (ofertaImportadora.flete || 0);
     const seguroFinal = tieneSeguro !== undefined 
@@ -854,5 +860,111 @@ export const FacturaController = {
     });
 
     res.json(facturaActualizada);
+  },
+
+  // Endpoint para corregir importadoraId en facturas existentes que lo tengan en null
+  async fixImportadoraIds(req: Request, res: Response): Promise<void> {
+    try {
+      // Buscar facturas sin importadoraId pero con tipoOfertaOrigen = 'importadora'
+      const facturasSinImportadora = await prisma.factura.findMany({
+        where: {
+          importadoraId: null,
+          tipoOfertaOrigen: 'importadora',
+          ofertaOrigenId: { not: null },
+        },
+        select: {
+          id: true,
+          ofertaOrigenId: true,
+        },
+      });
+
+      let actualizadas = 0;
+      let errores = 0;
+
+      for (const factura of facturasSinImportadora) {
+        try {
+          if (!factura.ofertaOrigenId) continue;
+
+          // Buscar la oferta importadora relacionada
+          const ofertaImportadora = await prisma.ofertaImportadora.findUnique({
+            where: { id: factura.ofertaOrigenId },
+            select: { importadoraId: true },
+          });
+
+          if (ofertaImportadora && ofertaImportadora.importadoraId) {
+            await prisma.factura.update({
+              where: { id: factura.id },
+              data: { importadoraId: ofertaImportadora.importadoraId },
+            });
+            actualizadas++;
+          } else {
+            // Si la oferta importadora tampoco tiene importadoraId, buscar a través de operaciones
+            const operacion = await prisma.operation.findFirst({
+              where: {
+                invoiceId: factura.id,
+              },
+              select: { importadoraId: true },
+            });
+
+            if (operacion && operacion.importadoraId) {
+              await prisma.factura.update({
+                where: { id: factura.id },
+                data: { importadoraId: operacion.importadoraId },
+              });
+              actualizadas++;
+            } else {
+              errores++;
+            }
+          }
+        } catch (error) {
+          console.error(`Error actualizando factura ${factura.id}:`, error);
+          errores++;
+        }
+      }
+
+      // También buscar facturas sin importadoraId pero con tipoOfertaOrigen = 'cliente'
+      // y buscar la importadora a través de operaciones
+      const facturasClienteSinImportadora = await prisma.factura.findMany({
+        where: {
+          importadoraId: null,
+          tipoOfertaOrigen: 'cliente',
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      for (const factura of facturasClienteSinImportadora) {
+        try {
+          const operacion = await prisma.operation.findFirst({
+            where: {
+              invoiceId: factura.id,
+            },
+            select: { importadoraId: true },
+          });
+
+          if (operacion && operacion.importadoraId) {
+            await prisma.factura.update({
+              where: { id: factura.id },
+              data: { importadoraId: operacion.importadoraId },
+            });
+            actualizadas++;
+          }
+        } catch (error) {
+          console.error(`Error actualizando factura ${factura.id}:`, error);
+          errores++;
+        }
+      }
+
+      res.json({
+        message: 'Proceso completado',
+        actualizadas,
+        errores,
+        total: facturasSinImportadora.length + facturasClienteSinImportadora.length,
+      });
+    } catch (error) {
+      console.error('Error al corregir importadoraId en facturas:', error);
+      res.status(500).json({ error: 'Error al corregir importadoraId en facturas' });
+    }
   },
 };
