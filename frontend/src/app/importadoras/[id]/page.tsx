@@ -51,7 +51,7 @@ export default function ImportadoraDetailPage() {
     } catch (error) {
       toast.error("Error al cargar importadora");
       console.error(error);
-      router.push("/importadoras");
+      router.back();
     } finally {
       setLoading(false);
     }
@@ -84,7 +84,7 @@ export default function ImportadoraDetailPage() {
         title={importadora.nombre}
         description="Detalle de Importadora"
         actions={
-          <Button variant="outline" onClick={() => router.push("/importadoras")}>
+          <Button variant="outline" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Volver
           </Button>

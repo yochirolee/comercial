@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -64,8 +64,17 @@ interface SearchResults {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DetailData = any;
 
-export default function BuscarUniversalPage(): React.ReactElement {
+export default function BuscarUniversalPageWrapper(): React.ReactElement {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">Cargando...</div>}>
+      <BuscarUniversalPage />
+    </Suspense>
+  );
+}
+
+function BuscarUniversalPage(): React.ReactElement {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
   const [searching, setSearching] = useState(false);
@@ -77,6 +86,23 @@ export default function BuscarUniversalPage(): React.ReactElement {
   const [selectedLabel, setSelectedLabel] = useState<string>("");
   const [detail, setDetail] = useState<DetailData>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Restaurar estado desde URL al cargar
+  useEffect(() => {
+    const type = searchParams.get("type");
+    const id = searchParams.get("id");
+    const label = searchParams.get("label");
+    const q = searchParams.get("q");
+    
+    if (q) {
+      setSearchTerm(q);
+    }
+    
+    if (type && id && label) {
+      selectEntity(type, id, decodeURIComponent(label));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const totalResults = results ? (
     results.importadoras.length +
@@ -119,6 +145,15 @@ export default function BuscarUniversalPage(): React.ReactElement {
     setSelectedId(id);
     setSelectedLabel(label);
     setLoadingDetail(true);
+    
+    // Actualizar URL para que el botón atrás del navegador funcione
+    const params = new URLSearchParams();
+    params.set("type", type);
+    params.set("id", id);
+    params.set("label", encodeURIComponent(label));
+    if (searchTerm) params.set("q", searchTerm);
+    router.push(`/importadoras/buscar?${params.toString()}`);
+    
     try {
       const data = await searchApi.detail(type, id);
       setDetail(data);
@@ -135,6 +170,12 @@ export default function BuscarUniversalPage(): React.ReactElement {
     setSelectedId(null);
     setSelectedLabel("");
     setDetail(null);
+    // Volver a la URL limpia con el término de búsqueda
+    if (searchTerm) {
+      router.push(`/importadoras/buscar?q=${encodeURIComponent(searchTerm)}`);
+    } else {
+      router.push("/importadoras/buscar");
+    }
   }
 
   // ====================== RENDER ======================
