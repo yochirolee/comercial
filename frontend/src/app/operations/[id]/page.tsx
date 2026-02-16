@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, Save, Package, Ship, Clock, Trash2, ArrowUpDown } from "lucide-react";
-import { operationsApi } from "@/lib/api";
+import { operationsApi, importadorasApi } from "@/lib/api";
 import type { Operation, OperationContainer, OperationEvent, ContainerEvent } from "@/lib/api";
 
 const OPERATION_STATUSES = [
@@ -71,6 +71,7 @@ export default function OperationDetailPage(): React.ReactElement {
   
   const [operation, setOperation] = useState<Operation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [importadoras, setImportadoras] = useState<Array<{ id: string; nombre: string }>>([]);
   
   // Estado para ordenamiento de timeline de contenedores (por contenedor)
   const [containerEventOrder, setContainerEventOrder] = useState<Record<string, 'asc' | 'desc'>>({});
@@ -95,6 +96,7 @@ export default function OperationDetailPage(): React.ReactElement {
     originPort: "",
     destinationPort: "",
     notes: "",
+    importadoraId: "",
   });
   
   const [containerForm, setContainerForm] = useState({
@@ -122,8 +124,18 @@ export default function OperationDetailPage(): React.ReactElement {
   useEffect(() => {
     if (operationId) {
       loadOperation();
+      loadImportadoras();
     }
   }, [operationId]);
+
+  async function loadImportadoras(): Promise<void> {
+    try {
+      const data = await importadorasApi.getAll();
+      setImportadoras(data);
+    } catch (error) {
+      console.error("Error al cargar importadoras:", error);
+    }
+  }
 
   async function loadOperation(): Promise<void> {
     setLoading(true);
@@ -136,6 +148,7 @@ export default function OperationDetailPage(): React.ReactElement {
         originPort: data.originPort || "",
         destinationPort: data.destinationPort || "MARIEL, Cuba",
         notes: data.notes || "",
+        importadoraId: data.importadoraId || "",
       });
     } catch (error) {
       toast.error("Error al cargar operación");
@@ -627,6 +640,24 @@ export default function OperationDetailPage(): React.ReactElement {
             <DialogTitle>Editar Operación</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label>Importadora *</Label>
+              <Select
+                value={operationForm.importadoraId}
+                onValueChange={(value) => setOperationForm((p) => ({ ...p, importadoraId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar importadora" />
+                </SelectTrigger>
+                <SelectContent>
+                  {importadoras.map((imp) => (
+                    <SelectItem key={imp.id} value={imp.id}>
+                      {imp.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Estado</Label>
               <Select
