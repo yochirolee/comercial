@@ -104,14 +104,57 @@ export const ExpedienteController = {
         return;
       }
 
-      // Obtener facturas relacionadas indirectamente a través de operaciones
+      // Obtener facturas relacionadas indirectamente a través de múltiples vías:
+      // 1. Operaciones que tienen invoiceId y importadoraId
+      // 2. Facturas creadas desde Ofertas a Importadora de esta importadora
+      // 3. Facturas creadas desde Ofertas a Cliente que tienen Ofertas a Importadora de esta importadora
+      
       const facturasIdsDirectas = importadora.facturas.map(f => f.id);
-      const facturasIdsIndirectas = importadora.operaciones
+      
+      // 1. Facturas a través de operaciones
+      const facturasIdsPorOperaciones = importadora.operaciones
         .filter(op => op.invoiceId && !facturasIdsDirectas.includes(op.invoiceId))
         .map(op => op.invoiceId) as string[];
       
-      const facturasIndirectas = facturasIdsIndirectas.length > 0 ? await prisma.factura.findMany({
-        where: { id: { in: facturasIdsIndirectas } },
+      // 2. Obtener IDs de Ofertas a Importadora de esta importadora
+      const ofertasImportadoraIds = importadora.ofertasImportadora.map(o => o.id);
+      
+      // 3. Buscar facturas creadas desde estas Ofertas a Importadora
+      const facturasPorOfertasImportadora = await prisma.factura.findMany({
+        where: {
+          tipoOfertaOrigen: 'importadora',
+          ofertaOrigenId: { in: ofertasImportadoraIds },
+          id: { notIn: [...facturasIdsDirectas, ...facturasIdsPorOperaciones] },
+        },
+        select: { id: true },
+      });
+      
+      // 4. Obtener IDs de Ofertas a Cliente relacionadas con esta importadora
+      // (a través de las Ofertas a Importadora)
+      const ofertasClienteIds = importadora.ofertasImportadora
+        .map(o => o.ofertaClienteId)
+        .filter((id): id is string => id !== null);
+      
+      // 5. Buscar facturas creadas desde estas Ofertas a Cliente
+      const facturasPorOfertasCliente = ofertasClienteIds.length > 0 ? await prisma.factura.findMany({
+        where: {
+          tipoOfertaOrigen: 'cliente',
+          ofertaOrigenId: { in: ofertasClienteIds },
+          id: { notIn: [...facturasIdsDirectas, ...facturasIdsPorOperaciones, ...facturasPorOfertasImportadora.map(f => f.id)] },
+        },
+        select: { id: true },
+      }) : [];
+      
+      // Combinar todos los IDs de facturas indirectas
+      const todasLasFacturasIdsIndirectas = [
+        ...facturasIdsPorOperaciones,
+        ...facturasPorOfertasImportadora.map(f => f.id),
+        ...facturasPorOfertasCliente.map(f => f.id),
+      ];
+      
+      // Obtener todas las facturas indirectas con sus relaciones
+      const facturasIndirectas = todasLasFacturasIdsIndirectas.length > 0 ? await prisma.factura.findMany({
+        where: { id: { in: todasLasFacturasIdsIndirectas } },
         include: {
           cliente: {
             select: {
