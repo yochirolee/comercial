@@ -192,6 +192,11 @@ export const SearchController = {
                 cliente: { select: { id: true, nombre: true, apellidos: true, nombreCompania: true } },
               },
             },
+            offerCustomer: {
+              include: {
+                cliente: { select: { id: true, nombre: true, apellidos: true, nombreCompania: true } },
+              },
+            },
           },
         },
       },
@@ -318,11 +323,53 @@ export const SearchController = {
     // Filtrar operaciones para mostrar solo las más recientes
     const operacionesFiltradas = importadora.operaciones.slice(0, 10);
     
+    // Obtener todos los clientes que tienen actividad con esta importadora
+    // 1. Clientes de las ofertas a importadora
+    const clientesDeOfertas = new Set(
+      importadora.ofertasImportadora.map(o => o.clienteId)
+    );
+    
+    // 2. Clientes de las facturas (directas e indirectas)
+    const clientesDeFacturas = new Set(
+      facturasUnicas.map(f => f.clienteId)
+    );
+    
+    // 3. Clientes de las operaciones (a través de offerCustomer)
+    const clientesDeOperaciones = new Set(
+      importadora.operaciones
+        .filter(op => op.offerCustomer?.clienteId)
+        .map(op => op.offerCustomer!.clienteId)
+    );
+    
+    // Combinar todos los clientes con actividad
+    const clientesConActividadIds = new Set([
+      ...clientesDeOfertas,
+      ...clientesDeFacturas,
+      ...clientesDeOperaciones,
+    ]);
+    
+    // Obtener información completa de los clientes con actividad
+    const clientesConActividad = clientesConActividadIds.size > 0 
+      ? await prisma.cliente.findMany({
+          where: {
+            id: { in: Array.from(clientesConActividadIds) },
+          },
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            nombreCompania: true,
+            email: true,
+            telefono: true,
+          },
+        })
+      : [];
+    
     res.json({
       type: 'importadora',
       entity: importadora,
       relaciones: {
-        clientes: importadora.clientes.map(c => c.cliente),
+        clientes: clientesConActividad,
         ofertas: ofertasFiltradas,
         facturas: facturasFiltradas,
         operaciones: operacionesFiltradas,
