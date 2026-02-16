@@ -83,6 +83,13 @@ export const ImportadoraController = {
                 },
               },
             },
+            offerCustomer: {
+              include: {
+                cliente: {
+                  select: { id: true, nombre: true, apellidos: true, nombreCompania: true },
+                },
+              },
+            },
           },
         },
       },
@@ -250,12 +257,66 @@ export const ImportadoraController = {
       ['Delivered', 'Closed'].includes(c.status)
     ).length;
     
+    // ========== Obtener clientes con actividad real ==========
+    // 1. Clientes de las ofertas a importadora
+    const clientesDeOfertas = new Set(
+      importadora.ofertasImportadora.map(o => o.clienteId)
+    );
+    // 2. Clientes de las facturas (directas e indirectas)
+    const clientesDeFacturas = new Set(
+      facturasUnicas.map(f => f.clienteId)
+    );
+    // 3. Clientes de las operaciones (a través de offerCustomer)
+    const clientesDeOperaciones = new Set(
+      importadora.operaciones
+        .filter(op => op.offerCustomer?.clienteId)
+        .map(op => op.offerCustomer!.clienteId)
+    );
+    // 4. Clientes directos de ClienteImportadora
+    const clientesDirectos = new Set(
+      importadora.clientes.map(c => c.clienteId)
+    );
+    
+    // Combinar todos los clientes con actividad
+    const clientesConActividadIds = new Set([
+      ...clientesDirectos,
+      ...clientesDeOfertas,
+      ...clientesDeFacturas,
+      ...clientesDeOperaciones,
+    ]);
+    
+    // Obtener información completa de los clientes con actividad
+    const clientesConActividad = clientesConActividadIds.size > 0
+      ? await prisma.cliente.findMany({
+          where: { id: { in: Array.from(clientesConActividadIds) } },
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            nombreCompania: true,
+            email: true,
+            telefono: true,
+            direccion: true,
+          },
+          orderBy: { nombre: 'asc' },
+        })
+      : [];
+    
+    // Formatear clientes para mantener compatibilidad con el frontend
+    const clientesFormateados = clientesConActividad.map(cli => ({
+      id: cli.id,
+      clienteId: cli.id,
+      importadoraId: id,
+      cliente: cli,
+    }));
+
     res.json({
       ...importadora,
+      clientes: clientesFormateados, // Usar clientes con actividad real
       facturas: facturasUnicas, // Usar facturas combinadas (directas + indirectas)
       productos,
       estadisticas: {
-        totalClientes: importadora.clientes.length,
+        totalClientes: clientesConActividad.length, // Total real de clientes
         totalOfertas: importadora.ofertasImportadora.length,
         totalFacturas: facturasUnicas.length, // Usar el total real
         totalOperaciones: importadora.operaciones.length,
