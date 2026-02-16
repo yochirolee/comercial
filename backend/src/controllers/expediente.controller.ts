@@ -136,10 +136,14 @@ export const ExpedienteController = {
         .filter((id): id is string => id !== null);
       
       // 5. Buscar facturas creadas desde estas Ofertas a Cliente
+      // PERO solo si el cliente de la factura está relacionado con esta importadora
+      const clientesIdsRelacionados = importadora.clientes.map(c => c.clienteId);
+      
       const facturasPorOfertasCliente = ofertasClienteIds.length > 0 ? await prisma.factura.findMany({
         where: {
           tipoOfertaOrigen: 'cliente',
           ofertaOrigenId: { in: ofertasClienteIds },
+          clienteId: { in: clientesIdsRelacionados }, // Solo clientes relacionados con esta importadora
           id: { notIn: [...facturasIdsDirectas, ...facturasIdsPorOperaciones, ...facturasPorOfertasImportadora.map(f => f.id)] },
         },
         select: { id: true },
@@ -179,14 +183,28 @@ export const ExpedienteController = {
         orderBy: { fecha: 'desc' },
       }) : [];
 
-      // Combinar facturas directas e indirectas
-      const todasLasFacturas = [...importadora.facturas, ...facturasIndirectas];
+      // Filtrar facturas para asegurar que solo incluyan clientes relacionados directamente con esta importadora
+      const clientesIdsRelacionadosSet = new Set(importadora.clientes.map(c => c.clienteId));
+      const facturasDirectasFiltradas = importadora.facturas.filter(
+        f => !f.clienteId || clientesIdsRelacionadosSet.has(f.clienteId)
+      );
+      const facturasIndirectasFiltradas = facturasIndirectas.filter(
+        f => clientesIdsRelacionadosSet.has(f.clienteId)
+      );
+      
+      // Combinar todas las facturas (directas e indirectas) filtradas
+      const todasLasFacturas = [...facturasDirectasFiltradas, ...facturasIndirectasFiltradas];
+      
+      // Filtrar ofertas a importadora para asegurar que solo incluyan clientes relacionados directamente
+      const ofertasFiltradas = importadora.ofertasImportadora.filter(
+        oferta => clientesIdsRelacionadosSet.has(oferta.clienteId)
+      );
 
-      // Calcular métricas
+      // Calcular métricas usando datos filtrados
       const containers = importadora.operaciones.flatMap(op => op.containers);
       const metrics = {
         totalClientes: importadora.clientes.length,
-        totalOfertas: importadora.ofertasImportadora.length,
+        totalOfertas: ofertasFiltradas.length,
         totalFacturas: todasLasFacturas.length,
         totalOperaciones: importadora.operaciones.length,
         totalContainers: containers.length,
@@ -194,7 +212,7 @@ export const ExpedienteController = {
         containersEnAduana: containers.filter(c => c.status === 'Customs').length,
         containersEntregados: containers.filter(c => ['Delivered', 'Closed'].includes(c.status)).length,
         totalFacturado: todasLasFacturas.reduce((sum, f) => sum + f.total, 0),
-        totalOfertasCIF: importadora.ofertasImportadora.reduce((sum, o) => sum + (o.precioCIF || 0), 0),
+        totalOfertasCIF: ofertasFiltradas.reduce((sum, o) => sum + (o.precioCIF || 0), 0),
       };
 
       // Crear ZIP
@@ -211,7 +229,7 @@ export const ExpedienteController = {
       archive.append(pdfBuffer, { name: 'resumen.pdf' });
 
       // Generar Excel
-      const excelBuffer = await generateExcel(importadora, containers, todasLasFacturas);
+      const excelBuffer = await generateExcel(importadora, containers, todasLasFacturas, ofertasFiltradas);
       archive.append(excelBuffer, { name: 'datos.xlsx' });
 
       // Finalizar ZIP
@@ -307,7 +325,7 @@ async function generatePDF(importadora: any, metrics: any, todasLasFacturas: any
 }
 
 // Función para generar Excel
-async function generateExcel(importadora: any, containers: any[], todasLasFacturas: any[]): Promise<Buffer> {
+async function generateExcel(importadora: any, containers: any[], todasLasFacturas: any[], ofertasFiltradas: any[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   
   // Hoja: Clientes
@@ -347,7 +365,7 @@ async function generateExcel(importadora: any, containers: any[], todasLasFactur
     { header: 'Observaciones', key: 'observaciones', width: 40 },
   ];
   
-  importadora.ofertasImportadora.forEach((oferta: any) => {
+  ofertasFiltradas.forEach((oferta: any) => {
     ofertasSheet.addRow({
       numero: oferta.numero,
       fecha: oferta.fecha ? new Date(oferta.fecha).toLocaleDateString('es-ES') : '',

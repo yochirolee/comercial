@@ -240,10 +240,14 @@ export const SearchController = {
       .filter((id): id is string => id !== null);
     
     // 5. Buscar facturas creadas desde estas Ofertas a Cliente
+    // PERO solo si el cliente de la factura está relacionado con esta importadora
+    const clientesIdsRelacionados = importadora.clientes.map(c => c.clienteId);
+    
     const facturasPorOfertasCliente = ofertasClienteIds.length > 0 ? await prisma.factura.findMany({
       where: {
         tipoOfertaOrigen: 'cliente',
         ofertaOrigenId: { in: ofertasClienteIds },
+        clienteId: { in: clientesIdsRelacionados }, // Solo clientes relacionados con esta importadora
         id: { notIn: [...facturasIdsDirectas, ...facturasPorOperaciones.map(f => f.id), ...facturasPorOfertasImportadora.map(f => f.id)] },
       },
       include: {
@@ -282,13 +286,25 @@ export const SearchController = {
       where: { operation: { importadoraId: id } },
     });
     
+    // Filtrar ofertas a importadora para asegurar que solo muestren clientes relacionados directamente
+    // Las ofertas ya están filtradas por importadoraId en la query, pero verificamos que los clientes estén relacionados
+    const clientesIdsRelacionadosSet = new Set(importadora.clientes.map(c => c.clienteId));
+    const ofertasFiltradas = importadora.ofertasImportadora.filter(
+      oferta => clientesIdsRelacionadosSet.has(oferta.clienteId)
+    );
+    
+    // Filtrar facturas para asegurar que solo muestren clientes relacionados directamente
+    const facturasFiltradas = todasLasFacturas.filter(
+      factura => clientesIdsRelacionadosSet.has(factura.clienteId)
+    );
+    
     res.json({
       type: 'importadora',
       entity: importadora,
       relaciones: {
         clientes: importadora.clientes.map(c => c.cliente),
-        ofertas: importadora.ofertasImportadora,
-        facturas: todasLasFacturas,
+        ofertas: ofertasFiltradas,
+        facturas: facturasFiltradas,
         operaciones: importadora.operaciones,
         productos,
         containers: {
