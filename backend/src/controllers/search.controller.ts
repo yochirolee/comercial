@@ -240,12 +240,11 @@ export const SearchController = {
     const ofertasImportadoraIds = importadora.ofertasImportadora.map(o => o.id);
     
     // 4. Buscar facturas creadas desde estas Ofertas a Importadora
-    // PERO solo si el cliente está relacionado con esta importadora
+    // Si la oferta pertenece a esta importadora, las facturas también pertenecen
     const facturasPorOfertasImportadora = ofertasImportadoraIds.length > 0 ? await prisma.factura.findMany({
       where: {
         tipoOfertaOrigen: 'importadora',
         ofertaOrigenId: { in: ofertasImportadoraIds },
-        clienteId: { in: clientesIdsRelacionados }, // Solo clientes relacionados
         id: { notIn: [...facturasIdsDirectas, ...facturasPorOperaciones.map(f => f.id)] },
       },
       include: {
