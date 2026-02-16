@@ -57,21 +57,6 @@ export const ImportadoraController = {
         },
         ofertasImportadora: {
           orderBy: { fecha: 'desc' },
-          take: 10,
-          include: {
-            cliente: {
-              select: {
-                id: true,
-                nombre: true,
-                apellidos: true,
-                nombreCompania: true,
-              },
-            },
-          },
-        },
-        facturas: {
-          orderBy: { fecha: 'desc' },
-          take: 10,
           include: {
             cliente: {
               select: {
@@ -91,6 +76,13 @@ export const ImportadoraController = {
               orderBy: { sequenceNo: 'asc' },
               take: 5,
             },
+            invoice: {
+              include: {
+                cliente: {
+                  select: { id: true, nombre: true, apellidos: true, nombreCompania: true },
+                },
+              },
+            },
           },
         },
       },
@@ -101,8 +93,67 @@ export const ImportadoraController = {
       return;
     }
     
+    // ========== Buscar TODAS las facturas relacionadas por múltiples vías ==========
+    const clienteInclude = {
+      cliente: {
+        select: { id: true, nombre: true, apellidos: true, nombreCompania: true },
+      },
+    };
+    
+    // 1. Facturas con importadoraId directamente asignado
+    const facturasDirectas = await prisma.factura.findMany({
+      where: { importadoraId: id },
+      include: clienteInclude,
+      orderBy: { fecha: 'desc' },
+    });
+    const facturasIdsDirectas = facturasDirectas.map(f => f.id);
+    
+    // 2. Facturas a través de operaciones de esta importadora
+    const facturasPorOperaciones = importadora.operaciones
+      .filter(op => op.invoiceId && op.invoice)
+      .map(op => op.invoice)
+      .filter((f): f is NonNullable<typeof f> => f !== null && !facturasIdsDirectas.includes(f.id));
+    
+    // 3. Facturas creadas desde Ofertas a Importadora
+    const ofertasImportadoraIds = importadora.ofertasImportadora.map(o => o.id);
+    const facturasPorOfertasImp = ofertasImportadoraIds.length > 0 ? await prisma.factura.findMany({
+      where: {
+        tipoOfertaOrigen: 'importadora',
+        ofertaOrigenId: { in: ofertasImportadoraIds },
+        id: { notIn: [...facturasIdsDirectas, ...facturasPorOperaciones.map(f => f.id)] },
+      },
+      include: clienteInclude,
+      orderBy: { fecha: 'desc' },
+    }) : [];
+    
+    // 4. Facturas creadas desde Ofertas a Cliente vinculadas
+    const ofertasClienteIds = importadora.ofertasImportadora
+      .map(o => o.ofertaClienteId)
+      .filter((oid): oid is string => oid !== null);
+    const facturasPorOfertasCli = ofertasClienteIds.length > 0 ? await prisma.factura.findMany({
+      where: {
+        tipoOfertaOrigen: 'cliente',
+        ofertaOrigenId: { in: ofertasClienteIds },
+        id: { notIn: [...facturasIdsDirectas, ...facturasPorOperaciones.map(f => f.id), ...facturasPorOfertasImp.map(f => f.id)] },
+      },
+      include: clienteInclude,
+      orderBy: { fecha: 'desc' },
+    }) : [];
+    
+    // Combinar todas las facturas y eliminar duplicados
+    const todasLasFacturas = [
+      ...facturasDirectas,
+      ...facturasPorOperaciones,
+      ...facturasPorOfertasImp,
+      ...facturasPorOfertasCli,
+    ];
+    const facturasUnicas = Array.from(
+      new Map(todasLasFacturas.map(f => [f.id, f])).values()
+    ).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+     .slice(0, 20);
+    
     // Calcular productos asociados (desde facturas y ofertas)
-    const facturasIds = importadora.facturas.map(f => f.id);
+    const facturasIds = facturasUnicas.map(f => f.id);
     const ofertasIds = importadora.ofertasImportadora.map(o => o.id);
     
     const itemsFactura = await prisma.itemFactura.findMany({
@@ -201,11 +252,12 @@ export const ImportadoraController = {
     
     res.json({
       ...importadora,
+      facturas: facturasUnicas, // Usar facturas combinadas (directas + indirectas)
       productos,
       estadisticas: {
         totalClientes: importadora.clientes.length,
         totalOfertas: importadora.ofertasImportadora.length,
-        totalFacturas: importadora.facturas.length,
+        totalFacturas: facturasUnicas.length, // Usar el total real
         totalOperaciones: importadora.operaciones.length,
         containersEnTransito,
         containersEnAduana,
