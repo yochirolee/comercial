@@ -58,7 +58,7 @@ interface SearchResults {
   productos: Array<{ id: string; nombre: string; codigo: string | null; precioBase: number; codigoArancelario: string | null }>;
   operaciones: Array<{ id: string; operationNo: string; operationType: string; status: string; currentLocation: string | null }>;
   facturas: Array<{ id: string; numero: string; fecha: string; total: number; estado: string }>;
-  ofertasImportadora: Array<{ id: string; numero: string; fecha: string; estado: string; precioCIF: number | null }>;
+  ofertasImportadora: Array<{ id: string; numero: string; fecha: string; estado: string; precioCIF: number | null; importadora?: { id: string; nombre: string } }>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -464,7 +464,7 @@ export default function BuscarUniversalPage(): React.ReactElement {
                     icon={<FileText className="h-4 w-4" />}
                     iconColor="bg-teal-100 text-teal-600 group-hover:bg-teal-600 group-hover:text-white"
                     title={of.numero}
-                    subtitle={`${formatDate(of.fecha)} ${of.precioCIF ? '• CIF ' + formatCurrency(of.precioCIF) : ''}`}
+                    subtitle={`${of.importadora?.nombre || ''} • ${formatDate(of.fecha)} ${of.precioCIF ? '• CIF ' + formatCurrency(of.precioCIF) : ''}`}
                     badges={[
                       <Badge key="estado" variant="outline" className="text-xs">{of.estado}</Badge>
                     ]}

@@ -116,6 +116,7 @@ export const SearchController = {
         where: {
           OR: [
             { numero: containsFilter },
+            { importadora: { nombre: containsFilter } },
           ],
         },
         select: {
@@ -124,6 +125,12 @@ export const SearchController = {
           fecha: true,
           estado: true,
           precioCIF: true,
+          importadora: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
         },
         take: 10,
       }),

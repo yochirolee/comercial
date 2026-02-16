@@ -795,6 +795,7 @@ export default function FacturasPage(): React.ReactElement {
               <TableRow>
                 <TableHead>Número</TableHead>
                 <TableHead>Cliente</TableHead>
+                <TableHead>Importadora</TableHead>
                 <TableHead>Productos</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead className="text-right">FOB</TableHead>
@@ -808,11 +809,11 @@ export default function FacturasPage(): React.ReactElement {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8">Cargando...</TableCell>
+                  <TableCell colSpan={11} className="text-center py-8">Cargando...</TableCell>
                 </TableRow>
               ) : facturas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-slate-500">
+                  <TableCell colSpan={11} className="text-center py-8 text-slate-500">
                     No hay facturas
                   </TableCell>
                 </TableRow>
@@ -821,6 +822,7 @@ export default function FacturasPage(): React.ReactElement {
                   <TableRow key={factura.id}>
                     <TableCell className="font-medium">{factura.numero}</TableCell>
                     <TableCell>{factura.cliente.nombre} {factura.cliente.apellidos}</TableCell>
+                    <TableCell>{factura.importadora?.nombre || "-"}</TableCell>
                     <TableCell className="max-w-[200px]">
                       <div className="text-sm text-slate-700 truncate" title={formatProductos(factura.items)}>
                         {formatProductos(factura.items)}
