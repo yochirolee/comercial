@@ -32,30 +32,6 @@ export const ExpedienteController = {
             },
             orderBy: { fecha: 'desc' },
           },
-          facturas: {
-            include: {
-              cliente: {
-                select: {
-                  id: true,
-                  nombre: true,
-                  apellidos: true,
-                  nombreCompania: true,
-                },
-              },
-              items: {
-                include: {
-                  producto: {
-                    select: {
-                      id: true,
-                      nombre: true,
-                      codigo: true,
-                    },
-                  },
-                },
-              },
-            },
-            orderBy: { fecha: 'desc' },
-          },
           operaciones: {
             include: {
               offerCustomer: {
@@ -78,6 +54,17 @@ export const ExpedienteController = {
                       nombre: true,
                       apellidos: true,
                       nombreCompania: true,
+                    },
+                  },
+                  items: {
+                    include: {
+                      producto: {
+                        select: {
+                          id: true,
+                          nombre: true,
+                          codigo: true,
+                        },
+                      },
                     },
                   },
                 },
@@ -104,106 +91,141 @@ export const ExpedienteController = {
         return;
       }
 
-      // Obtener facturas relacionadas indirectamente a través de múltiples vías:
-      // 1. Operaciones que tienen invoiceId y importadoraId
-      // 2. Facturas creadas desde Ofertas a Importadora de esta importadora
-      // 3. Facturas creadas desde Ofertas a Cliente que tienen Ofertas a Importadora de esta importadora
+      // ========== Buscar TODAS las facturas relacionadas por múltiples vías ==========
+      const facturaInclude = {
+        cliente: {
+          select: {
+            id: true,
+            nombre: true,
+            apellidos: true,
+            nombreCompania: true,
+          },
+        },
+        items: {
+          include: {
+            producto: {
+              select: {
+                id: true,
+                nombre: true,
+                codigo: true,
+              },
+            },
+          },
+        },
+      };
+
+      // 1. Facturas con importadoraId directamente asignado
+      const facturasDirectas = await prisma.factura.findMany({
+        where: { importadoraId: id },
+        include: facturaInclude,
+        orderBy: { fecha: 'desc' },
+      });
+      const facturasIdsDirectas = facturasDirectas.map(f => f.id);
       
-      const facturasIdsDirectas = importadora.facturas.map(f => f.id);
+      // 2. Facturas a través de operaciones de esta importadora
+      const facturasPorOperaciones = importadora.operaciones
+        .filter(op => op.invoiceId && op.invoice)
+        .map(op => op.invoice)
+        .filter((f): f is NonNullable<typeof f> => f !== null && !facturasIdsDirectas.includes(f.id));
       
-      // 1. Facturas a través de operaciones
-      const facturasIdsPorOperaciones = importadora.operaciones
-        .filter(op => op.invoiceId && !facturasIdsDirectas.includes(op.invoiceId))
-        .map(op => op.invoiceId) as string[];
-      
-      // 2. Obtener IDs de Ofertas a Importadora de esta importadora
+      // 3. Obtener IDs de Ofertas a Importadora de esta importadora
       const ofertasImportadoraIds = importadora.ofertasImportadora.map(o => o.id);
       
-      // 3. Buscar facturas creadas desde estas Ofertas a Importadora
-      const facturasPorOfertasImportadora = await prisma.factura.findMany({
+      // 4. Buscar facturas creadas desde estas Ofertas a Importadora
+      const facturasPorOfertasImportadora = ofertasImportadoraIds.length > 0 ? await prisma.factura.findMany({
         where: {
           tipoOfertaOrigen: 'importadora',
           ofertaOrigenId: { in: ofertasImportadoraIds },
-          id: { notIn: [...facturasIdsDirectas, ...facturasIdsPorOperaciones] },
+          id: { notIn: [...facturasIdsDirectas, ...facturasPorOperaciones.map(f => f.id)] },
         },
-        select: { id: true },
-      });
+        include: facturaInclude,
+        orderBy: { fecha: 'desc' },
+      }) : [];
       
-      // 4. Obtener IDs de Ofertas a Cliente relacionadas con esta importadora
-      // (a través de las Ofertas a Importadora)
+      // 5. Obtener IDs de Ofertas a Cliente relacionadas con esta importadora
       const ofertasClienteIds = importadora.ofertasImportadora
         .map(o => o.ofertaClienteId)
-        .filter((id): id is string => id !== null);
+        .filter((oid): oid is string => oid !== null);
       
-      // 5. Buscar facturas creadas desde estas Ofertas a Cliente
-      // PERO solo si el cliente de la factura está relacionado con esta importadora
-      const clientesIdsRelacionados = importadora.clientes.map(c => c.clienteId);
-      
+      // 6. Buscar facturas creadas desde estas Ofertas a Cliente
+      // Sin filtrar por clienteId - si la oferta a cliente generó una oferta a importadora
+      // de esta importadora, la factura pertenece
       const facturasPorOfertasCliente = ofertasClienteIds.length > 0 ? await prisma.factura.findMany({
         where: {
           tipoOfertaOrigen: 'cliente',
           ofertaOrigenId: { in: ofertasClienteIds },
-          clienteId: { in: clientesIdsRelacionados }, // Solo clientes relacionados con esta importadora
-          id: { notIn: [...facturasIdsDirectas, ...facturasIdsPorOperaciones, ...facturasPorOfertasImportadora.map(f => f.id)] },
+          id: { notIn: [...facturasIdsDirectas, ...facturasPorOperaciones.map(f => f.id), ...facturasPorOfertasImportadora.map(f => f.id)] },
         },
-        select: { id: true },
+        include: facturaInclude,
+        orderBy: { fecha: 'desc' },
       }) : [];
       
-      // Combinar todos los IDs de facturas indirectas
-      const todasLasFacturasIdsIndirectas = [
-        ...facturasIdsPorOperaciones,
-        ...facturasPorOfertasImportadora.map(f => f.id),
-        ...facturasPorOfertasCliente.map(f => f.id),
+      // Combinar todas las facturas y eliminar duplicados
+      const todasLasFacturasCombinadas = [
+        ...facturasDirectas,
+        ...facturasPorOperaciones,
+        ...facturasPorOfertasImportadora,
+        ...facturasPorOfertasCliente,
       ];
       
-      // Obtener todas las facturas indirectas con sus relaciones
-      const facturasIndirectas = todasLasFacturasIdsIndirectas.length > 0 ? await prisma.factura.findMany({
-        where: { id: { in: todasLasFacturasIdsIndirectas } },
-        include: {
-          cliente: {
+      // Eliminar duplicados por ID
+      const todasLasFacturas = Array.from(
+        new Map(todasLasFacturasCombinadas.map(f => [f.id, f])).values()
+      ).sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+      
+      // Todas las ofertas a importadora pertenecen por definición (ya están vinculadas directamente)
+      const ofertasFiltradas = importadora.ofertasImportadora;
+
+      // ========== Obtener clientes con actividad real ==========
+      // 1. Clientes de las ofertas a importadora
+      const clientesDeOfertas = new Set(
+        importadora.ofertasImportadora.map(o => o.clienteId)
+      );
+      // 2. Clientes de las facturas (directas e indirectas)
+      const clientesDeFacturas = new Set(
+        todasLasFacturas.map(f => f.clienteId)
+      );
+      // 3. Clientes de las operaciones (a través de offerCustomer)
+      const clientesDeOperaciones = new Set(
+        importadora.operaciones
+          .filter(op => op.offerCustomer?.clienteId)
+          .map(op => op.offerCustomer!.clienteId)
+      );
+      // 4. Clientes directos de ClienteImportadora
+      const clientesDirectos = new Set(
+        importadora.clientes.map(c => c.clienteId)
+      );
+      
+      // Combinar todos los clientes con actividad
+      const clientesConActividadIds = new Set([
+        ...clientesDirectos,
+        ...clientesDeOfertas,
+        ...clientesDeFacturas,
+        ...clientesDeOperaciones,
+      ]);
+      
+      // Obtener información completa de los clientes con actividad
+      const clientesConActividad = clientesConActividadIds.size > 0
+        ? await prisma.cliente.findMany({
+            where: { id: { in: Array.from(clientesConActividadIds) } },
             select: {
               id: true,
               nombre: true,
               apellidos: true,
               nombreCompania: true,
+              email: true,
+              telefono: true,
+              direccion: true,
+              nit: true,
             },
-          },
-          items: {
-            include: {
-              producto: {
-                select: {
-                  id: true,
-                  nombre: true,
-                  codigo: true,
-                },
-              },
-            },
-          },
-        },
-        orderBy: { fecha: 'desc' },
-      }) : [];
+            orderBy: { nombre: 'asc' },
+          })
+        : [];
 
-      // Filtrar facturas para asegurar que solo incluyan clientes relacionados directamente con esta importadora
-      const clientesIdsRelacionadosSet = new Set(importadora.clientes.map(c => c.clienteId));
-      const facturasDirectasFiltradas = importadora.facturas.filter(
-        f => !f.clienteId || clientesIdsRelacionadosSet.has(f.clienteId)
-      );
-      const facturasIndirectasFiltradas = facturasIndirectas.filter(
-        f => clientesIdsRelacionadosSet.has(f.clienteId)
-      );
-      
-      // Combinar todas las facturas (directas e indirectas) filtradas
-      const todasLasFacturas = [...facturasDirectasFiltradas, ...facturasIndirectasFiltradas];
-      
-      // Filtrar ofertas a importadora para asegurar que solo incluyan clientes relacionados directamente
-      const ofertasFiltradas = importadora.ofertasImportadora.filter(
-        oferta => clientesIdsRelacionadosSet.has(oferta.clienteId)
-      );
-
-      // Calcular métricas usando datos filtrados
+      // Calcular métricas usando datos actualizados
       const containers = importadora.operaciones.flatMap(op => op.containers);
       const metrics = {
-        totalClientes: importadora.clientes.length,
+        totalClientes: clientesConActividad.length,
         totalOfertas: ofertasFiltradas.length,
         totalFacturas: todasLasFacturas.length,
         totalOperaciones: importadora.operaciones.length,
@@ -229,7 +251,7 @@ export const ExpedienteController = {
       archive.append(pdfBuffer, { name: 'resumen.pdf' });
 
       // Generar Excel
-      const excelBuffer = await generateExcel(importadora, containers, todasLasFacturas, ofertasFiltradas);
+      const excelBuffer = await generateExcel(importadora, containers, todasLasFacturas, ofertasFiltradas, clientesConActividad);
       archive.append(excelBuffer, { name: 'datos.xlsx' });
 
       // Finalizar ZIP
@@ -325,10 +347,10 @@ async function generatePDF(importadora: any, metrics: any, todasLasFacturas: any
 }
 
 // Función para generar Excel
-async function generateExcel(importadora: any, containers: any[], todasLasFacturas: any[], ofertasFiltradas: any[]): Promise<Buffer> {
+async function generateExcel(importadora: any, containers: any[], todasLasFacturas: any[], ofertasFiltradas: any[], clientesConActividad: any[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   
-  // Hoja: Clientes
+  // Hoja: Clientes (usar clientes con actividad real, no solo los directos)
   const clientesSheet = workbook.addWorksheet('Clientes');
   clientesSheet.columns = [
     { header: 'ID', key: 'id', width: 30 },
@@ -341,16 +363,16 @@ async function generateExcel(importadora: any, containers: any[], todasLasFactur
     { header: 'NIT', key: 'nit', width: 15 },
   ];
   
-  importadora.clientes.forEach((ci: any) => {
+  clientesConActividad.forEach((cli: any) => {
     clientesSheet.addRow({
-      id: ci.cliente.id,
-      nombre: ci.cliente.nombre,
-      apellidos: ci.cliente.apellidos || '',
-      nombreCompania: ci.cliente.nombreCompania || '',
-      email: ci.cliente.email || '',
-      telefono: ci.cliente.telefono || '',
-      direccion: ci.cliente.direccion || '',
-      nit: ci.cliente.nit || '',
+      id: cli.id,
+      nombre: cli.nombre,
+      apellidos: cli.apellidos || '',
+      nombreCompania: cli.nombreCompania || '',
+      email: cli.email || '',
+      telefono: cli.telefono || '',
+      direccion: cli.direccion || '',
+      nit: cli.nit || '',
     });
   });
 
