@@ -2,8 +2,6 @@
 
 import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Header } from "@/components/layout/Header";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,6 +26,7 @@ import {
   MapPin,
   X,
   FileText,
+  Globe,
   ChevronRight,
   Activity,
   DollarSign,
@@ -183,62 +182,96 @@ function BuscarUniversalPage(): React.ReactElement {
 
   // Si hay un detalle seleccionado, mostrar dashboard
   if (selectedType && (loadingDetail || detail)) {
-    const typeLabel = selectedType === 'importadora' ? 'Importadora' :
-      selectedType === 'cliente' ? 'Cliente' :
-      selectedType === 'producto' ? 'Producto' :
-      selectedType === 'operacion' ? 'Operación' : 'Factura';
-
     return (
-      <div>
-        <Header
-          title={selectedLabel}
-          description={typeLabel}
-          actions={
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={clearSelection}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Volver
-              </Button>
-              {selectedType === 'importadora' && selectedId && (
-                <>
-                  <Button onClick={() => router.push(`/importadoras/${selectedId}`)}>
-                    Ver detalle
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={async () => {
-                      if (!selectedId) return;
-                      try {
-                        await importadorasApi.downloadExpediente(selectedId);
-                        toast.success("Expediente descargado correctamente");
-                      } catch (error) {
-                        toast.error("Error al descargar expediente");
-                        console.error(error);
-                      }
-                    }}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Expediente
-                  </Button>
-                </>
-              )}
-              {selectedType === 'operacion' && selectedId && (
-                <Button onClick={() => selectedId && router.push(`/operations/${selectedId}`)}>
-                  Ver detalle
-                </Button>
-              )}
-            </div>
-          }
-        />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+        {/* Header */}
+        <div className="px-4 sm:px-6 pt-4 pb-2 flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearSelection}
+            className="text-slate-500 hover:text-slate-700"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Volver a resultados
+          </Button>
+        </div>
 
         {loadingDetail && (
-          <div className="text-center py-16 text-gray-500">
+          <div className="text-center py-16 text-slate-500">
             <div className="animate-pulse text-lg">Cargando información...</div>
           </div>
         )}
 
         {detail && !loadingDetail && (
-          <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+          <div className="px-4 sm:px-6 pb-8 space-y-6">
+            {/* Header de la entidad */}
+            <div className="max-w-6xl mx-auto">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
+                <div className="flex items-center gap-4">
+                  <div className={`h-14 w-14 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                    selectedType === 'importadora' ? 'bg-indigo-600' :
+                    selectedType === 'cliente' ? 'bg-emerald-600' :
+                    selectedType === 'producto' ? 'bg-amber-600' :
+                    selectedType === 'operacion' ? 'bg-blue-600' :
+                    'bg-slate-900'
+                  }`}>
+                    {selectedType === 'importadora' && <Building2 className="h-7 w-7 text-white" />}
+                    {selectedType === 'cliente' && <Users className="h-7 w-7 text-white" />}
+                    {selectedType === 'producto' && <Package className="h-7 w-7 text-white" />}
+                    {selectedType === 'operacion' && <Ship className="h-7 w-7 text-white" />}
+                    {selectedType === 'factura' && <Receipt className="h-7 w-7 text-white" />}
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                      {selectedType === 'importadora' ? 'Importadora' :
+                       selectedType === 'cliente' ? 'Cliente' :
+                       selectedType === 'producto' ? 'Producto' :
+                       selectedType === 'operacion' ? 'Operación' :
+                       'Factura'}
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-900">{selectedLabel}</h2>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={clearSelection}>
+                    <Search className="h-4 w-4 mr-1" />
+                    Volver
+                  </Button>
+                  {selectedType === 'importadora' && selectedId && (
+                    <>
+                      <Button size="sm" onClick={() => router.push(`/importadoras/${selectedId}`)}>
+                        Ver detalle
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={async () => {
+                          if (!selectedId) return;
+                          try {
+                            await importadorasApi.downloadExpediente(selectedId);
+                            toast.success("Expediente descargado correctamente");
+                          } catch (error) {
+                            toast.error("Error al descargar expediente");
+                            console.error(error);
+                          }
+                        }}
+                      >
+                        <Download className="h-4 w-4 mr-1" />
+                        Descargar expediente
+                      </Button>
+                    </>
+                  )}
+                  {selectedType === 'operacion' && selectedId && (
+                    <Button size="sm" onClick={() => selectedId && router.push(`/operations/${selectedId}`)}>
+                      Ver detalle
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Renderizar según tipo */}
             {selectedType === 'importadora' && <DetailImportadora data={detail} router={router} />}
             {selectedType === 'cliente' && <DetailCliente data={detail} router={router} />}
             {selectedType === 'producto' && <DetailProducto data={detail} router={router} />}
@@ -252,44 +285,52 @@ function BuscarUniversalPage(): React.ReactElement {
 
   // ====================== VISTA DE BÚSQUEDA ======================
   return (
-    <div>
-      <Header
-        title="Buscar"
-        description="Busca por importadora, cliente, producto, factura u operación."
-      />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      {/* Buscador */}
+      <div className="px-4 sm:px-6 pt-8 sm:pt-16 pb-6 sm:pb-10">
+        <div className="max-w-3xl mx-auto text-center space-y-6">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="h-14 w-14 rounded-2xl bg-slate-900 flex items-center justify-center">
+              <Globe className="h-7 w-7 text-white" />
+            </div>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">
+            Búsqueda Universal
+          </h1>
+          <p className="text-lg text-slate-500">
+            Busca por importadora, cliente, producto, factura u operación — ve todas las relaciones
+          </p>
 
-      <div className="p-4 sm:p-6 lg:p-8">
-        {/* Buscador */}
-        <div className="mb-6">
-          <div className="relative max-w-xl">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
+          {/* Input grande */}
+          <div className="relative max-w-2xl mx-auto">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-400" />
+            <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Escribe nombre, número, código..."
-              className="pl-10 pr-10"
+              className="w-full h-16 sm:h-18 pl-14 pr-12 text-lg sm:text-xl rounded-2xl border-2 border-slate-200 bg-white shadow-lg shadow-slate-200/50 focus:outline-none focus:ring-4 focus:ring-slate-900/10 focus:border-slate-400 transition-all placeholder:text-slate-400"
               autoFocus
             />
             {searchTerm && (
               <button
                 onClick={() => { setSearchTerm(""); setResults(null); setHasSearched(false); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
               >
-                <X className="h-3 w-3 text-gray-500" />
+                <X className="h-4 w-4 text-slate-500" />
               </button>
             )}
           </div>
 
           {/* Hints */}
           {!hasSearched && !searchTerm && (
-            <div className="flex flex-wrap items-center gap-2 mt-3 text-sm text-gray-400">
+            <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-slate-400">
               <span>Ejemplos:</span>
               {["Quimimport", "Juan", "Arroz", "FAC-001", "OP-001"].map(hint => (
                 <button
                   key={hint}
                   onClick={() => setSearchTerm(hint)}
-                  className="px-3 py-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs"
+                  className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
                 >
                   {hint}
                 </button>
@@ -297,32 +338,41 @@ function BuscarUniversalPage(): React.ReactElement {
             </div>
           )}
         </div>
+      </div>
 
-        {/* Resultados */}
+      {/* Resultados */}
+      <div className="px-4 sm:px-6 pb-12 max-w-4xl mx-auto">
         {searching && (
-          <div className="text-center text-gray-500 py-8">Buscando en todo el sistema...</div>
+          <div className="text-center text-slate-500 py-4">Buscando en todo el sistema...</div>
         )}
 
         {!searching && hasSearched && totalResults === 0 && (
-          <div className="py-12 text-center text-gray-400">
-            <Search className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p className="text-base">No se encontraron resultados</p>
+          <div className="py-12 text-center text-slate-400">
+            <Search className="h-12 w-12 mx-auto mb-3 opacity-30" />
+            <p className="text-lg">No se encontraron resultados</p>
             <p className="text-sm mt-1">Intenta con otro término</p>
           </div>
         )}
 
         {!searching && results && totalResults > 0 && (
           <div className="space-y-6">
-            <p className="text-sm text-gray-500">{totalResults} resultados encontrados</p>
+            <p className="text-sm text-slate-500">{totalResults} resultados encontrados</p>
 
             {/* Importadoras */}
             {results.importadoras.length > 0 && (
-              <ResultSection title="Importadoras" icon={<Building2 className="h-4 w-4 text-muted-foreground" />} count={results.importadoras.length}>
+              <ResultSection
+                title="Importadoras"
+                icon={<Building2 className="h-5 w-5 text-indigo-600" />}
+                count={results.importadoras.length}
+                color="indigo"
+              >
                 {results.importadoras.map((imp) => (
                   <div key={imp.id} className="flex items-center gap-2">
                     <div className="flex-1">
                       <ResultItem
                         onClick={() => selectEntity('importadora', imp.id, imp.nombre)}
+                        icon={<Building2 className="h-4 w-4" />}
+                        iconColor="bg-indigo-100 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white"
                         title={imp.nombre}
                         subtitle={[imp.pais, imp.contacto, imp.puertoDestinoDefault].filter(Boolean).join(' • ')}
                       />
@@ -352,11 +402,18 @@ function BuscarUniversalPage(): React.ReactElement {
 
             {/* Clientes */}
             {results.clientes.length > 0 && (
-              <ResultSection title="Clientes" icon={<Users className="h-4 w-4 text-muted-foreground" />} count={results.clientes.length}>
+              <ResultSection
+                title="Clientes"
+                icon={<Users className="h-5 w-5 text-emerald-600" />}
+                count={results.clientes.length}
+                color="emerald"
+              >
                 {results.clientes.map((cli) => (
                   <ResultItem
                     key={cli.id}
                     onClick={() => selectEntity('cliente', cli.id, `${cli.nombre} ${cli.apellidos || ''}`)}
+                    icon={<Users className="h-4 w-4" />}
+                    iconColor="bg-emerald-100 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white"
                     title={`${cli.nombre} ${cli.apellidos || ''}`}
                     subtitle={[cli.nombreCompania, cli.email, cli.telefono].filter(Boolean).join(' • ')}
                   />
@@ -366,11 +423,18 @@ function BuscarUniversalPage(): React.ReactElement {
 
             {/* Productos */}
             {results.productos.length > 0 && (
-              <ResultSection title="Productos" icon={<Package className="h-4 w-4 text-muted-foreground" />} count={results.productos.length}>
+              <ResultSection
+                title="Productos"
+                icon={<Package className="h-5 w-5 text-amber-600" />}
+                count={results.productos.length}
+                color="amber"
+              >
                 {results.productos.map((prod) => (
                   <ResultItem
                     key={prod.id}
                     onClick={() => selectEntity('producto', prod.id, prod.nombre)}
+                    icon={<Package className="h-4 w-4" />}
+                    iconColor="bg-amber-100 text-amber-600 group-hover:bg-amber-600 group-hover:text-white"
                     title={prod.nombre}
                     subtitle={[prod.codigo, prod.codigoArancelario ? `Arancel: ${prod.codigoArancelario}` : null, formatCurrency(prod.precioBase)].filter(Boolean).join(' • ')}
                   />
@@ -380,14 +444,23 @@ function BuscarUniversalPage(): React.ReactElement {
 
             {/* Operaciones */}
             {results.operaciones.length > 0 && (
-              <ResultSection title="Operaciones" icon={<Ship className="h-4 w-4 text-muted-foreground" />} count={results.operaciones.length}>
+              <ResultSection
+                title="Operaciones"
+                icon={<Ship className="h-5 w-5 text-blue-600" />}
+                count={results.operaciones.length}
+                color="blue"
+              >
                 {results.operaciones.map((op) => (
                   <ResultItem
                     key={op.id}
                     onClick={() => selectEntity('operacion', op.id, op.operationNo)}
+                    icon={<Ship className="h-4 w-4" />}
+                    iconColor="bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white"
                     title={op.operationNo}
                     subtitle={[op.operationType, op.status, op.currentLocation].filter(Boolean).join(' • ')}
-                    badge={<Badge variant="outline" className="text-xs">{op.status}</Badge>}
+                    badges={[
+                      <Badge key="status" variant="outline" className="text-xs">{op.status}</Badge>
+                    ]}
                   />
                 ))}
               </ResultSection>
@@ -395,14 +468,23 @@ function BuscarUniversalPage(): React.ReactElement {
 
             {/* Facturas */}
             {results.facturas.length > 0 && (
-              <ResultSection title="Facturas" icon={<Receipt className="h-4 w-4 text-muted-foreground" />} count={results.facturas.length}>
+              <ResultSection
+                title="Facturas"
+                icon={<Receipt className="h-5 w-5 text-purple-600" />}
+                count={results.facturas.length}
+                color="purple"
+              >
                 {results.facturas.map((fac) => (
                   <ResultItem
                     key={fac.id}
                     onClick={() => selectEntity('factura', fac.id, fac.numero)}
+                    icon={<Receipt className="h-4 w-4" />}
+                    iconColor="bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white"
                     title={fac.numero}
                     subtitle={`${formatDate(fac.fecha)} • ${formatCurrency(fac.total)}`}
-                    badge={<Badge variant={fac.estado === 'pagada' ? 'default' : 'secondary'} className="text-xs">{fac.estado}</Badge>}
+                    badges={[
+                      <Badge key="estado" variant={fac.estado === 'pagada' ? 'default' : 'secondary'} className="text-xs">{fac.estado}</Badge>
+                    ]}
                   />
                 ))}
               </ResultSection>
@@ -410,14 +492,23 @@ function BuscarUniversalPage(): React.ReactElement {
 
             {/* Ofertas a Importadora */}
             {results.ofertasImportadora.length > 0 && (
-              <ResultSection title="Ofertas a Importadora" icon={<FileText className="h-4 w-4 text-muted-foreground" />} count={results.ofertasImportadora.length}>
+              <ResultSection
+                title="Ofertas a Importadora"
+                icon={<FileText className="h-5 w-5 text-teal-600" />}
+                count={results.ofertasImportadora.length}
+                color="teal"
+              >
                 {results.ofertasImportadora.map((of) => (
                   <ResultItem
                     key={of.id}
                     onClick={() => router.push(`/ofertas/importadora`)}
+                    icon={<FileText className="h-4 w-4" />}
+                    iconColor="bg-teal-100 text-teal-600 group-hover:bg-teal-600 group-hover:text-white"
                     title={of.numero}
                     subtitle={`${of.importadora?.nombre || ''} • ${formatDate(of.fecha)} ${of.precioCIF ? '• CIF ' + formatCurrency(of.precioCIF) : ''}`}
-                    badge={<Badge variant="outline" className="text-xs">{of.estado}</Badge>}
+                    badges={[
+                      <Badge key="estado" variant="outline" className="text-xs">{of.estado}</Badge>
+                    ]}
                   />
                 ))}
               </ResultSection>
@@ -431,44 +522,50 @@ function BuscarUniversalPage(): React.ReactElement {
 
 // ==================== Componentes de resultado ====================
 
-function ResultSection({ title, icon, count, children }: {
+function ResultSection({ title, icon, count, color, children }: {
   title: string;
   icon: React.ReactNode;
   count: number;
+  color: string;
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <div className="bg-white rounded-lg border shadow-sm">
-      <div className="flex items-center gap-2 px-4 py-3 border-b">
+    <div>
+      <div className="flex items-center gap-2 mb-3">
         {icon}
-        <h3 className="font-semibold text-gray-700 text-sm">{title}</h3>
-        <Badge variant="secondary" className="text-xs">{count}</Badge>
+        <h3 className="font-semibold text-slate-700">{title}</h3>
+        <Badge variant="secondary" className={`text-xs bg-${color}-50 text-${color}-700`}>{count}</Badge>
       </div>
-      <div className="divide-y">
+      <div className="space-y-2">
         {children}
       </div>
     </div>
   );
 }
 
-function ResultItem({ onClick, title, subtitle, badge }: {
+function ResultItem({ onClick, icon, iconColor, title, subtitle, badges }: {
   onClick: () => void;
+  icon: React.ReactNode;
+  iconColor: string;
   title: string;
   subtitle: string;
-  badge?: React.ReactNode;
+  badges?: React.ReactNode[];
 }): React.ReactElement {
   return (
     <button
       onClick={onClick}
-      className="w-full px-4 py-3 hover:bg-gray-50 transition-colors flex items-center gap-3 text-left group"
+      className="w-full p-4 bg-white rounded-xl border border-slate-200 hover:border-slate-400 hover:shadow-md transition-all flex items-center gap-4 text-left group"
     >
+      <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${iconColor}`}>
+        {icon}
+      </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-gray-900 truncate text-sm">{title}</p>
-        {subtitle && <p className="text-xs text-gray-500 mt-0.5 truncate">{subtitle}</p>}
+        <p className="font-semibold text-slate-900 truncate">{title}</p>
+        {subtitle && <p className="text-sm text-slate-500 mt-0.5 truncate">{subtitle}</p>}
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        {badge}
-        <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-gray-600 transition-colors" />
+        {badges?.map((badge, i) => <span key={i}>{badge}</span>)}
+        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
       </div>
     </button>
   );
