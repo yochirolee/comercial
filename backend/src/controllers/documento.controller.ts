@@ -516,7 +516,7 @@ export const DocumentoController = {
         numero_oferta: oferta.numero || '',
         nombre_cliente: nombreCompleto,
         direccion_cliente: oferta.cliente.direccion || '',
-        nit_cliente: oferta.cliente.nit || '',
+        identificacion_cliente: oferta.cliente.nit || '',
         nombre_entidad: oferta.cliente.nombreCompania || '',
         nombre_producto: nombresProductos,
         descripcion_producto: descripcionesProductos,
