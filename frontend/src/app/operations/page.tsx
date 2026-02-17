@@ -135,7 +135,7 @@ export default function OperationsPage(): React.ReactElement {
   const [searchTerm, setSearchTerm] = useState("");
   
   // Sorting - column-based with direction
-  type SortColumn = "operation" | "container" | "booking" | "bl" | "etd" | "eta" | "status" | "last-update" | null;
+  type SortColumn = "operation" | "container" | "booking" | "bl" | "etd" | "eta" | "status" | "last-update" | "importadora" | null;
   type SortDirection = "asc" | "desc";
   const [sortColumn, setSortColumn] = useState<SortColumn>("eta");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -270,6 +270,13 @@ export default function OperationsPage(): React.ReactElement {
             : new Date(b.container.updatedAt).getTime();
           
           comparison = lastUpdateA - lastUpdateB; // Comparación base (ascendente: más antiguo primero)
+          break;
+        }
+
+        case "importadora": {
+          const importadoraA = a.operation.importadora?.nombre || "";
+          const importadoraB = b.operation.importadora?.nombre || "";
+          comparison = importadoraA.localeCompare(importadoraB);
           break;
         }
 
@@ -536,7 +543,17 @@ export default function OperationsPage(): React.ReactElement {
                     )}
                   </div>
                 </TableHead>
-                <TableHead className="min-w-[150px]">Importadora</TableHead>
+                <TableHead 
+                  className="min-w-[150px] cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("importadora")}
+                >
+                  <div className="flex items-center gap-1">
+                    Importadora
+                    {sortColumn === "importadora" && (
+                      sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                    )}
+                  </div>
+                </TableHead>
                 <TableHead className="min-w-[60px] text-center">Seq</TableHead>
                 <TableHead 
                   className="min-w-[140px] cursor-pointer hover:bg-slate-100 select-none"
