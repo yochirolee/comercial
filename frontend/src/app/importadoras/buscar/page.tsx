@@ -26,7 +26,6 @@ import {
   MapPin,
   X,
   FileText,
-  Globe,
   ChevronRight,
   Activity,
   DollarSign,
@@ -286,62 +285,55 @@ function BuscarUniversalPage(): React.ReactElement {
   // ====================== VISTA DE BÚSQUEDA ======================
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Buscador */}
-      <div className="px-4 sm:px-6 pt-8 sm:pt-16 pb-6 sm:pb-10">
-        <div className="max-w-3xl mx-auto text-center space-y-6">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="h-14 w-14 rounded-2xl bg-slate-900 flex items-center justify-center">
-              <Globe className="h-7 w-7 text-white" />
-            </div>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">
-            Búsqueda Universal
-          </h1>
-          <p className="text-lg text-slate-500">
-            Busca por importadora, cliente, producto, factura u operación — ve todas las relaciones
-          </p>
+      {/* Header estilo sistema */}
+      <header className="bg-white border-b border-gray-200 px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Buscar</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">Busca por importadora, cliente, producto, factura u operación.</p>
+        </div>
+      </header>
 
-          {/* Input grande */}
-          <div className="relative max-w-2xl mx-auto">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Escribe nombre, número, código..."
-              className="w-full h-16 sm:h-18 pl-14 pr-12 text-lg sm:text-xl rounded-2xl border-2 border-slate-200 bg-white shadow-lg shadow-slate-200/50 focus:outline-none focus:ring-4 focus:ring-slate-900/10 focus:border-slate-400 transition-all placeholder:text-slate-400"
-              autoFocus
-            />
-            {searchTerm && (
-              <button
-                onClick={() => { setSearchTerm(""); setResults(null); setHasSearched(false); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
-              >
-                <X className="h-4 w-4 text-slate-500" />
-              </button>
-            )}
-          </div>
-
-          {/* Hints */}
-          {!hasSearched && !searchTerm && (
-            <div className="flex flex-wrap items-center justify-center gap-2 text-sm text-slate-400">
-              <span>Ejemplos:</span>
-              {["Quimimport", "Juan", "Arroz", "FAC-001", "OP-001"].map(hint => (
-                <button
-                  key={hint}
-                  onClick={() => setSearchTerm(hint)}
-                  className="px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-                >
-                  {hint}
-                </button>
-              ))}
-            </div>
+      {/* Input de búsqueda */}
+      <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-4">
+        <div className="relative max-w-xl">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Escribe nombre, número, código..."
+            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring pl-10 pr-10"
+            autoFocus
+          />
+          {searchTerm && (
+            <button
+              onClick={() => { setSearchTerm(""); setResults(null); setHasSearched(false); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+            >
+              <X className="h-3 w-3 text-gray-500" />
+            </button>
           )}
         </div>
+
+        {/* Hints */}
+        {!hasSearched && !searchTerm && (
+          <div className="flex flex-wrap items-center gap-2 mt-3 text-sm text-gray-400">
+            <span>Ejemplos:</span>
+            {["Quimimport", "Juan", "Arroz", "FAC-001", "OP-001"].map(hint => (
+              <button
+                key={hint}
+                onClick={() => setSearchTerm(hint)}
+                className="px-3 py-1 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-600 transition-colors text-xs"
+              >
+                {hint}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Resultados */}
-      <div className="px-4 sm:px-6 pb-12 max-w-4xl mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 pb-12 max-w-4xl">
         {searching && (
           <div className="text-center text-slate-500 py-4">Buscando en todo el sistema...</div>
         )}
