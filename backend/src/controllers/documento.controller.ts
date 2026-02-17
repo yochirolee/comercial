@@ -410,6 +410,11 @@ export const DocumentoController = {
         where: { id: ofertaClienteId },
         include: {
           cliente: true,
+          items: {
+            include: {
+              producto: true,
+            },
+          },
         },
       });
 
@@ -489,10 +494,17 @@ export const DocumentoController = {
         ? `${oferta.cliente.nombre || ''} ${oferta.cliente.apellidos}`.trim()
         : (oferta.cliente.nombre || '');
 
+      // Obtener información del primer producto (o concatenar si hay varios)
+      const primerProducto = oferta.items && oferta.items.length > 0 ? oferta.items[0].producto : null;
+      const nombreProducto = primerProducto?.nombre || '';
+      const descripcionProducto = primerProducto?.descripcion || '';
+
       const data = {
         fecha: fechaActualES,
         numero_oferta: oferta.numero || '',
         nombre_cliente: nombreCompleto,
+        nombre_producto: nombreProducto,
+        descripcion_producto: descripcionProducto,
       };
 
       // Reemplazar variables en la plantilla
