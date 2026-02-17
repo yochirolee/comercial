@@ -846,7 +846,7 @@ export const ExportController = {
     const doc = new PDFDocument({ margin: 40, size: 'LETTER' });
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=oferta-general-${oferta.numero || 'sin-numero'}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=oferta_general_${oferta.numero || 'sin-numero'}.pdf`);
     
     doc.pipe(res);
 
@@ -918,7 +918,7 @@ export const ExportController = {
     await renderExcelFirma(worksheet, workbook, empresa, row);
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=oferta-general-${oferta.numero || 'sin-numero'}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=oferta_general_${oferta.numero || 'sin-numero'}.xlsx`);
     
     await workbook.xlsx.write(res);
   },
@@ -953,7 +953,7 @@ export const ExportController = {
     const doc = new PDFDocument({ margin: 40, size: 'LETTER' });
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=oferta-${oferta.numero}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=oferta_cliente_${oferta.numero}.pdf`);
     
     doc.pipe(res);
 
@@ -1231,7 +1231,7 @@ export const ExportController = {
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=oferta-${oferta.numero}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=oferta_cliente_${oferta.numero}.xlsx`);
     
     await workbook.xlsx.write(res);
   },
@@ -1267,7 +1267,7 @@ export const ExportController = {
     const doc = new PDFDocument({ margin: 40, size: 'LETTER' });
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=oferta-importadora-${oferta.numero}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=oferta_importadora_${oferta.numero}.pdf`);
     
     doc.pipe(res);
 
@@ -1595,7 +1595,7 @@ export const ExportController = {
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=oferta-importadora-${oferta.numero}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=oferta_importadora_${oferta.numero}.xlsx`);
     
     await workbook.xlsx.write(res);
   },
@@ -1639,7 +1639,7 @@ export const ExportController = {
     const doc = new PDFDocument({ margin: 40, size: 'LETTER' });
     
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=factura-${factura.numero}.pdf`);
+    res.setHeader('Content-Disposition', `attachment; filename=Factura_${factura.numero}.pdf`);
     
     doc.pipe(res);
 
@@ -2281,7 +2281,7 @@ export const ExportController = {
     }
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=factura-${factura.numero}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=Factura_${factura.numero}.xlsx`);
     
     await workbook.xlsx.write(res);
   },
