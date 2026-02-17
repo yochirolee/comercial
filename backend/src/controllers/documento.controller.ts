@@ -201,10 +201,8 @@ export const DocumentoController = {
       };
 
       // Reemplazar variables en la plantilla
-      doc.setData(data);
-      
       try {
-        doc.render();
+        doc.render(data);
       } catch (error: any) {
         console.error('Error al renderizar plantilla:', error);
         console.error('Error properties:', error.properties);
@@ -348,10 +346,8 @@ export const DocumentoController = {
       };
 
       // Reemplazar variables en la plantilla
-      doc.setData(data);
-      
       try {
-        doc.render();
+        doc.render(data);
       } catch (error: any) {
         console.error('Error al renderizar plantilla:', error);
         console.error('Error properties:', error.properties);
@@ -521,10 +517,8 @@ export const DocumentoController = {
       };
 
       // Reemplazar variables en la plantilla
-      doc.setData(data);
-      
       try {
-        doc.render();
+        doc.render(data);
       } catch (error: any) {
         console.error('Error al renderizar plantilla:', error);
         console.error('Error properties:', error.properties);
