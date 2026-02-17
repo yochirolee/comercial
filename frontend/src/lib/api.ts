@@ -341,12 +341,16 @@ export const exportApi = {
     }
 
     // Extraer nombre del archivo del header Content-Disposition
-    const contentDisposition = response.headers.get('Content-Disposition');
+    const contentDisposition = response.headers.get('Content-Disposition') || response.headers.get('content-disposition');
     let filename = `${tipo}.pdf`;
     if (contentDisposition) {
-      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      // Intentar diferentes formatos de Content-Disposition
+      let match = contentDisposition.match(/filename\*?=['"]?([^'";]+)['"]?/i);
+      if (!match) {
+        match = contentDisposition.match(/filename=([^;]+)/i);
+      }
       if (match && match[1]) {
-        filename = match[1].replace(/['"]/g, '');
+        filename = match[1].trim().replace(/^['"]|['"]$/g, '');
       }
     }
 
@@ -379,12 +383,16 @@ export const exportApi = {
     }
 
     // Extraer nombre del archivo del header Content-Disposition
-    const contentDisposition = response.headers.get('Content-Disposition');
+    const contentDisposition = response.headers.get('Content-Disposition') || response.headers.get('content-disposition');
     let filename = `${tipo}.xlsx`;
     if (contentDisposition) {
-      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      // Intentar diferentes formatos de Content-Disposition
+      let match = contentDisposition.match(/filename\*?=['"]?([^'";]+)['"]?/i);
+      if (!match) {
+        match = contentDisposition.match(/filename=([^;]+)/i);
+      }
       if (match && match[1]) {
-        filename = match[1].replace(/['"]/g, '');
+        filename = match[1].trim().replace(/^['"]|['"]$/g, '');
       }
     }
 
