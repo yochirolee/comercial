@@ -231,11 +231,10 @@ export const DocumentoController = {
       }
 
       // Configurar headers para descarga
-      const safeFileName = `Oferta_${oferta.numero}_${oferta.cliente.nombre.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
-      const encodedFileName = encodeURIComponent(safeFileName);
+      const safeFileName = `Oferta_${oferta.numero}.docx`;
       
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-      res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`);
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"`);
       res.setHeader('Content-Length', buf.length.toString());
 
       // Enviar el archivo
@@ -378,11 +377,10 @@ export const DocumentoController = {
       }
 
       // Configurar headers para descarga
-      const safeFileName = `Cierre_Expediente_${oferta.numero}_${oferta.cliente.nombre.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
-      const encodedFileName = encodeURIComponent(safeFileName);
+      const safeFileName = `Cierre_Expediente_${oferta.numero}.docx`;
       
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-      res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`);
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"`);
       res.setHeader('Content-Length', buf.length.toString());
 
       // Enviar el archivo
@@ -552,11 +550,10 @@ export const DocumentoController = {
       }
 
       // Configurar headers para descarga
-      const safeFileName = `Checklist_${oferta.numero}_${oferta.cliente.nombre.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
-      const encodedFileName = encodeURIComponent(safeFileName);
+      const safeFileName = `Checklist_${oferta.numero}.docx`;
       
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-      res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"; filename*=UTF-8''${encodedFileName}`);
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"`);
       res.setHeader('Content-Length', buf.length.toString());
 
       // Enviar el archivo
