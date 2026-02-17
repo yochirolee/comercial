@@ -340,11 +340,21 @@ export const exportApi = {
       throw new Error(errorData.error || 'Error al descargar PDF');
     }
 
+    // Extraer nombre del archivo del header Content-Disposition
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = `${tipo}.pdf`;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '');
+      }
+    }
+
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${tipo}_${id}.pdf`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -368,11 +378,21 @@ export const exportApi = {
       throw new Error(errorData.error || 'Error al descargar Excel');
     }
 
+    // Extraer nombre del archivo del header Content-Disposition
+    const contentDisposition = response.headers.get('Content-Disposition');
+    let filename = `${tipo}.xlsx`;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '');
+      }
+    }
+
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${tipo}_${id}.xlsx`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
