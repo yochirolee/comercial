@@ -1578,228 +1578,202 @@ export const ExportController = {
   },
 
   // ==========================================
-  // FACTURAS (mantenemos funcionalidad existente)
+  // FACTURAS (formato original)
   // ==========================================
   async facturaPdf(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    
-    const factura = await prisma.factura.findUnique({
-      where: { id },
-      include: {
-        cliente: true,
-        items: {
-          include: {
-            producto: { include: { unidadMedida: true } },
+    try {
+      const { id } = req.params;
+      const factura = await prisma.factura.findUnique({
+        where: { id },
+        include: {
+          cliente: true,
+          importadora: true,
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
+            },
           },
         },
-      },
-    });
-    
-    if (!factura) {
-      res.status(404).json({ error: 'Factura no encontrada' });
-      return;
-    }
+      });
 
-    const empresa = await getEmpresaInfo();
-    const doc = new PDFDocument({ margin: 50, size: 'LETTER' });
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=factura-${factura.numero}.pdf`);
-    
-    doc.pipe(res);
+      if (!factura) {
+        res.status(404).json({ error: 'Factura no encontrada' });
+        return;
+      }
 
-    const pageWidth = 612;
-    const margin = 50;
-    const contentWidth = pageWidth - margin * 2;
+      const doc = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="factura_${factura.numero}.pdf"`);
+        res.send(Buffer.concat(chunks));
+      });
+      doc.on('error', (error) => {
+        console.error('Error al generar PDF:', error);
+        res.status(500).json({ error: 'Error al generar PDF' });
+      });
 
-    doc.fontSize(18).font('Helvetica-Bold').text('FACTURA', { align: 'center' });
-    doc.moveDown(0.5);
-
-    const headerY = doc.y;
-    const logoPath = getImagePath(empresa.logo);
-    
-    if (logoPath) {
-      await addImageToPdf(doc, logoPath, margin, headerY, { width: 80 });
-    }
-    
-    doc.fontSize(14).font('Helvetica-Bold');
-    doc.text(empresa.nombre, margin, headerY, { width: contentWidth, align: 'center' });
-    
-    doc.fontSize(10).font('Helvetica');
-    doc.text(empresa.direccion, margin, headerY + 18, { width: contentWidth, align: 'center' });
-    doc.text(`Tel: ${empresa.telefono} | Email: ${empresa.email}`, margin, headerY + 30, { 
-      width: contentWidth, 
-      align: 'center' 
-    });
-    
-    doc.y = headerY + 60;
-    doc.moveDown();
-    
-    doc.fontSize(10).text('FACTURAR A:', { underline: true });
-    doc.text(`${factura.cliente.nombre} ${factura.cliente.apellidos || ''}`);
-    if (factura.cliente.direccion) doc.text(factura.cliente.direccion);
-    if (factura.cliente.nit) doc.text(`NIT: ${factura.cliente.nit}`);
-    doc.moveDown();
-    
-    doc.text(`Factura N°: ${factura.numero}`);
-    doc.text(`Fecha: ${formatDate(factura.fecha)}`);
-    if (factura.fechaVencimiento) {
-      doc.text(`Vencimiento: ${formatDate(factura.fechaVencimiento)}`);
-    }
-    doc.text(`Estado: ${factura.estado.toUpperCase()}`);
-    doc.moveDown();
-
-    const startX = 50;
-    let y = doc.y;
-    doc.fontSize(9);
-    doc.text('Descripción', startX, y, { width: 180 });
-    doc.text('Cant.', startX + 180, y, { width: 40 });
-    doc.text('Unidad', startX + 220, y, { width: 40 });
-    doc.text('P. Unit.', startX + 270, y, { width: 60, align: 'right' });
-    doc.text('Subtotal', startX + 350, y, { width: 70, align: 'right' });
-    
-    doc.moveTo(startX, doc.y + 5).lineTo(500, doc.y + 5).stroke();
-    doc.moveDown();
-
-    for (const item of factura.items) {
-      y = doc.y;
-      const descripcion = item.descripcion || item.producto.nombre;
-      doc.text(descripcion, startX, y, { width: 180 });
-      doc.text(item.cantidad.toString(), startX + 180, y, { width: 40 });
-      doc.text(item.producto.unidadMedida.abreviatura, startX + 220, y, { width: 40 });
-      doc.text(`$${formatCurrency(item.precioUnitario)}`, startX + 270, y, { width: 60, align: 'right' });
-      doc.text(`$${formatCurrency(item.subtotal)}`, startX + 350, y, { width: 70, align: 'right' });
-      doc.moveDown(0.5);
-    }
-
-    doc.moveTo(startX, doc.y + 5).lineTo(500, doc.y + 5).stroke();
-    doc.moveDown();
-    
-    doc.text(`Subtotal: $${formatCurrency(factura.subtotal)}`, { align: 'right' });
-    if (factura.impuestos > 0) {
-      doc.text(`Impuestos: $${formatCurrency(factura.impuestos)}`, { align: 'right' });
-    }
-    if (factura.descuento > 0) {
-      doc.text(`Descuento: $${formatCurrency(factura.descuento)}`, { align: 'right' });
-    }
-    doc.fontSize(14).text(`TOTAL: $${formatCurrency(factura.total)}`, { align: 'right' });
-
-    if (factura.observaciones) {
+      doc.fontSize(20).font('Helvetica-Bold').text(`FACTURA ${factura.numero}`, { align: 'center' });
       doc.moveDown();
-      doc.fontSize(10).text('Observaciones:', { underline: true });
-      doc.text(factura.observaciones);
-    }
+      doc.fontSize(10).text(`Cliente: ${factura.cliente.nombre} ${factura.cliente.apellidos || ''}`, { align: 'center' });
+      if (factura.importadora) {
+        doc.text(`Importadora: ${factura.importadora.nombre}`, { align: 'center' });
+      }
+      doc.text(`Fecha: ${new Date(factura.fecha).toLocaleDateString('es-ES')}`, { align: 'center' });
+      if (factura.fechaVencimiento) {
+        doc.text(`Vencimiento: ${new Date(factura.fechaVencimiento).toLocaleDateString('es-ES')}`, { align: 'center' });
+      }
+      doc.text(`Estado: ${factura.estado}`, { align: 'center' });
+      doc.moveDown(2);
 
-    doc.end();
+      doc.fontSize(14).font('Helvetica-Bold').text('ITEMS', { underline: true });
+      doc.moveDown();
+
+      let y = doc.y;
+      doc.fontSize(10).font('Helvetica-Bold');
+      doc.text('Producto', 50, y);
+      doc.text('Cantidad', 300, y);
+      doc.text('Precio Unit.', 380, y);
+      doc.text('Subtotal', 460, y);
+      y += 20;
+
+      doc.fontSize(9).font('Helvetica');
+      factura.items.forEach((item) => {
+        doc.text(item.producto.nombre, 50, y);
+        doc.text(`${item.cantidad} ${item.producto.unidadMedida.abreviatura}`, 300, y);
+        doc.text(`$${item.precioUnitario.toFixed(2)}`, 380, y);
+        doc.text(`$${item.subtotal.toFixed(2)}`, 460, y);
+        y += 15;
+        if (y > 750) {
+          doc.addPage();
+          y = 50;
+        }
+      });
+
+      doc.moveDown();
+      doc.fontSize(10).font('Helvetica');
+      doc.text(`Subtotal: $${factura.subtotal.toFixed(2)}`, 380, doc.y);
+      doc.text(`Flete: $${factura.flete.toFixed(2)}`, 380, doc.y + 15);
+      if (factura.tieneSeguro) {
+        doc.text(`Seguro: $${factura.seguro.toFixed(2)}`, 380, doc.y + 15);
+      }
+      if (factura.impuestos > 0) {
+        doc.text(`Impuestos: $${factura.impuestos.toFixed(2)}`, 380, doc.y + 15);
+      }
+      if (factura.descuento > 0) {
+        doc.text(`Descuento: $${factura.descuento.toFixed(2)}`, 380, doc.y + 15);
+      }
+      doc.moveDown();
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text(`TOTAL: $${factura.total.toFixed(2)}`, 380, doc.y);
+
+      if (factura.observaciones) {
+        doc.moveDown(2);
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Observaciones: ${factura.observaciones}`);
+      }
+
+      doc.end();
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      res.status(500).json({ error: 'Error al generar PDF' });
+    }
   },
 
   async facturaExcel(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    
-    const factura = await prisma.factura.findUnique({
-      where: { id },
-      include: {
-        cliente: true,
-        items: {
-          include: {
-            producto: { include: { unidadMedida: true } },
+    try {
+      const { id } = req.params;
+      const factura = await prisma.factura.findUnique({
+        where: { id },
+        include: {
+          cliente: true,
+          importadora: true,
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
+            },
           },
         },
-      },
-    });
-    
-    if (!factura) {
-      res.status(404).json({ error: 'Factura no encontrada' });
-      return;
-    }
+      });
 
-    const empresa = await getEmpresaInfo();
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Factura');
+      if (!factura) {
+        res.status(404).json({ error: 'Factura no encontrada' });
+        return;
+      }
 
-    worksheet.mergeCells('A1:F1');
-    worksheet.getCell('A1').value = 'FACTURA';
-    worksheet.getCell('A1').font = { bold: true, size: 16 };
-    worksheet.getCell('A1').alignment = { horizontal: 'center' };
-
-    worksheet.getCell('A2').value = '[LOGO]';
-    worksheet.mergeCells('B2:F2');
-    worksheet.getCell('B2').value = empresa.nombre;
-    worksheet.getCell('B2').font = { bold: true, size: 14 };
-    worksheet.getCell('B2').alignment = { horizontal: 'center' };
-
-    worksheet.mergeCells('B3:F3');
-    worksheet.getCell('B3').value = empresa.direccion;
-    worksheet.getCell('B3').alignment = { horizontal: 'center' };
-
-    worksheet.getCell('A5').value = 'Cliente:';
-    worksheet.getCell('B5').value = `${factura.cliente.nombre} ${factura.cliente.apellidos || ''}`;
-    worksheet.getCell('A6').value = 'NIT Cliente:';
-    worksheet.getCell('B6').value = factura.cliente.nit || '-';
-    worksheet.getCell('A7').value = 'Factura N°:';
-    worksheet.getCell('B7').value = factura.numero;
-    worksheet.getCell('A8').value = 'Fecha:';
-    worksheet.getCell('B8').value = formatDate(factura.fecha);
-    worksheet.getCell('A9').value = 'Estado:';
-    worksheet.getCell('B9').value = factura.estado.toUpperCase();
-
-    const headerRow = worksheet.getRow(11);
-    headerRow.values = ['Código', 'Descripción', 'Cantidad', 'Unidad', 'P. Unitario', 'Subtotal'];
-    headerRow.font = { bold: true };
-    headerRow.eachCell(cell => {
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
-    });
-
-    let rowIndex = 12;
-    for (const item of factura.items) {
-      const row = worksheet.getRow(rowIndex);
-      row.values = [
-        item.producto.codigo || '-',
-        item.descripcion || item.producto.nombre,
-        item.cantidad,
-        item.producto.unidadMedida.abreviatura,
-        item.precioUnitario,
-        item.subtotal,
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Factura');
+      
+      sheet.columns = [
+        { header: 'Producto', key: 'producto', width: 30 },
+        { header: 'Cantidad', key: 'cantidad', width: 12 },
+        { header: 'Unidad', key: 'unidad', width: 12 },
+        { header: 'Precio Unitario', key: 'precioUnitario', width: 15 },
+        { header: 'Subtotal', key: 'subtotal', width: 15 },
       ];
-      row.getCell(5).numFmt = '"$"#,##0.00';
-      row.getCell(6).numFmt = '"$"#,##0.00';
-      rowIndex++;
-    }
 
-    rowIndex++;
-    worksheet.getCell(`E${rowIndex}`).value = 'Subtotal:';
-    worksheet.getCell(`F${rowIndex}`).value = factura.subtotal;
-    worksheet.getCell(`F${rowIndex}`).numFmt = '"$"#,##0.00';
-    
-    if (factura.impuestos > 0) {
-      rowIndex++;
-      worksheet.getCell(`E${rowIndex}`).value = 'Impuestos:';
-      worksheet.getCell(`F${rowIndex}`).value = factura.impuestos;
-      worksheet.getCell(`F${rowIndex}`).numFmt = '"$"#,##0.00';
-    }
-    
-    if (factura.descuento > 0) {
-      rowIndex++;
-      worksheet.getCell(`E${rowIndex}`).value = 'Descuento:';
-      worksheet.getCell(`F${rowIndex}`).value = factura.descuento;
-      worksheet.getCell(`F${rowIndex}`).numFmt = '"$"#,##0.00';
-    }
-    
-    rowIndex++;
-    worksheet.getCell(`E${rowIndex}`).value = 'TOTAL:';
-    worksheet.getCell(`E${rowIndex}`).font = { bold: true };
-    worksheet.getCell(`F${rowIndex}`).value = factura.total;
-    worksheet.getCell(`F${rowIndex}`).numFmt = '"$"#,##0.00';
-    worksheet.getCell(`F${rowIndex}`).font = { bold: true };
+      factura.items.forEach((item) => {
+        sheet.addRow({
+          producto: item.producto.nombre,
+          cantidad: item.cantidad,
+          unidad: item.producto.unidadMedida.abreviatura,
+          precioUnitario: item.precioUnitario,
+          subtotal: item.subtotal,
+        });
+      });
 
-    worksheet.columns = [
-      { width: 12 }, { width: 35 }, { width: 10 }, { width: 10 }, { width: 15 }, { width: 15 },
-    ];
+      sheet.addRow({});
+      sheet.addRow({
+        producto: 'Subtotal',
+        subtotal: factura.subtotal,
+      });
+      sheet.addRow({
+        producto: 'Flete',
+        subtotal: factura.flete,
+      });
+      if (factura.tieneSeguro) {
+        sheet.addRow({
+          producto: 'Seguro',
+          subtotal: factura.seguro,
+        });
+      }
+      if (factura.impuestos > 0) {
+        sheet.addRow({
+          producto: 'Impuestos',
+          subtotal: factura.impuestos,
+        });
+      }
+      if (factura.descuento > 0) {
+        sheet.addRow({
+          producto: 'Descuento',
+          subtotal: -factura.descuento,
+        });
+      }
+      sheet.addRow({
+        producto: 'TOTAL',
+        subtotal: factura.total,
+      });
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=factura-${factura.numero}.xlsx`);
-    
-    await workbook.xlsx.write(res);
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' },
+      };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="factura_${factura.numero}.xlsx"`);
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error('Error al generar Excel:', error);
+      res.status(500).json({ error: 'Error al generar Excel' });
+    }
   },
 
   // ==========================================
