@@ -494,17 +494,32 @@ export const DocumentoController = {
         ? `${oferta.cliente.nombre || ''} ${oferta.cliente.apellidos}`.trim()
         : (oferta.cliente.nombre || '');
 
-      // Obtener información del primer producto (o concatenar si hay varios)
-      const primerProducto = oferta.items && oferta.items.length > 0 ? oferta.items[0].producto : null;
-      const nombreProducto = primerProducto?.nombre || '';
-      const descripcionProducto = primerProducto?.descripcion || '';
+      // Obtener información de todos los productos
+      const productos = oferta.items && oferta.items.length > 0 
+        ? oferta.items.map(item => item.producto).filter(p => p !== null)
+        : [];
+      
+      // Concatenar nombres de productos (separados por comas)
+      const nombresProductos = productos
+        .map(p => p.nombre || '')
+        .filter(n => n !== '')
+        .join(', ');
+      
+      // Concatenar descripciones de productos (separadas por comas)
+      const descripcionesProductos = productos
+        .map(p => p.descripcion || '')
+        .filter(d => d !== '')
+        .join(', ');
 
       const data = {
         fecha: fechaActualES,
         numero_oferta: oferta.numero || '',
         nombre_cliente: nombreCompleto,
-        nombre_producto: nombreProducto,
-        descripcion_producto: descripcionProducto,
+        direccion_cliente: oferta.cliente.direccion || '',
+        nit_cliente: oferta.cliente.nit || '',
+        nombre_entidad: oferta.cliente.nombreCompania || '',
+        nombre_producto: nombresProductos,
+        descripcion_producto: descripcionesProductos,
       };
 
       // Reemplazar variables en la plantilla
