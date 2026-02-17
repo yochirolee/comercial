@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import ExcelJS from 'exceljs';
+import PDFDocument from 'pdfkit';
 
 export const ExportController = {
   // Exportar todos los clientes
@@ -791,6 +792,691 @@ export const ExportController = {
     } catch (error) {
       console.error('Error al exportar ofertas a importadora:', error);
       res.status(500).json({ error: 'Error al exportar ofertas a importadora' });
+    }
+  },
+
+  // ==========================================
+  // EXPORTAR INDIVIDUALES - PDF Y EXCEL
+  // ==========================================
+
+  // Oferta General - PDF
+  async ofertaGeneralPdf(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const oferta = await prisma.ofertaGeneral.findUnique({
+        where: { id },
+        include: {
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!oferta) {
+        res.status(404).json({ error: 'Oferta no encontrada' });
+        return;
+      }
+
+      const doc = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="oferta_${oferta.numero}.pdf"`);
+        res.send(Buffer.concat(chunks));
+      });
+      doc.on('error', (error) => {
+        console.error('Error al generar PDF:', error);
+        res.status(500).json({ error: 'Error al generar PDF' });
+      });
+
+      doc.fontSize(20).font('Helvetica-Bold').text(`OFERTA GENERAL ${oferta.numero}`, { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(10).text(`Fecha: ${new Date(oferta.fecha).toLocaleDateString('es-ES')}`, { align: 'center' });
+      if (oferta.vigenciaHasta) {
+        doc.text(`Vigencia hasta: ${new Date(oferta.vigenciaHasta).toLocaleDateString('es-ES')}`, { align: 'center' });
+      }
+      doc.text(`Estado: ${oferta.estado}`, { align: 'center' });
+      doc.moveDown(2);
+
+      doc.fontSize(14).font('Helvetica-Bold').text('ITEMS', { underline: true });
+      doc.moveDown();
+
+      let y = doc.y;
+      doc.fontSize(10).font('Helvetica-Bold');
+      doc.text('Producto', 50, y);
+      doc.text('Cantidad', 300, y);
+      doc.text('Precio Unit.', 380, y);
+      doc.text('Subtotal', 460, y);
+      y += 20;
+
+      doc.fontSize(9).font('Helvetica');
+      oferta.items.forEach((item) => {
+        doc.text(item.producto.nombre, 50, y);
+        doc.text(`${item.cantidad} ${item.producto.unidadMedida.abreviatura}`, 300, y);
+        doc.text(`$${item.precioUnitario.toFixed(2)}`, 380, y);
+        doc.text(`$${(item.cantidad * item.precioUnitario).toFixed(2)}`, 460, y);
+        y += 15;
+        if (y > 750) {
+          doc.addPage();
+          y = 50;
+        }
+      });
+
+      doc.moveDown();
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text(`TOTAL: $${oferta.total.toFixed(2)}`, 380, doc.y);
+
+      if (oferta.observaciones) {
+        doc.moveDown(2);
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Observaciones: ${oferta.observaciones}`);
+      }
+
+      doc.end();
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      res.status(500).json({ error: 'Error al generar PDF' });
+    }
+  },
+
+  // Oferta General - Excel
+  async ofertaGeneralExcel(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const oferta = await prisma.ofertaGeneral.findUnique({
+        where: { id },
+        include: {
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!oferta) {
+        res.status(404).json({ error: 'Oferta no encontrada' });
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Oferta');
+      
+      sheet.columns = [
+        { header: 'Producto', key: 'producto', width: 30 },
+        { header: 'Cantidad', key: 'cantidad', width: 12 },
+        { header: 'Unidad', key: 'unidad', width: 12 },
+        { header: 'Precio Unitario', key: 'precioUnitario', width: 15 },
+        { header: 'Subtotal', key: 'subtotal', width: 15 },
+      ];
+
+      oferta.items.forEach((item) => {
+        sheet.addRow({
+          producto: item.producto.nombre,
+          cantidad: item.cantidad,
+          unidad: item.producto.unidadMedida.abreviatura,
+          precioUnitario: item.precioUnitario,
+          subtotal: item.cantidad * item.precioUnitario,
+        });
+      });
+
+      sheet.addRow({});
+      sheet.addRow({
+        producto: 'TOTAL',
+        subtotal: oferta.total,
+      });
+
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' },
+      };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="oferta_${oferta.numero}.xlsx"`);
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error('Error al generar Excel:', error);
+      res.status(500).json({ error: 'Error al generar Excel' });
+    }
+  },
+
+  // Oferta Cliente - PDF
+  async ofertaClientePdf(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const oferta = await prisma.ofertaCliente.findUnique({
+        where: { id },
+        include: {
+          cliente: true,
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!oferta) {
+        res.status(404).json({ error: 'Oferta no encontrada' });
+        return;
+      }
+
+      const doc = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="oferta_${oferta.numero}.pdf"`);
+        res.send(Buffer.concat(chunks));
+      });
+      doc.on('error', (error) => {
+        console.error('Error al generar PDF:', error);
+        res.status(500).json({ error: 'Error al generar PDF' });
+      });
+
+      doc.fontSize(20).font('Helvetica-Bold').text(`OFERTA A CLIENTE ${oferta.numero}`, { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(10).text(`Cliente: ${oferta.cliente.nombre} ${oferta.cliente.apellidos || ''}`, { align: 'center' });
+      doc.text(`Fecha: ${new Date(oferta.fecha).toLocaleDateString('es-ES')}`, { align: 'center' });
+      if (oferta.vigenciaHasta) {
+        doc.text(`Vigencia hasta: ${new Date(oferta.vigenciaHasta).toLocaleDateString('es-ES')}`, { align: 'center' });
+      }
+      doc.text(`Estado: ${oferta.estado}`, { align: 'center' });
+      doc.moveDown(2);
+
+      doc.fontSize(14).font('Helvetica-Bold').text('ITEMS', { underline: true });
+      doc.moveDown();
+
+      let y = doc.y;
+      doc.fontSize(10).font('Helvetica-Bold');
+      doc.text('Producto', 50, y);
+      doc.text('Cantidad', 300, y);
+      doc.text('Precio Unit.', 380, y);
+      doc.text('Subtotal', 460, y);
+      y += 20;
+
+      doc.fontSize(9).font('Helvetica');
+      oferta.items.forEach((item) => {
+        doc.text(item.producto.nombre, 50, y);
+        doc.text(`${item.cantidad} ${item.producto.unidadMedida.abreviatura}`, 300, y);
+        doc.text(`$${item.precioUnitario.toFixed(2)}`, 380, y);
+        doc.text(`$${item.subtotal.toFixed(2)}`, 460, y);
+        y += 15;
+        if (y > 750) {
+          doc.addPage();
+          y = 50;
+        }
+      });
+
+      doc.moveDown();
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text(`TOTAL: $${oferta.total.toFixed(2)}`, 380, doc.y);
+
+      if (oferta.observaciones) {
+        doc.moveDown(2);
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Observaciones: ${oferta.observaciones}`);
+      }
+
+      doc.end();
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      res.status(500).json({ error: 'Error al generar PDF' });
+    }
+  },
+
+  // Oferta Cliente - Excel
+  async ofertaClienteExcel(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const oferta = await prisma.ofertaCliente.findUnique({
+        where: { id },
+        include: {
+          cliente: true,
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!oferta) {
+        res.status(404).json({ error: 'Oferta no encontrada' });
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Oferta');
+      
+      sheet.columns = [
+        { header: 'Producto', key: 'producto', width: 30 },
+        { header: 'Cantidad', key: 'cantidad', width: 12 },
+        { header: 'Unidad', key: 'unidad', width: 12 },
+        { header: 'Precio Unitario', key: 'precioUnitario', width: 15 },
+        { header: 'Subtotal', key: 'subtotal', width: 15 },
+      ];
+
+      oferta.items.forEach((item) => {
+        sheet.addRow({
+          producto: item.producto.nombre,
+          cantidad: item.cantidad,
+          unidad: item.producto.unidadMedida.abreviatura,
+          precioUnitario: item.precioUnitario,
+          subtotal: item.subtotal,
+        });
+      });
+
+      sheet.addRow({});
+      sheet.addRow({
+        producto: 'TOTAL',
+        subtotal: oferta.total,
+      });
+
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' },
+      };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="oferta_${oferta.numero}.xlsx"`);
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error('Error al generar Excel:', error);
+      res.status(500).json({ error: 'Error al generar Excel' });
+    }
+  },
+
+  // Oferta Importadora - PDF
+  async ofertaImportadoraPdf(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const oferta = await prisma.ofertaImportadora.findUnique({
+        where: { id },
+        include: {
+          cliente: true,
+          importadora: true,
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!oferta) {
+        res.status(404).json({ error: 'Oferta no encontrada' });
+        return;
+      }
+
+      const doc = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="oferta_${oferta.numero}.pdf"`);
+        res.send(Buffer.concat(chunks));
+      });
+      doc.on('error', (error) => {
+        console.error('Error al generar PDF:', error);
+        res.status(500).json({ error: 'Error al generar PDF' });
+      });
+
+      doc.fontSize(20).font('Helvetica-Bold').text(`OFERTA A IMPORTADORA ${oferta.numero}`, { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(10).text(`Cliente: ${oferta.cliente.nombre} ${oferta.cliente.apellidos || ''}`, { align: 'center' });
+      doc.text(`Importadora: ${oferta.importadora?.nombre || 'N/A'}`, { align: 'center' });
+      doc.text(`Fecha: ${new Date(oferta.fecha).toLocaleDateString('es-ES')}`, { align: 'center' });
+      if (oferta.vigenciaHasta) {
+        doc.text(`Vigencia hasta: ${new Date(oferta.vigenciaHasta).toLocaleDateString('es-ES')}`, { align: 'center' });
+      }
+      doc.text(`Estado: ${oferta.estado}`, { align: 'center' });
+      doc.moveDown(2);
+
+      doc.fontSize(14).font('Helvetica-Bold').text('ITEMS', { underline: true });
+      doc.moveDown();
+
+      let y = doc.y;
+      doc.fontSize(10).font('Helvetica-Bold');
+      doc.text('Producto', 50, y);
+      doc.text('Cantidad', 300, y);
+      doc.text('Precio Unit.', 380, y);
+      doc.text('Subtotal', 460, y);
+      y += 20;
+
+      doc.fontSize(9).font('Helvetica');
+      oferta.items.forEach((item: any) => {
+        doc.text(item.producto.nombre, 50, y);
+        doc.text(`${item.cantidad} ${item.producto.unidadMedida.abreviatura}`, 300, y);
+        doc.text(`$${(item.precioAjustado || item.precioOriginal || 0).toFixed(2)}`, 380, y);
+        doc.text(`$${item.subtotal.toFixed(2)}`, 460, y);
+        y += 15;
+        if (y > 750) {
+          doc.addPage();
+          y = 50;
+        }
+      });
+
+      doc.moveDown();
+      doc.fontSize(10).font('Helvetica');
+      doc.text(`Subtotal Productos: $${oferta.subtotalProductos.toFixed(2)}`, 380, doc.y);
+      doc.text(`Flete: $${oferta.flete.toFixed(2)}`, 380, doc.y + 15);
+      if (oferta.tieneSeguro) {
+        doc.text(`Seguro: $${oferta.seguro.toFixed(2)}`, 380, doc.y + 15);
+      }
+      doc.moveDown();
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text(`PRECIO CIF: $${oferta.precioCIF.toFixed(2)}`, 380, doc.y);
+
+      if (oferta.observaciones) {
+        doc.moveDown(2);
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Observaciones: ${oferta.observaciones}`);
+      }
+
+      doc.end();
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      res.status(500).json({ error: 'Error al generar PDF' });
+    }
+  },
+
+  // Oferta Importadora - Excel
+  async ofertaImportadoraExcel(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const oferta = await prisma.ofertaImportadora.findUnique({
+        where: { id },
+        include: {
+          cliente: true,
+          importadora: true,
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!oferta) {
+        res.status(404).json({ error: 'Oferta no encontrada' });
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Oferta');
+      
+      sheet.columns = [
+        { header: 'Producto', key: 'producto', width: 30 },
+        { header: 'Cantidad', key: 'cantidad', width: 12 },
+        { header: 'Unidad', key: 'unidad', width: 12 },
+        { header: 'Precio Unitario', key: 'precioUnitario', width: 15 },
+        { header: 'Subtotal', key: 'subtotal', width: 15 },
+      ];
+
+      oferta.items.forEach((item: any) => {
+        sheet.addRow({
+          producto: item.producto.nombre,
+          cantidad: item.cantidad,
+          unidad: item.producto.unidadMedida.abreviatura,
+          precioUnitario: item.precioAjustado || item.precioOriginal || 0,
+          subtotal: item.subtotal,
+        });
+      });
+
+      sheet.addRow({});
+      sheet.addRow({
+        producto: 'Subtotal Productos',
+        subtotal: oferta.subtotalProductos,
+      });
+      sheet.addRow({
+        producto: 'Flete',
+        subtotal: oferta.flete,
+      });
+      if (oferta.tieneSeguro) {
+        sheet.addRow({
+          producto: 'Seguro',
+          subtotal: oferta.seguro,
+        });
+      }
+      sheet.addRow({
+        producto: 'PRECIO CIF',
+        subtotal: oferta.precioCIF,
+      });
+
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' },
+      };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="oferta_${oferta.numero}.xlsx"`);
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error('Error al generar Excel:', error);
+      res.status(500).json({ error: 'Error al generar Excel' });
+    }
+  },
+
+  // Factura - PDF
+  async facturaPdf(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const factura = await prisma.factura.findUnique({
+        where: { id },
+        include: {
+          cliente: true,
+          importadora: true,
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!factura) {
+        res.status(404).json({ error: 'Factura no encontrada' });
+        return;
+      }
+
+      const doc = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="factura_${factura.numero}.pdf"`);
+        res.send(Buffer.concat(chunks));
+      });
+      doc.on('error', (error) => {
+        console.error('Error al generar PDF:', error);
+        res.status(500).json({ error: 'Error al generar PDF' });
+      });
+
+      doc.fontSize(20).font('Helvetica-Bold').text(`FACTURA ${factura.numero}`, { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(10).text(`Cliente: ${factura.cliente.nombre} ${factura.cliente.apellidos || ''}`, { align: 'center' });
+      if (factura.importadora) {
+        doc.text(`Importadora: ${factura.importadora.nombre}`, { align: 'center' });
+      }
+      doc.text(`Fecha: ${new Date(factura.fecha).toLocaleDateString('es-ES')}`, { align: 'center' });
+      if (factura.fechaVencimiento) {
+        doc.text(`Vencimiento: ${new Date(factura.fechaVencimiento).toLocaleDateString('es-ES')}`, { align: 'center' });
+      }
+      doc.text(`Estado: ${factura.estado}`, { align: 'center' });
+      doc.moveDown(2);
+
+      doc.fontSize(14).font('Helvetica-Bold').text('ITEMS', { underline: true });
+      doc.moveDown();
+
+      let y = doc.y;
+      doc.fontSize(10).font('Helvetica-Bold');
+      doc.text('Producto', 50, y);
+      doc.text('Cantidad', 300, y);
+      doc.text('Precio Unit.', 380, y);
+      doc.text('Subtotal', 460, y);
+      y += 20;
+
+      doc.fontSize(9).font('Helvetica');
+      factura.items.forEach((item) => {
+        doc.text(item.producto.nombre, 50, y);
+        doc.text(`${item.cantidad} ${item.producto.unidadMedida.abreviatura}`, 300, y);
+        doc.text(`$${item.precioUnitario.toFixed(2)}`, 380, y);
+        doc.text(`$${item.subtotal.toFixed(2)}`, 460, y);
+        y += 15;
+        if (y > 750) {
+          doc.addPage();
+          y = 50;
+        }
+      });
+
+      doc.moveDown();
+      doc.fontSize(10).font('Helvetica');
+      doc.text(`Subtotal: $${factura.subtotal.toFixed(2)}`, 380, doc.y);
+      doc.text(`Flete: $${factura.flete.toFixed(2)}`, 380, doc.y + 15);
+      if (factura.tieneSeguro) {
+        doc.text(`Seguro: $${factura.seguro.toFixed(2)}`, 380, doc.y + 15);
+      }
+      if (factura.impuestos > 0) {
+        doc.text(`Impuestos: $${factura.impuestos.toFixed(2)}`, 380, doc.y + 15);
+      }
+      if (factura.descuento > 0) {
+        doc.text(`Descuento: $${factura.descuento.toFixed(2)}`, 380, doc.y + 15);
+      }
+      doc.moveDown();
+      doc.fontSize(12).font('Helvetica-Bold');
+      doc.text(`TOTAL: $${factura.total.toFixed(2)}`, 380, doc.y);
+
+      if (factura.observaciones) {
+        doc.moveDown(2);
+        doc.fontSize(10).font('Helvetica');
+        doc.text(`Observaciones: ${factura.observaciones}`);
+      }
+
+      doc.end();
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      res.status(500).json({ error: 'Error al generar PDF' });
+    }
+  },
+
+  // Factura - Excel
+  async facturaExcel(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const factura = await prisma.factura.findUnique({
+        where: { id },
+        include: {
+          cliente: true,
+          importadora: true,
+          items: {
+            include: {
+              producto: {
+                include: { unidadMedida: true },
+              },
+            },
+          },
+        },
+      });
+
+      if (!factura) {
+        res.status(404).json({ error: 'Factura no encontrada' });
+        return;
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Factura');
+      
+      sheet.columns = [
+        { header: 'Producto', key: 'producto', width: 30 },
+        { header: 'Cantidad', key: 'cantidad', width: 12 },
+        { header: 'Unidad', key: 'unidad', width: 12 },
+        { header: 'Precio Unitario', key: 'precioUnitario', width: 15 },
+        { header: 'Subtotal', key: 'subtotal', width: 15 },
+      ];
+
+      factura.items.forEach((item) => {
+        sheet.addRow({
+          producto: item.producto.nombre,
+          cantidad: item.cantidad,
+          unidad: item.producto.unidadMedida.abreviatura,
+          precioUnitario: item.precioUnitario,
+          subtotal: item.subtotal,
+        });
+      });
+
+      sheet.addRow({});
+      sheet.addRow({
+        producto: 'Subtotal',
+        subtotal: factura.subtotal,
+      });
+      sheet.addRow({
+        producto: 'Flete',
+        subtotal: factura.flete,
+      });
+      if (factura.tieneSeguro) {
+        sheet.addRow({
+          producto: 'Seguro',
+          subtotal: factura.seguro,
+        });
+      }
+      if (factura.impuestos > 0) {
+        sheet.addRow({
+          producto: 'Impuestos',
+          subtotal: factura.impuestos,
+        });
+      }
+      if (factura.descuento > 0) {
+        sheet.addRow({
+          producto: 'Descuento',
+          subtotal: -factura.descuento,
+        });
+      }
+      sheet.addRow({
+        producto: 'TOTAL',
+        subtotal: factura.total,
+      });
+
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' },
+      };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="factura_${factura.numero}.xlsx"`);
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error('Error al generar Excel:', error);
+      res.status(500).json({ error: 'Error al generar Excel' });
     }
   },
 };
