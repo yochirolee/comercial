@@ -167,6 +167,35 @@ function getImageExtension(imagePath: string): 'png' | 'jpeg' | 'gif' {
   return 'png';
 }
 
+// Función para agregar imagen a PDF (maneja URLs remotas y archivos locales)
+async function addImageToPdf(
+  doc: PDFKit.PDFDocument,
+  imagePath: string | null,
+  x: number,
+  y: number,
+  options: { width?: number; height?: number }
+): Promise<void> {
+  if (!imagePath) return;
+  
+  try {
+    const isRemote = imagePath.startsWith('http://') || imagePath.startsWith('https://');
+    
+    if (isRemote) {
+      const buffer = await fetchImageBuffer(imagePath);
+      if (buffer) {
+        doc.image(buffer, x, y, options);
+      }
+    } else {
+      // Archivo local
+      if (fs.existsSync(imagePath)) {
+        doc.image(imagePath, x, y, options);
+      }
+    }
+  } catch (error) {
+    console.error('Error adding image to PDF:', error);
+  }
+}
+
 // ==========================================
 // COLUMNAS DE TABLA - DINÁMICAS según campos con valores
 // ==========================================
@@ -263,13 +292,13 @@ function buildDynamicColumns(items: any[]): DynamicColumns {
 // ==========================================
 // PDF - HEADER COMÚN (Empresa primero, luego título)
 // ==========================================
-function renderPdfHeader(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: number, contentWidth: number): number {
+async function renderPdfHeader(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: number, contentWidth: number): Promise<number> {
   const headerY = doc.y;
   
   // Logo a la izquierda (si existe)
   const logoPath = getImagePath(empresa.logo);
   if (logoPath) {
-    doc.image(logoPath, margin, headerY, { width: 70 });
+    await addImageToPdf(doc, logoPath, margin, headerY, { width: 70 });
   }
 
   // Empresa centrada (PRIMERO)
@@ -440,7 +469,7 @@ function renderPdfTerminos(doc: PDFKit.PDFDocument, margin: number): void {
 // ==========================================
 // PDF - FIRMA COMÚN
 // ==========================================
-function renderPdfFirma(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: number): void {
+async function renderPdfFirma(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: number): Promise<void> {
   // Más espacio antes de la firma para no tapar el texto
   doc.moveDown(4);
   
@@ -451,7 +480,7 @@ function renderPdfFirma(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: n
   // Imagen de firma (si existe) - arriba de la línea
   const firmaPath = getImagePath(empresa.firmaPresidente);
   if (firmaPath) {
-    doc.image(firmaPath, margin + 30, firmaImageY, { width: 100, height: 45 });
+    await addImageToPdf(doc, firmaPath, margin + 30, firmaImageY, { width: 100, height: 45 });
   }
   
   // Línea de firma (debajo de la imagen)
@@ -468,7 +497,7 @@ function renderPdfFirma(doc: PDFKit.PDFDocument, empresa: EmpresaInfo, margin: n
   // Cuño (si existe) - al lado de la firma
   const cunoPath = getImagePath(empresa.cunoEmpresa);
   if (cunoPath) {
-    doc.image(cunoPath, margin + firmaWidth + 20, firmaImageY + 10, { width: 70, height: 70 });
+    await addImageToPdf(doc, cunoPath, margin + firmaWidth + 20, firmaImageY + 10, { width: 70, height: 70 });
   }
 }
 
@@ -803,7 +832,7 @@ export const ExportController = {
     const contentWidth = pageWidth - margin * 2;
 
     // HEADER COMÚN (empresa primero, luego título)
-    const afterHeaderY = renderPdfHeader(doc, empresa, margin, contentWidth);
+    const afterHeaderY = await renderPdfHeader(doc, empresa, margin, contentWidth);
     doc.y = afterHeaderY;
 
     // TABLA DE ITEMS (centrada, con total incluido)
@@ -814,7 +843,7 @@ export const ExportController = {
     renderPdfTerminos(doc, margin);
 
     // FIRMA
-    renderPdfFirma(doc, empresa, margin);
+    await renderPdfFirma(doc, empresa, margin);
 
     doc.end();
   },
@@ -910,7 +939,7 @@ export const ExportController = {
     const contentWidth = pageWidth - margin * 2;
 
     // HEADER COMÚN
-    const afterHeaderY = renderPdfHeader(doc, empresa, margin, contentWidth);
+    const afterHeaderY = await renderPdfHeader(doc, empresa, margin, contentWidth);
     doc.y = afterHeaderY + 10;
 
     // INFO DE OFERTA Y CLIENTE
@@ -950,13 +979,13 @@ export const ExportController = {
     // Imagen de firma empresa (si existe)
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      doc.image(firmaPath, margin + 40, firmaStartY, { width: 100, height: 45 });
+      await addImageToPdf(doc, firmaPath, margin + 40, firmaStartY, { width: 100, height: 45 });
     }
 
     // Cuño (si existe) - al lado de la firma empresa
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      doc.image(cunoPath, margin + firmaWidth + 20, firmaStartY + 10, { width: 70, height: 70 });
+      await addImageToPdf(doc, cunoPath, margin + firmaWidth + 20, firmaStartY + 10, { width: 70, height: 70 });
     }
 
     // Líneas de firma
@@ -1224,7 +1253,7 @@ export const ExportController = {
     const contentWidth = pageWidth - margin * 2;
 
     // HEADER COMÚN
-    const afterHeaderY = renderPdfHeader(doc, empresa, margin, contentWidth);
+    const afterHeaderY = await renderPdfHeader(doc, empresa, margin, contentWidth);
     doc.y = afterHeaderY + 10;
 
     // INFO DE OFERTA Y CLIENTE (igual que CLIENTE)
@@ -1280,13 +1309,13 @@ export const ExportController = {
     // Imagen de firma empresa (si existe)
     const firmaPath = getImagePath(empresa.firmaPresidente);
     if (firmaPath) {
-      doc.image(firmaPath, margin + 40, firmaStartY, { width: 100, height: 45 });
+      await addImageToPdf(doc, firmaPath, margin + 40, firmaStartY, { width: 100, height: 45 });
     }
 
     // Cuño (si existe) - entre las dos firmas o al lado si no hay firma cliente
     const cunoPath = getImagePath(empresa.cunoEmpresa);
     if (cunoPath) {
-      doc.image(cunoPath, margin + firmaWidth + 20, firmaStartY + 10, { width: 70, height: 70 });
+      await addImageToPdf(doc, cunoPath, margin + firmaWidth + 20, firmaStartY + 10, { width: 70, height: 70 });
     }
 
     // Líneas de firma
@@ -1590,7 +1619,7 @@ export const ExportController = {
     const logoPath = getImagePath(empresa.logo);
     
     if (logoPath) {
-      doc.image(logoPath, margin, headerY, { width: 80 });
+      await addImageToPdf(doc, logoPath, margin, headerY, { width: 80 });
     }
     
     doc.fontSize(14).font('Helvetica-Bold');
