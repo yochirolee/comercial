@@ -671,15 +671,13 @@ export default function OperationsPage(): React.ReactElement {
                     </Badge>
                   </TableCell>
                   <TableCell className="font-medium py-3">
-                    {isFirstContainer ? (
-                      <span className="font-semibold text-slate-900">{operation.operationNo}</span>
-                    ) : (
-                      <span className="text-slate-400">-</span>
-                    )}
+                    <span className={isFirstContainer ? "font-semibold text-slate-900" : "text-slate-600"}>
+                      {operation.operationNo}
+                    </span>
                   </TableCell>
                   <TableCell className="py-3">
-                    {isFirstContainer && operation.importadora ? (
-                      <span className="text-sm text-slate-700 font-medium">
+                    {operation.importadora ? (
+                      <span className={`text-sm ${isFirstContainer ? "text-slate-700 font-medium" : "text-slate-500"}`}>
                         {operation.importadora.nombre}
                       </span>
                     ) : (
