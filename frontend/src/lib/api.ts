@@ -662,9 +662,13 @@ export const documentosApi = {
     const contentDisposition = response.headers.get('Content-Disposition');
     let fileName = 'documento.docx';
     if (contentDisposition) {
-      const fileNameMatch = contentDisposition.match(/filename="?(.+)"?/);
-      if (fileNameMatch) {
-        fileName = fileNameMatch[1];
+      // Intentar diferentes formatos de Content-Disposition
+      let match = contentDisposition.match(/filename="([^"]+)"/);
+      if (!match) {
+        match = contentDisposition.match(/filename=([^;]+)/);
+      }
+      if (match && match[1]) {
+        fileName = match[1].trim();
       }
     }
 
@@ -713,9 +717,13 @@ export const documentosApi = {
     const contentDisposition = response.headers.get('Content-Disposition');
     let fileName = 'cierre_expediente.docx';
     if (contentDisposition) {
-      const fileNameMatch = contentDisposition.match(/filename="?(.+)"?/);
-      if (fileNameMatch) {
-        fileName = fileNameMatch[1];
+      // Intentar diferentes formatos de Content-Disposition
+      let match = contentDisposition.match(/filename="([^"]+)"/);
+      if (!match) {
+        match = contentDisposition.match(/filename=([^;]+)/);
+      }
+      if (match && match[1]) {
+        fileName = match[1].trim();
       }
     }
 
@@ -764,9 +772,13 @@ export const documentosApi = {
     const contentDisposition = response.headers.get('Content-Disposition');
     let fileName = 'checklist.docx';
     if (contentDisposition) {
-      const fileNameMatch = contentDisposition.match(/filename="?(.+)"?/);
-      if (fileNameMatch) {
-        fileName = fileNameMatch[1];
+      // Intentar diferentes formatos de Content-Disposition
+      let match = contentDisposition.match(/filename="([^"]+)"/);
+      if (!match) {
+        match = contentDisposition.match(/filename=([^;]+)/);
+      }
+      if (match && match[1]) {
+        fileName = match[1].trim();
       }
     }
 
