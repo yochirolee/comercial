@@ -322,11 +322,61 @@ export const facturasApi = {
 // EXPORTACIÓN
 // ==========================================
 export const exportApi = {
-  downloadPdf: (tipo: string, id: string) => {
-    window.open(`${API_URL}/export/${tipo}/${id}/pdf`, '_blank');
+  downloadPdf: async (tipo: string, id: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    const response = await fetch(`${API_URL}/export/${tipo}/${id}/pdf`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      throw new Error(errorData.error || 'Error al descargar PDF');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${tipo}_${id}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   },
-  downloadExcel: (tipo: string, id: string) => {
-    window.open(`${API_URL}/export/${tipo}/${id}/excel`, '_blank');
+  downloadExcel: async (tipo: string, id: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    const response = await fetch(`${API_URL}/export/${tipo}/${id}/excel`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      throw new Error(errorData.error || 'Error al descargar Excel');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${tipo}_${id}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   },
   // Exportar todos los datos (listas completas)
   exportAllClientes: async (search?: string): Promise<void> => {
