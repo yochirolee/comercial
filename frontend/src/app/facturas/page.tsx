@@ -914,7 +914,7 @@ export default function FacturasPage(): React.ReactElement {
 
           <div className="space-y-4 min-w-0">
             {/* Info básica - Campos editables */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 lg:gap-6 p-4 bg-slate-50 rounded-lg min-w-0">
               <div>
                 <Label className="text-slate-500">Cliente</Label>
                 <p className="font-medium">
@@ -924,7 +924,7 @@ export default function FacturasPage(): React.ReactElement {
                   <p className="text-slate-500 text-sm mt-1">NIT: {selectedFactura.cliente.nit}</p>
                 )}
               </div>
-              <div className="mr-4 sm:mr-6">
+              <div>
                 <Label className="text-slate-500">Importadora</Label>
                 <Select
                   value={editFormData.importadoraId}
