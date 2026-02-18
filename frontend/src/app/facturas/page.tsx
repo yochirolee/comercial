@@ -924,7 +924,7 @@ export default function FacturasPage(): React.ReactElement {
                   <p className="text-slate-500 text-sm mt-1">NIT: {selectedFactura.cliente.nit}</p>
                 )}
               </div>
-              <div className="mb-2 sm:mb-3 pl-1 sm:pl-2">
+              <div className="mb-4 sm:mb-5">
                 <Label className="text-slate-500">Importadora</Label>
                 <Select
                   value={editFormData.importadoraId}
