@@ -913,7 +913,7 @@ export default function FacturasPage(): React.ReactElement {
           </DialogHeader>
 
           <div className="space-y-4 min-w-0">
-            {/* Info básica */}
+            {/* Info básica - Campos editables */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg min-w-0">
               <div>
                 <Label className="text-slate-500">Cliente</Label>
