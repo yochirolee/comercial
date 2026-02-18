@@ -942,7 +942,7 @@ export default function FacturasPage(): React.ReactElement {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="mt-2 sm:mt-3">
                 <Label className="text-slate-500">Número</Label>
                 <Input
                   className="mt-1"
