@@ -806,13 +806,20 @@ export const DocumentoController = {
         .filter(u => u !== '')
         .join(', ');
 
+      // Calcular CFR Total: suma de todos los CFR de las facturas relacionadas
+      // CFR = subtotal + flete + seguro
+      const cfrTotal = facturas.reduce((total, factura) => {
+        const cfrFactura = (factura.subtotal || 0) + (factura.flete || 0) + (factura.seguro || 0);
+        return total + cfrFactura;
+      }, 0);
+
       const data = {
         // Variables existentes del cliente
         fecha: fechaActualES,
         numero_oferta: ofertaCliente.numero || '',
         nombre_cliente: nombreCompleto,
         direccion_cliente: ofertaCliente.cliente.direccion || '',
-        identificacion_cliente: ofertaCliente.cliente.nit || '',
+        identificacion_cliente: ofertaCliente.cliente.nit || ofertaCliente.cliente.campoExtra1 || '',
         nombre_entidad: ofertaCliente.cliente.nombreCompania || '',
         
         // Variables nuevas de productos (agregadas de todas las facturas)
@@ -825,6 +832,9 @@ export const DocumentoController = {
         // Variables de puertos (de la primera factura)
         port_salida: primeraFactura.puertoEmbarque || '',
         port_entrada: 'Mariel',
+        
+        // CFR Total (suma de todos los CFR de las facturas)
+        cfr_total: cfrTotal.toFixed(2),
       };
 
       // Reemplazar variables en la plantilla
