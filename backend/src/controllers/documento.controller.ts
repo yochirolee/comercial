@@ -504,6 +504,12 @@ export const DocumentoController = {
         .map(p => p.descripcion || '')
         .filter(d => d !== '')
         .join(', ');
+      
+      // Concatenar usos previstos de productos (separados por comas)
+      const usosPrevistos = productos
+        .map(p => p.usoPrevisto || '')
+        .filter(u => u !== '')
+        .join(', ');
 
       const data = {
         fecha: fechaActualES,
@@ -514,6 +520,7 @@ export const DocumentoController = {
         nombre_entidad: oferta.cliente.nombreCompania || '',
         nombre_producto: nombresProductos,
         descripcion_producto: descripcionesProductos,
+        uso_previsto: usosPrevistos,
       };
 
       // Reemplazar variables en la plantilla
