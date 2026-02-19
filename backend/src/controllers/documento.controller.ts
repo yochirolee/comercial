@@ -560,4 +560,315 @@ export const DocumentoController = {
       });
     }
   },
+
+  async generateSalesAgreementDocument(req: Request, res: Response): Promise<void> {
+    try {
+      const { ofertaClienteId } = req.params;
+
+      if (!ofertaClienteId) {
+        res.status(400).json({ error: 'ID de oferta cliente es requerido' });
+        return;
+      }
+
+      // Buscar la oferta cliente con sus datos
+      const ofertaCliente = await prisma.ofertaCliente.findUnique({
+        where: { id: ofertaClienteId },
+        include: {
+          cliente: true,
+        },
+      });
+
+      if (!ofertaCliente) {
+        res.status(404).json({ error: 'Oferta cliente no encontrada' });
+        return;
+      }
+
+      // Buscar todas las facturas relacionadas a esta oferta
+      // Pueden estar relacionadas directamente (tipoOfertaOrigen: 'cliente')
+      // o a través de una oferta importadora (tipoOfertaOrigen: 'importadora')
+      
+      // Primero buscar facturas directamente relacionadas
+      const facturasDirectas = await prisma.factura.findMany({
+        where: {
+          tipoOfertaOrigen: 'cliente',
+          ofertaOrigenId: ofertaClienteId,
+        },
+        include: {
+          importadora: true,
+          items: {
+            include: {
+              producto: {
+                include: {
+                  unidadMedida: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Buscar ofertas importadoras relacionadas a esta oferta cliente
+      const ofertasImportadoras = await prisma.ofertaImportadora.findMany({
+        where: {
+          ofertaClienteId: ofertaClienteId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      const ofertasImportadorasIds = ofertasImportadoras.map(oi => oi.id);
+
+      // Buscar facturas relacionadas a través de ofertas importadoras
+      const facturasPorImportadora = ofertasImportadorasIds.length > 0
+        ? await prisma.factura.findMany({
+            where: {
+              tipoOfertaOrigen: 'importadora',
+              ofertaOrigenId: {
+                in: ofertasImportadorasIds,
+              },
+            },
+            include: {
+              importadora: true,
+              items: {
+                include: {
+                  producto: {
+                    include: {
+                      unidadMedida: true,
+                    },
+                  },
+                },
+              },
+            },
+          })
+        : [];
+
+      // Combinar ambas listas y eliminar duplicados
+      const todasLasFacturas = [...facturasDirectas, ...facturasPorImportadora];
+      const facturasUnicas = Array.from(
+        new Map(todasLasFacturas.map(f => [f.id, f])).values()
+      );
+
+      // Ordenar por fecha
+      const facturas = facturasUnicas.sort((a, b) => 
+        new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+      );
+
+      if (!facturas || facturas.length === 0) {
+        res.status(404).json({ error: 'No se encontraron facturas relacionadas a esta oferta' });
+        return;
+      }
+
+      // Agrupar items por producto y sumar cantidades y pesos netos
+      const itemsAgrupados = new Map<string, {
+        producto: any;
+        cantidadTotal: number;
+        pesoNetoTotal: number;
+        precioUnitario: number;
+        usoPrevisto: string | null;
+      }>();
+
+      // Procesar todas las facturas
+      for (const factura of facturas) {
+        for (const item of factura.items) {
+          const productoId = item.productoId;
+          
+          if (itemsAgrupados.has(productoId)) {
+            const existente = itemsAgrupados.get(productoId)!;
+            existente.cantidadTotal += item.cantidad || 0;
+            existente.pesoNetoTotal += item.pesoNeto || 0;
+            // Precio se mantiene igual (ya que será el mismo en todas las facturas)
+            // Uso previsto se mantiene del primero encontrado
+          } else {
+            itemsAgrupados.set(productoId, {
+              producto: item.producto,
+              cantidadTotal: item.cantidad || 0,
+              pesoNetoTotal: item.pesoNeto || 0,
+              precioUnitario: item.precioUnitario || 0,
+              usoPrevisto: item.producto.usoPrevisto || null,
+            });
+          }
+        }
+      }
+
+      // Convertir el Map a array
+      const itemsFinales = Array.from(itemsAgrupados.values());
+
+      // Usar la primera factura para datos generales (puerto, etc.)
+      const primeraFactura = facturas[0];
+
+      // Cargar la plantilla
+      const templatePath = path.join(process.cwd(), 'templates', 'Sales Agreement_template.docx');
+      
+      console.log('Buscando plantilla en:', templatePath);
+      console.log('Directorio actual:', process.cwd());
+      
+      // Intentar rutas alternativas
+      const altPath1 = path.join(__dirname, '..', '..', 'templates', 'Sales Agreement_template.docx');
+      const altPath2 = path.join(process.cwd(), 'backend', 'templates', 'Sales Agreement_template.docx');
+      
+      let finalPath = templatePath;
+      if (!fs.existsSync(templatePath)) {
+        console.log('Plantilla no encontrada en ruta principal, intentando alternativas...');
+        if (fs.existsSync(altPath1)) {
+          finalPath = altPath1;
+          console.log('Plantilla encontrada en:', altPath1);
+        } else if (fs.existsSync(altPath2)) {
+          finalPath = altPath2;
+          console.log('Plantilla encontrada en:', altPath2);
+        } else {
+          console.error('Plantilla no encontrada en ninguna ruta');
+          res.status(404).json({ 
+            error: 'Plantilla no encontrada',
+            searchedPath: templatePath,
+            alternativePaths: [altPath1, altPath2]
+          });
+          return;
+        }
+      }
+
+      // Leer el archivo como buffer
+      let content: Buffer;
+      try {
+        content = fs.readFileSync(finalPath);
+      } catch (error) {
+        console.error('Error al leer plantilla:', error);
+        res.status(500).json({ error: 'Error al leer la plantilla', details: error instanceof Error ? error.message : 'Error desconocido' });
+        return;
+      }
+
+      let zip: PizZip;
+      let doc: Docxtemplater;
+      try {
+        zip = new PizZip(content);
+        doc = new Docxtemplater(zip, {
+          paragraphLoop: true,
+          linebreaks: true,
+          delimiters: {
+            start: '[[',
+            end: ']]',
+          },
+          nullGetter: (part: any) => {
+            return '';
+          },
+        });
+      } catch (error) {
+        console.error('Error al inicializar Docxtemplater:', error);
+        if (error && typeof error === 'object' && 'properties' in error) {
+          const props = (error as any).properties;
+          if (props.errors && Array.isArray(props.errors)) {
+            console.error('Errores en la plantilla:');
+            props.errors.forEach((err: any, idx: number) => {
+              console.error(`Error ${idx + 1}:`, err.message, err.properties);
+            });
+          }
+        }
+        res.status(500).json({ 
+          error: 'Error al procesar la plantilla', 
+          details: error instanceof Error ? error.message : 'Error desconocido',
+          hint: 'La plantilla debe usar delimiters [[variable]] en lugar de {{variable}} para evitar que Word divida los tags entre elementos XML'
+        });
+        return;
+      }
+
+      // Preparar datos para reemplazar en la plantilla
+      const fechaActual = new Date();
+      const dia = String(fechaActual.getDate()).padStart(2, '0');
+      const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
+      const año = fechaActual.getFullYear();
+      const fechaActualES = `${dia}/${mes}/${año}`;
+      
+      // Construir nombre completo con apellidos si existen
+      const nombreCompleto = ofertaCliente.cliente.apellidos 
+        ? `${ofertaCliente.cliente.nombre || ''} ${ofertaCliente.cliente.apellidos}`.trim()
+        : (ofertaCliente.cliente.nombre || '');
+
+      // Variables de productos - usar items agrupados
+      const nombresProductos = itemsFinales
+        .map(item => item.producto.nombre || '')
+        .filter(n => n !== '')
+        .join(', ');
+      
+      const cantidades = itemsFinales
+        .map(item => item.cantidadTotal.toString())
+        .join(', ');
+      
+      const pesosNetos = itemsFinales
+        .map(item => item.pesoNetoTotal.toString())
+        .join(', ');
+      
+      const precios = itemsFinales
+        .map(item => item.precioUnitario.toString())
+        .join(', ');
+      
+      const usosPrevistos = itemsFinales
+        .map(item => item.usoPrevisto || '')
+        .filter(u => u !== '')
+        .join(', ');
+
+      const data = {
+        // Variables existentes del cliente
+        fecha: fechaActualES,
+        numero_oferta: ofertaCliente.numero || '',
+        nombre_cliente: nombreCompleto,
+        direccion_cliente: ofertaCliente.cliente.direccion || '',
+        identificacion_cliente: ofertaCliente.cliente.nit || '',
+        nombre_entidad: ofertaCliente.cliente.nombreCompania || '',
+        
+        // Variables nuevas de productos (agregadas de todas las facturas)
+        nombre_producto: nombresProductos,
+        cant: cantidades,
+        peso_neto: pesosNetos,
+        price: precios,
+        uso_previsto: usosPrevistos,
+        
+        // Variables de puertos (de la primera factura)
+        port_salida: primeraFactura.puertoEmbarque || '',
+        port_entrada: 'Mariel',
+      };
+
+      // Reemplazar variables en la plantilla
+      try {
+        doc.render(data);
+      } catch (error: any) {
+        console.error('Error al renderizar plantilla:', error);
+        console.error('Error properties:', error.properties);
+        res.status(500).json({ 
+          error: 'Error al procesar la plantilla',
+          details: error.message || 'Error desconocido',
+          properties: error.properties || null
+        });
+        return;
+      }
+
+      // Generar el buffer del documento
+      let buf: Buffer;
+      try {
+        buf = doc.getZip().generate({
+          type: 'nodebuffer',
+          compression: 'DEFLATE',
+        });
+      } catch (error) {
+        console.error('Error al generar buffer:', error);
+        res.status(500).json({ error: 'Error al generar el documento', details: error instanceof Error ? error.message : 'Error desconocido' });
+        return;
+      }
+
+      // Configurar headers para descarga
+      const safeFileName = `Sales_Agreement_${ofertaCliente.numero}.docx`;
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"`);
+      res.setHeader('Content-Length', buf.length.toString());
+
+      // Enviar el archivo
+      res.send(buf);
+    } catch (error) {
+      console.error('Error al generar documento:', error);
+      res.status(500).json({ 
+        error: 'Error al generar el documento',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  },
 };

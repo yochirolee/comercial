@@ -16,3 +16,6 @@ documentoRouter.get('/cierre-expediente/:ofertaClienteId', DocumentoController.g
 
 // GET /api/documentos/checklist/:ofertaClienteId - Generar documento checklist
 documentoRouter.get('/checklist/:ofertaClienteId', DocumentoController.generateChecklistDocument);
+
+// GET /api/documentos/sales-agreement/:ofertaClienteId - Generar documento sales agreement
+documentoRouter.get('/sales-agreement/:ofertaClienteId', DocumentoController.generateSalesAgreementDocument);

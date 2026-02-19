@@ -21,6 +21,7 @@ const productoSchema = z.object({
   precioXSaco: z.number().nullable().optional(),
   pesoXCaja: z.number().nullable().optional(),
   precioXCaja: z.number().nullable().optional(),
+  usoPrevisto: z.string().nullable().optional(),
   campoExtra1: z.string().optional(),
   campoExtra2: z.string().optional(),
   campoExtra3: z.string().optional(),

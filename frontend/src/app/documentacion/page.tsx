@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Download, FileText, FileCheck, Sparkles, FolderCheck, ClipboardCheck } from "lucide-react";
+import { Download, FileText, FileCheck, Sparkles, FolderCheck, ClipboardCheck, FileSignature } from "lucide-react";
 import { ofertasClienteApi, documentosApi } from "@/lib/api";
 import type { OfertaCliente } from "@/lib/api";
 
@@ -54,6 +54,15 @@ const documentTemplates: DocumentTemplate[] = [
     color: "text-emerald-700",
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-200",
+  },
+  {
+    id: "sales-agreement",
+    name: "Sales Agreement",
+    description: "Genera un documento Sales Agreement desde una oferta a cliente, agregando datos de todas las facturas relacionadas.",
+    icon: FileSignature,
+    color: "text-purple-700",
+    bgColor: "bg-purple-50",
+    borderColor: "border-purple-200",
   },
 ];
 
@@ -98,6 +107,9 @@ export default function DocumentacionPage(): React.ReactElement {
         toast.success("Documento generado y descargado");
       } else if (templateId === "checklist") {
         await documentosApi.downloadChecklistDocument(selectedOfertaId);
+        toast.success("Documento generado y descargado");
+      } else if (templateId === "sales-agreement") {
+        await documentosApi.downloadSalesAgreementDocument(selectedOfertaId);
         toast.success("Documento generado y descargado");
       } else {
         toast.error("Tipo de documento no implementado");

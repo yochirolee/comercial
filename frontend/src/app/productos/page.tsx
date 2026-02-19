@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -49,6 +50,7 @@ const emptyProducto: ProductoInput = {
   precioXSaco: null,
   pesoXCaja: null,
   precioXCaja: null,
+  usoPrevisto: null,
 };
 
 export default function ProductosPage() {
@@ -152,6 +154,7 @@ export default function ProductosPage() {
       precioXSaco: producto.precioXSaco ?? null,
       pesoXCaja: producto.pesoXCaja ?? null,
       precioXCaja: producto.precioXCaja ?? null,
+      usoPrevisto: producto.usoPrevisto ?? null,
     });
     setPrecioString(producto.precioBase.toString());
     setInfoFields({
@@ -174,8 +177,12 @@ export default function ProductosPage() {
 
     // Convertir precio string a número y campos informativos
     const dataToSend: ProductoInput = {
-      ...formData,
+      codigo: formData.codigo,
+      nombre: formData.nombre,
+      descripcion: formData.descripcion,
       precioBase: parseFloat(precioString) || 0,
+      unidadMedidaId: formData.unidadMedidaId,
+      codigoArancelario: formData.codigoArancelario,
       cantidad: infoFields.cantidad && infoFields.cantidad.trim() !== "" 
         ? parseFloat(infoFields.cantidad) 
         : null,
@@ -202,6 +209,9 @@ export default function ProductosPage() {
         : null,
       precioXCaja: infoFields.precioXCaja && infoFields.precioXCaja.trim() !== "" 
         ? parseFloat(infoFields.precioXCaja) 
+        : null,
+      usoPrevisto: formData.usoPrevisto && formData.usoPrevisto.trim() !== "" 
+        ? formData.usoPrevisto 
         : null,
     };
 
@@ -319,6 +329,17 @@ export default function ProductosPage() {
                       name="descripcion"
                       value={formData.descripcion}
                       onChange={handleChange}
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-2">
+                    <Label htmlFor="usoPrevisto">Uso Previsto</Label>
+                    <Textarea
+                      id="usoPrevisto"
+                      name="usoPrevisto"
+                      value={formData.usoPrevisto || ""}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, usoPrevisto: e.target.value || null }))}
+                      rows={4}
+                      placeholder="Descripción del uso previsto del producto..."
                     />
                   </div>
                   <div className="space-y-2">

@@ -120,6 +120,7 @@ model Producto {
   precioXSaco      Float?
   pesoXCaja        Float?
   precioXCaja      Float?
+  usoPrevisto      String?  // Uso previsto del producto (texto descriptivo)
   
   campoExtra1      String?
   campoExtra2      String?
