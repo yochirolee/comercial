@@ -493,19 +493,25 @@ export const DocumentoController = {
         ? oferta.items.map(item => item.producto).filter(p => p !== null)
         : [];
       
-      // Concatenar nombres de productos (separados por comas)
+      // Crear array de productos con toda su información para usar en loops del template
+      const productosArray = productos.map((p, index) => ({
+        numero: index + 1,
+        nombre: p.nombre || '',
+        descripcion: p.descripcion || '',
+        uso_previsto: p.usoPrevisto || '',
+      }));
+      
+      // También mantener las versiones concatenadas para compatibilidad con templates antiguos
       const nombresProductos = productos
         .map(p => p.nombre || '')
         .filter(n => n !== '')
         .join(', ');
       
-      // Concatenar descripciones de productos (separadas por comas)
       const descripcionesProductos = productos
         .map(p => p.descripcion || '')
         .filter(d => d !== '')
         .join(', ');
       
-      // Concatenar usos previstos de productos (separados por comas)
       const usosPrevistos = productos
         .map(p => p.usoPrevisto || '')
         .filter(u => u !== '')
@@ -518,9 +524,12 @@ export const DocumentoController = {
         direccion_cliente: oferta.cliente.direccion || '',
         identificacion_cliente: oferta.cliente.nit || '',
         nombre_entidad: oferta.cliente.nombreCompania || '',
+        // Versiones concatenadas (para compatibilidad)
         nombre_producto: nombresProductos,
         descripcion_producto: descripcionesProductos,
         uso_previsto: usosPrevistos,
+        // Array de productos para usar en loops del template
+        productos: productosArray,
       };
 
       // Reemplazar variables en la plantilla
