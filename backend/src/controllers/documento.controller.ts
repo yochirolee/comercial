@@ -229,7 +229,7 @@ export const DocumentoController = {
       }
 
       // Configurar headers para descarga
-      const safeFileName = `Oferta_${oferta.numero}.docx`;
+      const safeFileName = `Enduser_Enduse_${oferta.numero}.docx`;
       
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
       res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"`);
