@@ -667,19 +667,19 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   </div>
 
                   {/* Seleccionar importadora */}
-                  <div className="space-y-1 sm:space-y-1.5">
+                  <div className="space-y-1 sm:space-y-1.5 min-w-0">
                     <Label className="text-xs sm:text-sm">Importadora *</Label>
                     <Select
                       value={selectedImportadoraId}
                       onValueChange={setSelectedImportadoraId}
                     >
-                      <SelectTrigger className="text-sm h-9 sm:h-10">
-                        <SelectValue placeholder="Seleccionar importadora" />
+                      <SelectTrigger className="text-sm h-9 sm:h-10 max-w-full">
+                        <SelectValue placeholder="Seleccionar importadora" className="truncate" />
                       </SelectTrigger>
                       <SelectContent>
                         {importadoras.map((imp) => (
-                          <SelectItem key={imp.id} value={imp.id} className="text-sm">
-                            {imp.nombre}
+                          <SelectItem key={imp.id} value={imp.id} className="text-sm max-w-[300px]">
+                            <span className="truncate block">{imp.nombre}</span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1115,19 +1115,19 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                     {`${selectedOferta?.cliente.nombre || ""} ${selectedOferta?.cliente.apellidos || ""}`.trim()}
                   </p>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <Label className="text-slate-500 text-xs sm:text-sm">Importadora *</Label>
                   <Select
                     value={selectedOferta?.importadoraId || ""}
                     onValueChange={(value) => setSelectedOferta(prev => prev ? { ...prev, importadoraId: value } : null)}
                   >
-                    <SelectTrigger className="mt-1 h-9 sm:h-10 text-sm">
-                      <SelectValue placeholder="Seleccionar importadora" />
+                    <SelectTrigger className="mt-1 h-9 sm:h-10 text-sm max-w-full">
+                      <SelectValue placeholder="Seleccionar importadora" className="truncate" />
                     </SelectTrigger>
                     <SelectContent>
                       {importadoras.map((imp) => (
-                        <SelectItem key={imp.id} value={imp.id} className="text-sm">
-                          {imp.nombre}
+                        <SelectItem key={imp.id} value={imp.id} className="text-sm max-w-[300px]">
+                          <span className="truncate block">{imp.nombre}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>

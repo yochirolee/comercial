@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Loader2, Menu } from "lucide-react";
@@ -70,17 +71,19 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       <main className="flex-1 overflow-auto">
         {/* Header móvil con menú hamburguesa */}
         <div className="lg:hidden sticky top-0 z-40 bg-[#0C0A04] px-4 py-3 flex items-center justify-between">
-          <h1 className="text-xl font-bold">
-            <span className="text-[#F3B450]">ZAS</span>
-            <span className="text-gray-400 text-sm ml-2">by JMC</span>
-          </h1>
+          <Link href="/" className="block">
+            <h1 className="text-xl font-bold cursor-pointer hover:opacity-80 transition-opacity">
+              <span className="text-[#F3B450]">ZAS</span>
+              <span className="text-gray-400 text-sm ml-2">by JMC</span>
+            </h1>
+          </Link>
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72 bg-[#0C0A04] border-none">
+            <SheetContent side="left" className="p-0 w-72 bg-[#0C0A04] border-none overflow-hidden">
               <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
               <Sidebar isMobile onNavigate={() => setMobileMenuOpen(false)} />
             </SheetContent>

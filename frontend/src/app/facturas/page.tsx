@@ -924,19 +924,19 @@ export default function FacturasPage(): React.ReactElement {
                   <p className="text-slate-500 text-sm mt-1">NIT: {selectedFactura.cliente.nit}</p>
                 )}
               </div>
-              <div className="lg:pr-4">
+              <div className="lg:pr-4 min-w-0">
                 <Label className="text-slate-500">Importadora</Label>
                 <Select
                   value={editFormData.importadoraId}
                   onValueChange={(value) => setEditFormData((p) => ({ ...p, importadoraId: value }))}
                 >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Seleccionar importadora" />
+                  <SelectTrigger className="mt-1 max-w-full">
+                    <SelectValue placeholder="Seleccionar importadora" className="truncate" />
                   </SelectTrigger>
                   <SelectContent>
                     {importadoras.map((imp) => (
-                      <SelectItem key={imp.id} value={imp.id}>
-                        {imp.nombre}
+                      <SelectItem key={imp.id} value={imp.id} className="max-w-[300px]">
+                        <span className="truncate block">{imp.nombre}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>

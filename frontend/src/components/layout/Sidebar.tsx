@@ -75,18 +75,20 @@ export function Sidebar({ onNavigate, isMobile }: SidebarProps): React.ReactElem
   return (
     <aside className={cn(
       "bg-[#0C0A04] text-white flex flex-col",
-      isMobile ? "w-full h-full" : "w-64 h-screen overflow-y-auto"
+      isMobile ? "w-full h-full max-h-screen" : "w-64 h-screen"
     )}>
       {/* Logo Header */}
-      <div className="p-6 border-b border-white/10">
-        <h1 className="text-2xl font-bold tracking-tight">
-          <span className="text-[#F3B450]">ZAS</span>
-          <span className="text-gray-400 text-sm ml-2">by JMC</span>
-        </h1>
+      <div className="p-6 border-b border-white/10 flex-shrink-0">
+        <Link href="/" onClick={handleLinkClick} className="block">
+          <h1 className="text-2xl font-bold tracking-tight cursor-pointer hover:opacity-80 transition-opacity">
+            <span className="text-[#F3B450]">ZAS</span>
+            <span className="text-gray-400 text-sm ml-2">by JMC</span>
+          </h1>
+        </Link>
       </div>
       
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
           if (item.children) {
             // Filtrar children según permisos de admin
@@ -153,7 +155,7 @@ export function Sidebar({ onNavigate, isMobile }: SidebarProps): React.ReactElem
       </nav>
 
       {/* User Info & Logout */}
-      <div className="p-4 border-t border-white/10 space-y-3">
+      <div className="p-4 border-t border-white/10 space-y-3 flex-shrink-0">
         {usuario && (
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="w-8 h-8 rounded-full bg-[#F3B450] flex items-center justify-center">
