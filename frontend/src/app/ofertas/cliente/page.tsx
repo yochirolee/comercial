@@ -279,6 +279,7 @@ export default function OfertasClientePage(): React.ReactElement {
     fecha: "",
     observaciones: "",
     campoExtra1: "",
+    estado: "pendiente",
   });
 
   async function openDetailDialog(oferta: OfertaCliente): Promise<void> {
@@ -289,6 +290,7 @@ export default function OfertasClientePage(): React.ReactElement {
       fecha: updated.fecha ? updated.fecha.split('T')[0] : "",
       observaciones: updated.observaciones || "",
       campoExtra1: updated.campoExtra1 || "OFERTA VALIDA POR 30 DIAS",
+      estado: updated.estado || "pendiente",
     });
     setDetailDialogOpen(true);
   }
@@ -906,6 +908,21 @@ export default function OfertasClientePage(): React.ReactElement {
                       onChange={(e) => setEditFormData((p) => ({ ...p, observaciones: e.target.value }))}
                       className="h-9 sm:h-10 text-sm"
                     />
+                  </div>
+                  <div className="space-y-1 sm:space-y-2">
+                    <Label className="text-xs sm:text-sm">Estado</Label>
+                    <Select
+                      value={editFormData.estado}
+                      onValueChange={(value) => setEditFormData((p) => ({ ...p, estado: value }))}
+                    >
+                      <SelectTrigger className="h-9 sm:h-10 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pendiente">Pendiente</SelectItem>
+                        <SelectItem value="aceptada">Aceptada</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

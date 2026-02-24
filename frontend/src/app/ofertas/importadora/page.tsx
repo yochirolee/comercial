@@ -1032,7 +1032,9 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                       {formatCurrency(oferta.precioCIF)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{oferta.estado}</Badge>
+                      <Badge variant={oferta.estado === "aceptada" ? "default" : "outline"}>
+                        {oferta.estado}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
