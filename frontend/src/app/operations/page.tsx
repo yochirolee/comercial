@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, RefreshCw } from "lucide-react";
 import { operationsApi, ofertasClienteApi, importadorasApi } from "@/lib/api";
 import type { Operation, OperationContainer, OfertaCliente, Importadora } from "@/lib/api";
 
@@ -145,6 +145,12 @@ export default function OperationsPage(): React.ReactElement {
   const [selectedOfertaId, setSelectedOfertaId] = useState("");
   const [selectedImportadoraId, setSelectedImportadoraId] = useState("");
   const [operationType, setOperationType] = useState<"COMMERCIAL" | "PARCEL">("COMMERCIAL");
+  
+  // Auto-refresh
+  const AUTO_REFRESH_INTERVAL = 30000; // 30 segundos
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Flatten containers for table display
   const containerRows: Array<{
@@ -292,20 +298,54 @@ export default function OperationsPage(): React.ReactElement {
   // Aplicar ordenamiento
   const sortedContainerRows = sortContainerRows(containerRows);
 
-  useEffect(() => {
-    loadData();
-  }, [filterType, filterStatus, searchTerm]);
-
-  async function loadData(): Promise<void> {
-    setLoading(true);
+  // Función para refrescar solo operaciones (para auto-refresh)
+  const refreshOperations = useCallback(async (): Promise<void> => {
+    setIsRefreshing(true);
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (filterType !== "all") params.type = filterType;
       if (filterStatus !== "all") params.status = filterStatus;
       if (searchTerm) params.search = searchTerm;
       
       const data = await operationsApi.getAll(params);
       setOperations(data);
+      setLastRefresh(new Date());
+    } catch (error) {
+      console.error("Error al refrescar operaciones:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [filterType, filterStatus, searchTerm]);
+
+  // Cargar datos iniciales
+  useEffect(() => {
+    loadData();
+  }, [filterType, filterStatus, searchTerm]);
+
+  // Auto-refresh cada 30 segundos
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      refreshOperations();
+    }, AUTO_REFRESH_INTERVAL);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [refreshOperations]);
+
+  async function loadData(): Promise<void> {
+    setLoading(true);
+    try {
+      const params: Record<string, string> = {};
+      if (filterType !== "all") params.type = filterType;
+      if (filterStatus !== "all") params.status = filterStatus;
+      if (searchTerm) params.search = searchTerm;
+      
+      const data = await operationsApi.getAll(params);
+      setOperations(data);
+      setLastRefresh(new Date());
       
       // Load ofertas and importadoras for creation dialog
       const [ofertas, importadorasData] = await Promise.all([
@@ -473,6 +513,30 @@ export default function OperationsPage(): React.ReactElement {
           </Dialog>
         }
       />
+
+      {/* Auto-refresh indicator */}
+      <div className="mb-4 flex items-center justify-between text-sm text-slate-500">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${isRefreshing ? "bg-yellow-500 animate-pulse" : "bg-green-500"}`}></span>
+            Auto-refresh: cada 30s
+          </span>
+          <span className="text-slate-400">|</span>
+          <span>
+            Última actualización: {lastRefresh.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={refreshOperations}
+          disabled={isRefreshing}
+          className="gap-1.5"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          Actualizar
+        </Button>
+      </div>
 
       {/* Filters */}
       <div className="mb-6 flex flex-col sm:flex-row gap-4 p-4 sm:p-6 bg-slate-50 rounded-lg">
