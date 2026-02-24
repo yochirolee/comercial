@@ -29,10 +29,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { operationsApi, ofertasClienteApi, importadorasApi } from "@/lib/api";
 import type { Operation, OperationContainer, OfertaCliente, Importadora } from "@/lib/api";
+
+// Estados considerados como inactivos/completados
+const INACTIVE_STATUSES = ["Delivered", "Closed", "Cancelled"];
 
 // Status colors
 const statusColors: Record<string, string> = {
@@ -133,6 +137,7 @@ export default function OperationsPage(): React.ReactElement {
   const [filterType, setFilterType] = useState<"COMMERCIAL" | "PARCEL" | "all">("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [showOnlyActive, setShowOnlyActive] = useState(true); // Por defecto solo activas
   
   // Sorting - column-based with direction
   type SortColumn = "operation" | "container" | "booking" | "bl" | "etd" | "eta" | "status" | "last-update" | "importadora" | null;
@@ -293,8 +298,13 @@ export default function OperationsPage(): React.ReactElement {
     });
   }
 
+  // Filtrar por estado activo/inactivo
+  const filteredContainerRows = showOnlyActive
+    ? containerRows.filter(({ container }) => !INACTIVE_STATUSES.includes(container.status))
+    : containerRows;
+
   // Aplicar ordenamiento
-  const sortedContainerRows = sortContainerRows(containerRows);
+  const sortedContainerRows = sortContainerRows(filteredContainerRows);
 
   // Función para refrescar solo operaciones (para auto-refresh)
   const refreshOperations = useCallback(async (): Promise<void> => {
@@ -555,6 +565,16 @@ export default function OperationsPage(): React.ReactElement {
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="flex items-end pb-1">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <Checkbox
+              checked={showOnlyActive}
+              onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
+              className="h-5 w-5"
+            />
+            <span className="text-sm font-medium text-slate-700 whitespace-nowrap">Solo activas</span>
+          </label>
         </div>
       </div>
 
