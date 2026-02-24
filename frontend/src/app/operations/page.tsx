@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, RefreshCw } from "lucide-react";
+import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { operationsApi, ofertasClienteApi, importadorasApi } from "@/lib/api";
 import type { Operation, OperationContainer, OfertaCliente, Importadora } from "@/lib/api";
 
@@ -146,10 +146,8 @@ export default function OperationsPage(): React.ReactElement {
   const [selectedImportadoraId, setSelectedImportadoraId] = useState("");
   const [operationType, setOperationType] = useState<"COMMERCIAL" | "PARCEL">("COMMERCIAL");
   
-  // Auto-refresh
-  const AUTO_REFRESH_INTERVAL = 30000; // 30 segundos
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  // Auto-refresh (cada 30 segundos)
+  const AUTO_REFRESH_INTERVAL = 30000;
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Flatten containers for table display
@@ -300,7 +298,6 @@ export default function OperationsPage(): React.ReactElement {
 
   // Función para refrescar solo operaciones (para auto-refresh)
   const refreshOperations = useCallback(async (): Promise<void> => {
-    setIsRefreshing(true);
     try {
       const params: Record<string, string> = {};
       if (filterType !== "all") params.type = filterType;
@@ -309,11 +306,8 @@ export default function OperationsPage(): React.ReactElement {
       
       const data = await operationsApi.getAll(params);
       setOperations(data);
-      setLastRefresh(new Date());
     } catch (error) {
       console.error("Error al refrescar operaciones:", error);
-    } finally {
-      setIsRefreshing(false);
     }
   }, [filterType, filterStatus, searchTerm]);
 
@@ -345,7 +339,6 @@ export default function OperationsPage(): React.ReactElement {
       
       const data = await operationsApi.getAll(params);
       setOperations(data);
-      setLastRefresh(new Date());
       
       // Load ofertas and importadoras for creation dialog
       const [ofertas, importadorasData] = await Promise.all([
@@ -514,32 +507,8 @@ export default function OperationsPage(): React.ReactElement {
         }
       />
 
-      {/* Auto-refresh indicator */}
-      <div className="mb-4 flex items-center justify-between text-sm text-slate-500">
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${isRefreshing ? "bg-yellow-500 animate-pulse" : "bg-green-500"}`}></span>
-            Auto-refresh: cada 30s
-          </span>
-          <span className="text-slate-400">|</span>
-          <span>
-            Última actualización: {lastRefresh.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-          </span>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={refreshOperations}
-          disabled={isRefreshing}
-          className="gap-1.5"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
-          Actualizar
-        </Button>
-      </div>
-
       {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 p-4 sm:p-6 bg-slate-50 rounded-lg">
+      <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4 p-4 sm:p-6 bg-slate-50 rounded-lg">
         <div className="flex-1 min-w-0">
           <Label className="text-sm font-medium mb-2 block">Buscar</Label>
           <div className="relative">
@@ -552,7 +521,7 @@ export default function OperationsPage(): React.ReactElement {
             />
           </div>
         </div>
-        <div className="w-full sm:w-48 lg:w-56">
+        <div className="w-full sm:w-36 lg:w-40">
           <Label className="text-sm font-medium mb-2 block">Tipo</Label>
           <Select
             value={filterType}
@@ -568,7 +537,7 @@ export default function OperationsPage(): React.ReactElement {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-full sm:w-48 lg:w-56">
+        <div className="w-full sm:w-40 lg:w-44">
           <Label className="text-sm font-medium mb-2 block">Estado</Label>
           <Select
             value={filterStatus}
