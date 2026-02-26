@@ -55,6 +55,7 @@ const navigation: NavItem[] = [
     children: [
       { name: "Mi Perfil", href: "/settings", icon: User },
       { name: "Usuarios", href: "/settings/usuarios", icon: UserCog, adminOnly: true },
+      { name: "Dashboard", href: "/settings/dashboard", icon: Settings, adminOnly: true },
     ]
   },
 ];

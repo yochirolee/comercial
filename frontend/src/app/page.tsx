@@ -12,10 +12,11 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Ship
 } from "lucide-react";
-import { clientesApi, productosApi, ofertasClienteApi, ofertasImportadoraApi, ofertasGeneralesApi, facturasApi } from "@/lib/api";
-import type { Producto, Factura, OfertaCliente, OfertaImportadora, Cliente } from "@/lib/api";
+import { clientesApi, productosApi, ofertasClienteApi, ofertasImportadoraApi, ofertasGeneralesApi, facturasApi, operationsApi } from "@/lib/api";
+import type { Producto, Factura, OfertaCliente, OfertaImportadora, Cliente, Operation } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // ==========================================
@@ -243,6 +244,16 @@ export default function Dashboard(): React.ReactElement {
     facturasPagadas: 0,
     facturasPendientes: 0,
     totalFacturado: 0,
+    totalMesActual: 0,
+    totalMesAnterior: 0,
+    facturasMesActual: 0,
+    facturasMesAnterior: 0,
+    yearConfig: new Date().getFullYear(),
+    // Contenedores
+    contenedoresTransitoCommercial: 0,
+    contenedoresTransitoParcel: 0,
+    contenedoresMarielCommercial: 0,
+    contenedoresMarielParcel: 0,
   });
   const [funnel, setFunnel] = useState<FunnelStep[]>([]);
   const [agingBuckets, setAgingBuckets] = useState<AgingBucket[]>([]);
@@ -251,18 +262,103 @@ export default function Dashboard(): React.ReactElement {
   useEffect(() => {
     async function loadStats(): Promise<void> {
       try {
-        const [clientes, productos, ofertasCliente, ofertasImportadora, ofertasGenerales, facturas] = await Promise.all([
+        // Leer configuración del dashboard
+        let yearConfig = new Date().getFullYear();
+        try {
+          const stored = localStorage.getItem("zas_dashboard_config");
+          if (stored) {
+            const config = JSON.parse(stored);
+            yearConfig = config.year || yearConfig;
+          }
+        } catch {
+          console.error("Error reading dashboard config");
+        }
+
+        const [clientes, productos, ofertasCliente, ofertasImportadora, ofertasGenerales, facturas, operations] = await Promise.all([
           clientesApi.getAll(),
           productosApi.getAll(),
           ofertasClienteApi.getAll(),
           ofertasImportadoraApi.getAll(),
           ofertasGeneralesApi.getAll(),
           facturasApi.getAll(),
+          operationsApi.getAll(),
         ]);
 
-        const totalFacturado = facturas
+        // Filtrar facturas del año configurado
+        const facturasDelAno = facturas.filter((f: Factura) => {
+          const fecha = new Date(f.fecha);
+          return fecha.getFullYear() === yearConfig;
+        });
+
+        const totalFacturado = facturasDelAno
           .filter((f: Factura) => f.estado === "pagada")
           .reduce((acc: number, f: Factura) => acc + f.total, 0);
+
+        // Calcular mes actual y mes anterior
+        const now = new Date();
+        const mesActual = now.getMonth();
+        const anoActual = now.getFullYear();
+        
+        // Mes anterior (puede ser diciembre del año anterior)
+        const mesAnterior = mesActual === 0 ? 11 : mesActual - 1;
+        const anoMesAnterior = mesActual === 0 ? anoActual - 1 : anoActual;
+
+        const totalMesActual = facturas
+          .filter((f: Factura) => {
+            const fecha = new Date(f.fecha);
+            return fecha.getMonth() === mesActual && 
+                   fecha.getFullYear() === anoActual && 
+                   f.estado === "pagada";
+          })
+          .reduce((acc: number, f: Factura) => acc + f.total, 0);
+
+        const totalMesAnterior = facturas
+          .filter((f: Factura) => {
+            const fecha = new Date(f.fecha);
+            return fecha.getMonth() === mesAnterior && 
+                   fecha.getFullYear() === anoMesAnterior && 
+                   f.estado === "pagada";
+          })
+          .reduce((acc: number, f: Factura) => acc + f.total, 0);
+
+        // Cantidad de facturas emitidas por mes
+        const facturasMesActual = facturas.filter((f: Factura) => {
+          const fecha = new Date(f.fecha);
+          return fecha.getMonth() === mesActual && fecha.getFullYear() === anoActual;
+        }).length;
+
+        const facturasMesAnterior = facturas.filter((f: Factura) => {
+          const fecha = new Date(f.fecha);
+          return fecha.getMonth() === mesAnterior && fecha.getFullYear() === anoMesAnterior;
+        }).length;
+
+        // Calcular contenedores por estado y tipo
+        const estadosTransito = ["Departed US"];
+        const estadosMariel = ["Arrived Cuba", "Customs", "Released"];
+        
+        let contenedoresTransitoCommercial = 0;
+        let contenedoresTransitoParcel = 0;
+        let contenedoresMarielCommercial = 0;
+        let contenedoresMarielParcel = 0;
+
+        operations.forEach((op: Operation) => {
+          const containers = op.containers || [];
+          containers.forEach((container) => {
+            if (estadosTransito.includes(container.status)) {
+              if (op.operationType === "COMMERCIAL") {
+                contenedoresTransitoCommercial++;
+              } else {
+                contenedoresTransitoParcel++;
+              }
+            } else if (estadosMariel.includes(container.status)) {
+              if (op.operationType === "COMMERCIAL") {
+                contenedoresMarielCommercial++;
+              } else {
+                contenedoresMarielParcel++;
+              }
+            }
+          });
+        });
 
         const facturasPagadas = facturas.filter((f: Factura) => f.estado === "pagada").length;
         const facturasPendientes = facturas.filter((f: Factura) => f.estado === "pendiente").length;
@@ -281,7 +377,7 @@ export default function Dashboard(): React.ReactElement {
         ];
 
         // Calcular aging buckets
-        const now = new Date();
+        const nowDate = new Date();
         const agingData: AgingBucket[] = [
           { label: "0–7 días", value: 0, color: "bg-green-400" },
           { label: "8–15 días", value: 0, color: "bg-yellow-400" },
@@ -293,7 +389,7 @@ export default function Dashboard(): React.ReactElement {
           .filter((f: Factura) => f.estado === "pendiente")
           .forEach((f: Factura) => {
             const fecha = new Date(f.fecha);
-            const dias = Math.floor((now.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24));
+            const dias = Math.floor((nowDate.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24));
             if (dias <= 7) agingData[0].value++;
             else if (dias <= 15) agingData[1].value++;
             else if (dias <= 30) agingData[2].value++;
@@ -301,7 +397,7 @@ export default function Dashboard(): React.ReactElement {
           });
 
         // Calcular clientes nuevos este mes
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfMonth = new Date(nowDate.getFullYear(), nowDate.getMonth(), 1);
         const clientesEsteMes = clientes.filter((c: Cliente) => {
           if (!c.createdAt) return false;
           const createdDate = new Date(c.createdAt);
@@ -328,6 +424,15 @@ export default function Dashboard(): React.ReactElement {
           facturasPagadas,
           facturasPendientes,
           totalFacturado,
+          totalMesActual,
+          totalMesAnterior,
+          facturasMesActual,
+          facturasMesAnterior,
+          yearConfig,
+          contenedoresTransitoCommercial,
+          contenedoresTransitoParcel,
+          contenedoresMarielCommercial,
+          contenedoresMarielParcel,
         });
         setFunnel(funnelData);
         setAgingBuckets(agingData);
@@ -341,7 +446,17 @@ export default function Dashboard(): React.ReactElement {
     loadStats();
   }, []);
 
-  // Fila 1: 3 cards grandes (KPI principal)
+  // Helper para nombre de mes
+  function getNombreMes(mes: number): string {
+    const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    return meses[mes];
+  }
+
+  const now = new Date();
+  const mesActual = now.getMonth();
+  const mesAnterior = mesActual === 0 ? 11 : mesActual - 1;
+
+  // Fila 1: 2 cards KPI
   const kpiCards: KpiMetric[] = [
     {
       title: "Clientes",
@@ -361,13 +476,18 @@ export default function Dashboard(): React.ReactElement {
       iconColor: "text-emerald-600",
       iconBg: "bg-emerald-100",
     },
-    {
-      title: "Total Facturado",
-      value: loading ? "..." : `$${stats.totalFacturado.toLocaleString()}`,
-      icon: DollarSign,
-      iconColor: "text-green-600",
-      iconBg: "bg-green-100",
-    },
+  ];
+
+  // Breakdown para Total Facturado
+  const facturadoBreakdown: BreakdownItem[] = [
+    { label: `${getNombreMes(mesActual)} (actual)`, value: stats.totalMesActual, color: "bg-green-100 text-green-700" },
+    { label: `${getNombreMes(mesAnterior)} (anterior)`, value: stats.totalMesAnterior, color: "bg-blue-100 text-blue-700" },
+  ];
+
+  // Breakdown para Facturas Emitidas
+  const facturasEmitidasBreakdown: BreakdownItem[] = [
+    { label: `${getNombreMes(mesActual)} (actual)`, value: stats.facturasMesActual, color: "bg-purple-100 text-purple-700" },
+    { label: `${getNombreMes(mesAnterior)} (anterior)`, value: stats.facturasMesAnterior, color: "bg-indigo-100 text-indigo-700" },
   ];
 
   // Fila 2: 3 cards medianas
@@ -381,6 +501,10 @@ export default function Dashboard(): React.ReactElement {
     { label: "Ofertas a Importadora", value: stats.ofertasImportadora, color: "bg-amber-100 text-amber-700" },
   ];
 
+  // Totales de contenedores
+  const totalTransito = stats.contenedoresTransitoCommercial + stats.contenedoresTransitoParcel;
+  const totalMariel = stats.contenedoresMarielCommercial + stats.contenedoresMarielParcel;
+
   const conversionRate = stats.ofertas > 0 
     ? Math.round((stats.facturas / stats.ofertas) * 100) 
     : 0;
@@ -393,85 +517,158 @@ export default function Dashboard(): React.ReactElement {
       />
       
       <div className="p-4 sm:p-5 md:p-6 lg:p-8 bg-slate-50 min-h-screen">
-        {/* Fila 1: Clientes, Productos */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-6">
+        {/* Fila 1: Clientes, Productos, Total Facturado (3 en lg, 2 en sm/md) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-6">
           <KpiCard metric={kpiCards[0]} />
           <KpiCard metric={kpiCards[1]} />
-          <div className="hidden md:block">
-            <KpiCard metric={kpiCards[2]} />
+          {/* Total Facturado - visible en lg+ */}
+          <div className="hidden lg:flex bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 h-full flex-col">
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <h3 className="text-xs sm:text-sm font-medium text-slate-600">
+                Total Facturado {stats.yearConfig}
+              </h3>
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-green-100 flex items-center justify-center">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+              </div>
+            </div>
+            <div className="flex-1 flex flex-col justify-between">
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4">
+                {loading ? "..." : `$${stats.totalFacturado.toLocaleString()}`}
+              </div>
+              <div className="space-y-1.5 sm:space-y-2">
+                {facturadoBreakdown.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600 truncate pr-2">{item.label}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${item.color} whitespace-nowrap`}>
+                      ${item.value.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Fila 2: Facturas, Facturas emitidas, Ofertas (en grande) / Total Facturado, Facturas (en mediano) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-6">
-          {/* Facturas - siempre visible, primera posición en grande */}
+        {/* Fila 2 (sm/md): Total Facturado, Facturas - solo visible en sm/md */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-6 lg:hidden">
+          {/* Total Facturado */}
+          <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 h-full flex flex-col">
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <h3 className="text-xs sm:text-sm font-medium text-slate-600">
+                Total Facturado {stats.yearConfig}
+              </h3>
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-green-100 flex items-center justify-center">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+              </div>
+            </div>
+            <div className="flex-1 flex flex-col justify-between">
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4">
+                {loading ? "..." : `$${stats.totalFacturado.toLocaleString()}`}
+              </div>
+              <div className="space-y-1.5 sm:space-y-2">
+                {facturadoBreakdown.map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600 truncate pr-2">{item.label}</span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${item.color} whitespace-nowrap`}>
+                      ${item.value.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          {/* Facturas */}
           <BreakdownCard
             title="Facturas"
             total={loading ? 0 : stats.facturas}
             breakdown={facturasBreakdown}
             icon={Receipt}
           />
-          {/* Facturas emitidas - visible solo en tablet/desktop, segunda posición en grande */}
-          <div className="hidden sm:block">
+        </div>
+
+        {/* Fila 2 (lg): Facturas, Facturas emitidas, Ofertas */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-6">
+          {/* Facturas - solo visible en lg+ en esta fila */}
+          <div className="hidden lg:block">
             <BreakdownCard
-              title="Facturas emitidas"
+              title="Facturas"
               total={loading ? 0 : stats.facturas}
-              badge={stats.facturasPendientes > 0 ? {
-                icon: AlertCircle,
-                color: "bg-red-100 text-red-700",
-              } : undefined}
-              breakdown={[]}
-              icon={FileText}
+              breakdown={facturasBreakdown}
+              icon={Receipt}
             />
           </div>
-          {/* Ofertas - solo visible en pantallas grandes (md+), tercera posición */}
-          <div className="hidden md:block">
-            <BreakdownCard
-              title="Ofertas"
-              total={loading ? 0 : stats.ofertas}
-              badge={stats.facturasPendientes > 0 ? {
-                text: String(stats.facturasPendientes),
-                color: "bg-amber-100 text-amber-700",
-              } : undefined}
-              breakdown={ofertasBreakdown}
-              icon={FileText}
-            />
+          <BreakdownCard
+            title="Facturas emitidas"
+            total={loading ? 0 : stats.facturas}
+            breakdown={facturasEmitidasBreakdown}
+            icon={FileText}
+          />
+          <BreakdownCard
+            title="Ofertas"
+            total={loading ? 0 : stats.ofertas}
+            breakdown={ofertasBreakdown}
+            icon={FileText}
+          />
+        </div>
+
+        {/* Fila 4: Contenedores */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-6">
+          {/* Contenedores en Tránsito */}
+          <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200">
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <h3 className="text-xs sm:text-sm font-medium text-slate-600">Contenedores en Tránsito</h3>
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-cyan-100 flex items-center justify-center">
+                <Ship className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-600" />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4">
+              {loading ? "..." : totalTransito}
+            </div>
+            <div className="space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-600">Commercial</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-700">
+                  {stats.contenedoresTransitoCommercial}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-600">Parcel</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
+                  {stats.contenedoresTransitoParcel}
+                </span>
+              </div>
+            </div>
           </div>
-          {/* Total Facturado - solo visible en móvil, se posiciona al inicio */}
-          <div className="sm:hidden md:hidden order-first">
-            <KpiCard metric={kpiCards[2]} />
+
+          {/* Contenedores en Mariel */}
+          <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200">
+            <div className="flex items-start justify-between mb-3 md:mb-4">
+              <h3 className="text-xs sm:text-sm font-medium text-slate-600">Contenedores en Mariel</h3>
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-green-100 flex items-center justify-center">
+                <Ship className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+              </div>
+            </div>
+            <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4">
+              {loading ? "..." : totalMariel}
+            </div>
+            <div className="space-y-1.5 sm:space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-600">Commercial</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-700">
+                  {stats.contenedoresMarielCommercial}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-slate-600">Parcel</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
+                  {stats.contenedoresMarielParcel}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Fila 3: Facturas emitidas (solo móvil/tablet), Ofertas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-6">
-          <div className="md:hidden">
-            <BreakdownCard
-              title="Facturas emitidas"
-              total={loading ? 0 : stats.facturas}
-              badge={stats.facturasPendientes > 0 ? {
-                icon: AlertCircle,
-                color: "bg-red-100 text-red-700",
-              } : undefined}
-              breakdown={[]}
-              icon={FileText}
-            />
-          </div>
-          <div className="md:hidden">
-            <BreakdownCard
-              title="Ofertas"
-              total={loading ? 0 : stats.ofertas}
-              badge={stats.facturasPendientes > 0 ? {
-                text: String(stats.facturasPendientes),
-                color: "bg-amber-100 text-amber-700",
-              } : undefined}
-              breakdown={ofertasBreakdown}
-              icon={FileText}
-            />
-          </div>
-        </div>
-
-        {/* Fila 3: Panel Comercial */}
+        {/* Panel Comercial */}
         <div className="mb-6">
           <CommercialPanel
             funnel={funnel}
