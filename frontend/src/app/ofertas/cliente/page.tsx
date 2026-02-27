@@ -136,6 +136,7 @@ export default function OfertasClientePage(): React.ReactElement {
       });
       setItemsTemp([]);
       setShowAddItem(false);
+      resetItemForm();
       setDialogOpen(true);
     } catch (error) {
       toast.error("Error al obtener número de oferta");
@@ -161,31 +162,21 @@ export default function OfertasClientePage(): React.ReactElement {
   function handleSelectProduct(productoId: string): void {
     const prod = productos.find((p) => p.id === productoId);
     
-    // Buscar si el producto existe en alguna oferta general para precargar campos opcionales
-    let itemOfertaGeneral: OfertaGeneral["items"][0] | undefined;
-    for (const og of ofertasGenerales) {
-      const found = og.items?.find((item) => item.productoId === productoId);
-      if (found) {
-        itemOfertaGeneral = found;
-        break;
-      }
-    }
-    
-    // Solo precargar si el campo está vacío (no sobrescribir valores existentes)
-    // Prioridad: 1) Oferta General, 2) Valores del producto, 3) Mantener valor actual si existe
-    setItemFormStrings((prev) => ({
-      ...prev,
+    // Siempre cargar los valores del producto seleccionado
+    // Prioridad: Producto (valores por defecto del catálogo)
+    // NO usar Oferta General para evitar confusión con valores de otras ofertas
+    setItemFormStrings({
       productoId,
-      cantidad: prev.cantidad || itemOfertaGeneral?.cantidad?.toString() || prod?.cantidad?.toString() || "",
-      precioUnitario: prev.precioUnitario || itemOfertaGeneral?.precioUnitario?.toString() || prod?.precioBase?.toString() || "",
-      cantidadSacos: prev.cantidadSacos || itemOfertaGeneral?.cantidadSacos?.toString() || prod?.cantidadSacos?.toString() || "",
-      pesoXSaco: prev.pesoXSaco || itemOfertaGeneral?.pesoXSaco?.toString() || prod?.pesoXSaco?.toString() || "",
-      precioXSaco: prev.precioXSaco || itemOfertaGeneral?.precioXSaco?.toString() || prod?.precioXSaco?.toString() || "",
-      cantidadCajas: prev.cantidadCajas || itemOfertaGeneral?.cantidadCajas?.toString() || prod?.cantidadCajas?.toString() || "",
-      pesoXCaja: prev.pesoXCaja || itemOfertaGeneral?.pesoXCaja?.toString() || prod?.pesoXCaja?.toString() || "",
-      precioXCaja: prev.precioXCaja || itemOfertaGeneral?.precioXCaja?.toString() || prod?.precioXCaja?.toString() || "",
-      codigoArancelario: prev.codigoArancelario || prod?.codigoArancelario || "",
-    }));
+      cantidad: prod?.cantidad?.toString() || "",
+      precioUnitario: prod?.precioBase?.toString() || "",
+      cantidadSacos: prod?.cantidadSacos?.toString() || "",
+      pesoXSaco: prod?.pesoXSaco?.toString() || "",
+      precioXSaco: prod?.precioXSaco?.toString() || "",
+      cantidadCajas: prod?.cantidadCajas?.toString() || "",
+      pesoXCaja: prod?.pesoXCaja?.toString() || "",
+      precioXCaja: prod?.precioXCaja?.toString() || "",
+      codigoArancelario: prod?.codigoArancelario || "",
+    });
   }
 
   // Convierte el formulario de strings a números para enviar al API
