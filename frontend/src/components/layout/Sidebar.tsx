@@ -89,7 +89,7 @@ export function Sidebar({ onNavigate, isMobile }: SidebarProps): React.ReactElem
       </div>
       
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-hide">
         {navigation.map((item) => {
           if (item.children) {
             // Filtrar children según permisos de admin
