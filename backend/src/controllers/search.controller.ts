@@ -81,6 +81,8 @@ export const SearchController = {
           OR: [
             { operationNo: containsFilter },
             { notes: containsFilter },
+            // Permitir buscar operaciones por nombre de importadora
+            { importadora: { nombre: containsFilter } },
           ],
         },
         select: {
@@ -99,6 +101,8 @@ export const SearchController = {
           OR: [
             { numero: containsFilter },
             { observaciones: containsFilter },
+            // Permitir buscar facturas por nombre de importadora
+            { importadora: { nombre: containsFilter } },
           ],
         },
         select: {
