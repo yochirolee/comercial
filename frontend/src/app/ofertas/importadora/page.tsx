@@ -136,9 +136,15 @@ export default function OfertasImportadoraPage(): React.ReactElement {
           o.items?.some((it) => (it.producto?.nombre ?? "").toLowerCase().includes(searchLower))
       )
     : ofertas;
-  const totalPages = Math.max(1, Math.ceil(filteredOfertas.length / PAGE_SIZE));
+
+  // Ordenar por número desc (Z26024, luego Z26023, luego Z26022-2, etc.)
+  const sortedOfertas = [...filteredOfertas].sort((a, b) =>
+    (b.numero ?? "").localeCompare(a.numero ?? "")
+  );
+
+  const totalPages = Math.max(1, Math.ceil(sortedOfertas.length / PAGE_SIZE));
   const start = (currentPage - 1) * PAGE_SIZE;
-  const paginatedOfertas = filteredOfertas.slice(start, start + PAGE_SIZE);
+  const paginatedOfertas = sortedOfertas.slice(start, start + PAGE_SIZE);
 
   async function loadData(): Promise<void> {
     try {

@@ -114,9 +114,15 @@ export default function OfertasClientePage(): React.ReactElement {
           o.items?.some((it) => (it.producto?.nombre ?? "").toLowerCase().includes(searchLower))
       )
     : ofertas;
-  const totalPages = Math.max(1, Math.ceil(filteredOfertas.length / PAGE_SIZE));
+
+  // Ordenar por número desc (Z26024, Z26023, Z26022-2, etc.)
+  const sortedOfertas = [...filteredOfertas].sort((a, b) =>
+    (b.numero ?? "").localeCompare(a.numero ?? "")
+  );
+
+  const totalPages = Math.max(1, Math.ceil(sortedOfertas.length / PAGE_SIZE));
   const start = (currentPage - 1) * PAGE_SIZE;
-  const paginatedOfertas = filteredOfertas.slice(start, start + PAGE_SIZE);
+  const paginatedOfertas = sortedOfertas.slice(start, start + PAGE_SIZE);
 
   async function loadData(): Promise<void> {
     try {
@@ -535,7 +541,7 @@ export default function OfertasClientePage(): React.ReactElement {
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">Cargando...</TableCell>
                 </TableRow>
-              ) : filteredOfertas.length === 0 ? (
+              ) : sortedOfertas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-slate-500">
                     {ofertas.length === 0 ? "No hay ofertas" : "No hay resultados para la búsqueda"}
@@ -587,11 +593,11 @@ export default function OfertasClientePage(): React.ReactElement {
               )}
             </TableBody>
           </Table>
-          {!loading && filteredOfertas.length > 0 && (
+          {!loading && sortedOfertas.length > 0 && (
             <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-t bg-slate-50/50">
               <p className="text-xs sm:text-sm text-slate-500">
                 <span className="hidden sm:inline">Mostrando </span>
-                {start + 1}-{Math.min(start + PAGE_SIZE, filteredOfertas.length)} de {filteredOfertas.length}
+                {start + 1}-{Math.min(start + PAGE_SIZE, sortedOfertas.length)} de {sortedOfertas.length}
               </p>
               <div className="flex items-center gap-1 sm:gap-2">
                 <Button
