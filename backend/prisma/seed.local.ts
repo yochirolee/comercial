@@ -37,6 +37,11 @@ async function main() {
       update: {},
       create: { id: 'um-litro', nombre: 'Litro', abreviatura: 'L', usaCajas: false },
     }),
+    prisma.unidadMedida.upsert({
+      where: { id: 'um-gal' },
+      update: {},
+      create: { id: 'um-gal', nombre: 'Galón', abreviatura: 'GAL', usaCajas: false },
+    }),
   ]);
   console.log(`✅ Created ${unidades.length} units`);
 
