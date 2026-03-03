@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight, Pencil, Save, Download } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight, Pencil, Save, Download, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { 
   ofertasImportadoraApi, 
   ofertasClienteApi, 
@@ -47,6 +47,8 @@ import type {
   Importadora
 } from "@/lib/api";
 
+const PAGE_SIZE = 10;
+
 export default function OfertasImportadoraPage(): React.ReactElement {
   const [ofertas, setOfertas] = useState<OfertaImportadora[]>([]);
   const [ofertasCliente, setOfertasCliente] = useState<OfertaCliente[]>([]);
@@ -54,6 +56,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   const [importadoras, setImportadoras] = useState<Importadora[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedOferta, setSelectedOferta] = useState<OfertaImportadora | null>(null);
@@ -120,8 +124,25 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   }>>([]);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 
+  const searchLower = search.trim().toLowerCase();
+  const filteredOfertas = searchLower
+    ? ofertas.filter(
+        (o) =>
+          (o.numero ?? "").toLowerCase().includes(searchLower) ||
+          (o.ofertaCliente?.numero ?? "").toLowerCase().includes(searchLower) ||
+          `${o.cliente?.nombre ?? ""} ${o.cliente?.apellidos ?? ""}`.trim().toLowerCase().includes(searchLower) ||
+          (o.importadora?.nombre ?? "").toLowerCase().includes(searchLower) ||
+          (o.estado ?? "").toLowerCase().includes(searchLower) ||
+          o.items?.some((it) => (it.producto?.nombre ?? "").toLowerCase().includes(searchLower))
+      )
+    : ofertas;
+  const totalPages = Math.max(1, Math.ceil(filteredOfertas.length / PAGE_SIZE));
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const paginatedOfertas = filteredOfertas.slice(start, start + PAGE_SIZE);
+
   async function loadData(): Promise<void> {
     try {
+      setCurrentPage(1);
       const [ofertasData, ofertasClienteData, clientesData, importadorasData, productosData] = await Promise.all([
         ofertasImportadoraApi.getAll(),
         ofertasClienteApi.getAll(),
@@ -659,7 +680,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                       <SelectContent>
                         {ofertasCliente.map((o) => (
                           <SelectItem key={o.id} value={o.id} className="text-sm">
-                            {o.numero} - {o.cliente.nombre} ({formatCurrency(o.total)})
+                            {o.numero} - {o.cliente?.nombre ?? ""} ({formatCurrency(o.total)})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -692,7 +713,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                       <h4 className="font-medium mb-1.5 sm:mb-2 text-xs sm:text-sm">📋 Datos de la Oferta Cliente</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm">
                         <div className="text-slate-600">Cliente:</div>
-                        <div className="font-medium">{selectedOfertaCliente.cliente.nombre}</div>
+                        <div className="font-medium">{selectedOfertaCliente?.cliente?.nombre ?? ""}</div>
                         <div className="text-slate-600">Productos:</div>
                         <div className="font-medium">{selectedOfertaCliente.items.length} items</div>
                         <div className="text-slate-600">Total acordado:</div>
@@ -973,6 +994,20 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
       {/* Tabla de ofertas */}
       <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-4 sm:mb-6">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por número, cliente, importadora, estado..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10"
+            />
+          </div>
+        </div>
         <div className="bg-white rounded-lg border shadow-sm">
           <Table>
             <TableHeader>
@@ -996,14 +1031,14 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 <TableRow>
                   <TableCell colSpan={12} className="text-center py-8">Cargando...</TableCell>
                 </TableRow>
-              ) : ofertas.length === 0 ? (
+              ) : filteredOfertas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={12} className="text-center py-8 text-slate-500">
-                    No hay ofertas. Crea una desde una oferta al cliente.
+                    {ofertas.length === 0 ? "No hay ofertas. Crea una desde una oferta al cliente." : "No hay resultados para la búsqueda"}
                   </TableCell>
                 </TableRow>
               ) : (
-                ofertas.map((oferta) => (
+                paginatedOfertas.map((oferta) => (
                   <TableRow key={oferta.id}>
                     <TableCell className="font-medium">{oferta.numero}</TableCell>
                     <TableCell>
@@ -1014,7 +1049,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                       ) : "-"}
                     </TableCell>
                     <TableCell>
-                      {`${oferta.cliente.nombre || ""} ${oferta.cliente.apellidos || ""}`.trim()}
+                      {`${oferta.cliente?.nombre ?? ""} ${oferta.cliente?.apellidos ?? ""}`.trim()}
                     </TableCell>
                     <TableCell>
                       {oferta.importadora?.nombre || "-"}
@@ -1065,6 +1100,39 @@ export default function OfertasImportadoraPage(): React.ReactElement {
               )}
             </TableBody>
           </Table>
+          {!loading && filteredOfertas.length > 0 && (
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-t bg-slate-50/50">
+              <p className="text-xs sm:text-sm text-slate-500">
+                <span className="hidden sm:inline">Mostrando </span>
+                {start + 1}-{Math.min(start + PAGE_SIZE, filteredOfertas.length)} de {filteredOfertas.length}
+              </p>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 sm:h-9"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Anterior</span>
+                </Button>
+                <span className="hidden sm:inline text-xs sm:text-sm text-slate-600">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 sm:h-9"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  <span className="hidden sm:inline">Siguiente</span>
+                  <ChevronRight className="h-4 w-4 sm:ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1077,7 +1145,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
               Oferta: {selectedOferta?.numero}
               {selectedOferta?.ofertaCliente && (
                 <Badge variant="outline" className="ml-2">
-                  Desde: {selectedOferta.ofertaCliente.numero}
+                  Desde: {selectedOferta?.ofertaCliente?.numero ?? "-"}
                 </Badge>
               )}
             </DialogTitle>

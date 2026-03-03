@@ -117,6 +117,39 @@ async function calcularTotales(facturaId: string): Promise<void> {
   });
 }
 
+/** Al marcar factura como pagada, pone la oferta a importadora y la oferta a cliente en aceptada (opción A). */
+async function marcarOfertasComoAceptadasSiFacturaPagada(factura: {
+  tipoOfertaOrigen: string | null;
+  ofertaOrigenId: string | null;
+}): Promise<void> {
+  if (!factura.ofertaOrigenId) return;
+  try {
+    if (factura.tipoOfertaOrigen === 'importadora') {
+      await prisma.ofertaImportadora.update({
+        where: { id: factura.ofertaOrigenId },
+        data: { estado: 'aceptada' },
+      });
+      const ofertaImp = await prisma.ofertaImportadora.findUnique({
+        where: { id: factura.ofertaOrigenId },
+        select: { ofertaClienteId: true },
+      });
+      if (ofertaImp?.ofertaClienteId) {
+        await prisma.ofertaCliente.update({
+          where: { id: ofertaImp.ofertaClienteId },
+          data: { estado: 'aceptada' },
+        });
+      }
+    } else if (factura.tipoOfertaOrigen === 'cliente') {
+      await prisma.ofertaCliente.update({
+        where: { id: factura.ofertaOrigenId },
+        data: { estado: 'aceptada' },
+      });
+    }
+  } catch (err) {
+    console.error('[Factura] Error al marcar ofertas como aceptadas:', err);
+  }
+}
+
 const includeFactura = {
   cliente: true,
   importadora: true,
@@ -666,6 +699,10 @@ export const FacturaController = {
       where: { id },
       include: includeFactura,
     });
+
+    if (factura && validation.data.estado === 'pagada') {
+      await marcarOfertasComoAceptadasSiFacturaPagada(factura);
+    }
     
     res.json(factura);
   },
@@ -793,6 +830,10 @@ export const FacturaController = {
       data: { estado },
       include: includeFactura,
     });
+
+    if (estado === 'pagada') {
+      await marcarOfertasComoAceptadasSiFacturaPagada(factura);
+    }
     
     res.json(factura);
   },

@@ -32,7 +32,7 @@ import {
   Hash,
   Download,
 } from "lucide-react";
-import { searchApi, importadorasApi } from "@/lib/api";
+import { searchApi, importadorasApi, exportApi } from "@/lib/api";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -467,17 +467,44 @@ function BuscarUniversalPage(): React.ReactElement {
                 color="purple"
               >
                 {results.facturas.map((fac) => (
-                  <ResultItem
-                    key={fac.id}
-                    onClick={() => selectEntity('factura', fac.id, fac.numero)}
-                    icon={<Receipt className="h-4 w-4" />}
-                    iconColor="bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white"
-                    title={fac.numero}
-                    subtitle={`${formatDate(fac.fecha)} • ${formatCurrency(fac.total)}`}
-                    badges={[
-                      <Badge key="estado" variant={fac.estado === 'pagada' ? 'default' : 'secondary'} className="text-xs">{fac.estado}</Badge>
-                    ]}
-                  />
+                  <div key={fac.id} className="flex items-center gap-2">
+                    <div className="flex-1">
+                      <ResultItem
+                        onClick={() => selectEntity('factura', fac.id, fac.numero)}
+                        icon={<Receipt className="h-4 w-4" />}
+                        iconColor="bg-purple-100 text-purple-600 group-hover:bg-purple-600 group-hover:text-white"
+                        title={fac.numero}
+                        subtitle={`${formatDate(fac.fecha)} • ${formatCurrency(fac.total)}`}
+                        badges={[
+                          <Badge
+                            key="estado"
+                            variant={fac.estado === 'pagada' ? 'default' : 'secondary'}
+                            className="text-xs"
+                          >
+                            {fac.estado}
+                          </Badge>
+                        ]}
+                      />
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-shrink-0"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await exportApi.downloadPdf("facturas", fac.id);
+                          toast.success("Factura descargada correctamente");
+                        } catch (error) {
+                          toast.error("Error al descargar factura");
+                          console.error(error);
+                        }
+                      }}
+                      title="Descargar factura en PDF"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
                 ))}
               </ResultSection>
             )}
@@ -610,10 +637,19 @@ function DetailImportadora({ data, router }: { data: any; router: any }): React.
             <CardContent>
               <div className="space-y-2">
                 {rel.clientes.map((cli: { id: string; nombre: string; apellidos?: string; nombreCompania?: string }) => (
-                  <div key={cli.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                    <p className="font-medium text-slate-900">{cli.nombre} {cli.apellidos || ''}</p>
-                    {cli.nombreCompania && <p className="text-sm text-slate-500">{cli.nombreCompania}</p>}
-                  </div>
+                  <button
+                    key={cli.id}
+                    type="button"
+                    onClick={() => router.push("/clientes")}
+                    className="w-full text-left p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors"
+                  >
+                    <p className="font-medium text-slate-900">
+                      {cli.nombre} {cli.apellidos || ''}
+                    </p>
+                    {cli.nombreCompania && (
+                      <p className="text-sm text-slate-500">{cli.nombreCompania}</p>
+                    )}
+                  </button>
                 ))}
               </div>
             </CardContent>
@@ -640,8 +676,14 @@ function DetailImportadora({ data, router }: { data: any; router: any }): React.
                   </TableHeader>
                   <TableBody>
                     {rel.productos.map((item: { producto: { id: string; nombre: string }; cantidad: number; importe: number }) => (
-                      <TableRow key={item.producto.id}>
-                        <TableCell className="font-medium max-w-[180px] truncate">{item.producto.nombre}</TableCell>
+                      <TableRow
+                        key={item.producto.id}
+                        className="cursor-pointer hover:bg-slate-50"
+                        onClick={() => router.push("/productos")}
+                      >
+                        <TableCell className="font-medium max-w-[180px] truncate">
+                          {item.producto.nombre}
+                        </TableCell>
                         <TableCell className="text-right">{item.cantidad.toLocaleString()}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.importe)}</TableCell>
                       </TableRow>
@@ -672,20 +714,47 @@ function DetailImportadora({ data, router }: { data: any; router: any }): React.
                     <TableHead>Cliente</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rel.facturas.map((f: { id: string; numero: string; fecha: string; estado: string; total: number; cliente?: { nombre: string; apellidos?: string } }) => (
-                    <TableRow key={f.id}>
+                    <TableRow
+                      key={f.id}
+                      className="cursor-pointer hover:bg-slate-50"
+                      onClick={() => router.push("/facturas")}
+                    >
                       <TableCell className="font-medium">{f.numero}</TableCell>
                       <TableCell>{formatDate(f.fecha)}</TableCell>
                       <TableCell>{f.cliente ? `${f.cliente.nombre} ${f.cliente.apellidos || ''}` : '-'}</TableCell>
                       <TableCell>
-                        <Badge variant={f.estado === 'pagada' ? 'default' : f.estado === 'vencida' ? 'destructive' : 'secondary'} className="text-xs">
+                        <Badge
+                          variant={f.estado === 'pagada' ? 'default' : f.estado === 'vencida' ? 'destructive' : 'secondary'}
+                          className="text-xs"
+                        >
                           {f.estado}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">{formatCurrency(f.total)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await exportApi.downloadPdf("facturas", f.id);
+                              toast.success("Factura descargada correctamente");
+                            } catch (error) {
+                              toast.error("Error al descargar factura");
+                              console.error(error);
+                            }
+                          }}
+                          title="Descargar factura en PDF"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

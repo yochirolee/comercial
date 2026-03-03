@@ -45,6 +45,9 @@ import {
   Ship,
   Package,
   Download,
+  ChevronLeft,
+  ChevronRight,
+  Search,
 } from "lucide-react";
 import {
   facturasApi,
@@ -62,12 +65,16 @@ import type {
   Importadora,
 } from "@/lib/api";
 
+const PAGE_SIZE = 10;
+
 export default function FacturasPage(): React.ReactElement {
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [ofertasCliente, setOfertasCliente] = useState<OfertaCliente[]>([]);
   const [ofertasImportadora, setOfertasImportadora] = useState<OfertaImportadora[]>([]);
   const [importadoras, setImportadoras] = useState<Importadora[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Dialogs
   const [newDialogOpen, setNewDialogOpen] = useState(false);
@@ -143,8 +150,24 @@ export default function FacturasPage(): React.ReactElement {
 
   const [saving, setSaving] = useState(false);
 
+  const searchLower = search.trim().toLowerCase();
+  const filteredFacturas = searchLower
+    ? facturas.filter(
+        (f) =>
+          f.numero.toLowerCase().includes(searchLower) ||
+          `${f.cliente?.nombre || ""} ${f.cliente?.apellidos || ""}`.trim().toLowerCase().includes(searchLower) ||
+          f.importadora?.nombre?.toLowerCase().includes(searchLower) ||
+          f.estado.toLowerCase().includes(searchLower) ||
+          f.items?.some((it) => it.producto?.nombre?.toLowerCase().includes(searchLower))
+      )
+    : facturas;
+  const totalPages = Math.max(1, Math.ceil(filteredFacturas.length / PAGE_SIZE));
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const paginatedFacturas = filteredFacturas.slice(start, start + PAGE_SIZE);
+
   async function loadData(): Promise<void> {
     try {
+      setCurrentPage(1);
       const [facturasData, ocData, oiData, importadorasData] = await Promise.all([
         facturasApi.getAll(),
         ofertasClienteApi.getAll(),
@@ -797,6 +820,20 @@ export default function FacturasPage(): React.ReactElement {
       />
 
       <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-4 sm:mb-6">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por número, cliente, importadora, estado..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10"
+            />
+          </div>
+        </div>
         <div className="bg-white rounded-lg border shadow-sm overflow-x-auto">
           <Table>
             <TableHeader>
@@ -819,14 +856,14 @@ export default function FacturasPage(): React.ReactElement {
                 <TableRow>
                   <TableCell colSpan={11} className="text-center py-8">Cargando...</TableCell>
                 </TableRow>
-              ) : facturas.length === 0 ? (
+              ) : filteredFacturas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={11} className="text-center py-8 text-slate-500">
-                    No hay facturas
+                    {facturas.length === 0 ? "No hay facturas" : "No hay resultados para la búsqueda"}
                   </TableCell>
                 </TableRow>
               ) : (
-                facturas.map((factura) => (
+                paginatedFacturas.map((factura) => (
                   <TableRow key={factura.id}>
                     <TableCell className="font-medium">{factura.numero}</TableCell>
                     <TableCell>{factura.cliente.nombre} {factura.cliente.apellidos}</TableCell>
@@ -875,6 +912,39 @@ export default function FacturasPage(): React.ReactElement {
               )}
             </TableBody>
           </Table>
+          {!loading && filteredFacturas.length > 0 && (
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-t bg-slate-50/50">
+              <p className="text-xs sm:text-sm text-slate-500">
+                <span className="hidden sm:inline">Mostrando </span>
+                {start + 1}-{Math.min(start + PAGE_SIZE, filteredFacturas.length)} de {filteredFacturas.length}
+              </p>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 sm:h-9"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Anterior</span>
+                </Button>
+                <span className="hidden sm:inline text-xs sm:text-sm text-slate-600">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 sm:h-9"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  <span className="hidden sm:inline">Siguiente</span>
+                  <ChevronRight className="h-4 w-4 sm:ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

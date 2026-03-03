@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { productosApi, unidadesApi, exportApi } from "@/lib/api";
 import type { Producto, ProductoInput, UnidadMedida } from "@/lib/api";
 
@@ -53,16 +53,23 @@ const emptyProducto: ProductoInput = {
   usoPrevisto: null,
 };
 
+const PAGE_SIZE = 10;
+
 export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [unidades, setUnidades] = useState<UnidadMedida[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<ProductoInput>(emptyProducto);
   const [precioString, setPrecioString] = useState(""); // Para permitir escribir decimales como "0.69"
   const [saving, setSaving] = useState(false);
+
+  const totalPages = Math.max(1, Math.ceil(productos.length / PAGE_SIZE));
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const paginatedProductos = productos.slice(start, start + PAGE_SIZE);
   
   // Estados para campos informativos (como strings para evitar pérdida de foco)
   const [infoFields, setInfoFields] = useState({
@@ -94,6 +101,7 @@ export default function ProductosPage() {
   }
 
   useEffect(() => {
+    setCurrentPage(1);
     loadData();
   }, [search]);
 
@@ -517,7 +525,7 @@ export default function ProductosPage() {
           ) : productos.length === 0 ? (
             <div className="text-center py-8 text-slate-500">No hay productos</div>
           ) : (
-            productos.map((producto) => (
+            paginatedProductos.map((producto) => (
               <div key={producto.id} className="bg-white rounded-lg border shadow-sm p-4">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1 min-w-0">
@@ -546,6 +554,33 @@ export default function ProductosPage() {
                 </div>
               </div>
             ))
+          )}
+          {!loading && productos.length > 0 && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <p className="text-xs sm:text-sm text-slate-500">
+                {start + 1}-{Math.min(start + PAGE_SIZE, productos.length)} de {productos.length}
+              </p>
+              <div className="flex gap-1 sm:gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 sm:h-9"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 sm:h-9"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </div>
 
@@ -576,7 +611,7 @@ export default function ProductosPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                productos.map((producto) => (
+                paginatedProductos.map((producto) => (
                   <TableRow key={producto.id}>
                     <TableCell className="font-mono text-sm">
                       {producto.codigo || "-"}
@@ -614,6 +649,39 @@ export default function ProductosPage() {
               )}
             </TableBody>
           </Table>
+          {!loading && productos.length > 0 && (
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-t bg-slate-50/50">
+              <p className="text-xs sm:text-sm text-slate-500">
+                <span className="hidden sm:inline">Mostrando </span>
+                {start + 1}-{Math.min(start + PAGE_SIZE, productos.length)} de {productos.length}
+              </p>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 sm:h-9"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Anterior</span>
+                </Button>
+                <span className="hidden sm:inline text-xs sm:text-sm text-slate-600">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 sm:h-9"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  <span className="hidden sm:inline">Siguiente</span>
+                  <ChevronRight className="h-4 w-4 sm:ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

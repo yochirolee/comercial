@@ -31,7 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { operationsApi, ofertasClienteApi, importadorasApi } from "@/lib/api";
 import type { Operation, OperationContainer, OfertaCliente, Importadora } from "@/lib/api";
 
@@ -133,6 +133,10 @@ export default function OperationsPage(): React.ReactElement {
   const [importadoras, setImportadoras] = useState<Importadora[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Pagination
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Filters
   const [filterType, setFilterType] = useState<"COMMERCIAL" | "PARCEL" | "all">("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -306,6 +310,10 @@ export default function OperationsPage(): React.ReactElement {
   // Aplicar ordenamiento
   const sortedContainerRows = sortContainerRows(filteredContainerRows);
 
+  const totalPages = Math.max(1, Math.ceil(sortedContainerRows.length / PAGE_SIZE));
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const paginatedRows = sortedContainerRows.slice(start, start + PAGE_SIZE);
+
   // Función para refrescar solo operaciones (para auto-refresh)
   const refreshOperations = useCallback(async (): Promise<void> => {
     try {
@@ -326,6 +334,11 @@ export default function OperationsPage(): React.ReactElement {
     loadData();
   }, [filterType, filterStatus, searchTerm]);
 
+  // Resetear página al cambiar filtro "Solo activas"
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [showOnlyActive]);
+
   // Auto-refresh cada 30 segundos
   useEffect(() => {
     intervalRef.current = setInterval(() => {
@@ -341,6 +354,7 @@ export default function OperationsPage(): React.ReactElement {
 
   async function loadData(): Promise<void> {
     setLoading(true);
+    setCurrentPage(1);
     try {
       const params: Record<string, string> = {};
       if (filterType !== "all") params.type = filterType;
@@ -704,7 +718,7 @@ export default function OperationsPage(): React.ReactElement {
                 </TableCell>
               </TableRow>
             ) : (
-              sortedContainerRows.map(({ operation, container, isFirstContainer }) => (
+              paginatedRows.map(({ operation, container, isFirstContainer }) => (
                 <TableRow key={container.id} className="hover:bg-slate-50">
                   <TableCell className="py-3">
                     <Badge
@@ -814,6 +828,39 @@ export default function OperationsPage(): React.ReactElement {
             )}
           </TableBody>
         </Table>
+        {!loading && sortedContainerRows.length > 0 && (
+          <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-t bg-slate-50/50">
+            <p className="text-xs sm:text-sm text-slate-500">
+              <span className="hidden sm:inline">Mostrando </span>
+              {start + 1}-{Math.min(start + PAGE_SIZE, sortedContainerRows.length)} de {sortedContainerRows.length}
+            </p>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 sm:h-9"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+              >
+                <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Anterior</span>
+              </Button>
+              <span className="hidden sm:inline text-xs sm:text-sm text-slate-600">
+                Página {currentPage} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 sm:h-9"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+              >
+                <span className="hidden sm:inline">Siguiente</span>
+                <ChevronRight className="h-4 w-4 sm:ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
         </div>
       </div>
     </div>

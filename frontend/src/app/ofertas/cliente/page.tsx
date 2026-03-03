@@ -28,9 +28,11 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save, Download } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save, Download, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { ofertasClienteApi, ofertasGeneralesApi, clientesApi, productosApi, exportApi } from "@/lib/api";
 import type { OfertaCliente, OfertaGeneral, Cliente, Producto, ItemOfertaClienteInput } from "@/lib/api";
+
+const PAGE_SIZE = 10;
 
 interface ItemTemp extends ItemOfertaClienteInput {
   tempId: string;
@@ -43,6 +45,8 @@ export default function OfertasClientePage(): React.ReactElement {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedOferta, setSelectedOferta] = useState<OfertaCliente | null>(null);
@@ -100,8 +104,23 @@ export default function OfertasClientePage(): React.ReactElement {
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
 
+  const searchLower = search.trim().toLowerCase();
+  const filteredOfertas = searchLower
+    ? ofertas.filter(
+        (o) =>
+          (o.numero ?? "").toLowerCase().includes(searchLower) ||
+          `${o.cliente?.nombre ?? ""} ${o.cliente?.apellidos ?? ""} ${o.cliente?.nombreCompania ?? ""}`.trim().toLowerCase().includes(searchLower) ||
+          (o.estado ?? "").toLowerCase().includes(searchLower) ||
+          o.items?.some((it) => (it.producto?.nombre ?? "").toLowerCase().includes(searchLower))
+      )
+    : ofertas;
+  const totalPages = Math.max(1, Math.ceil(filteredOfertas.length / PAGE_SIZE));
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const paginatedOfertas = filteredOfertas.slice(start, start + PAGE_SIZE);
+
   async function loadData(): Promise<void> {
     try {
+      setCurrentPage(1);
       const [ofertasData, ofertasGeneralesData, clientesData, productosData] = await Promise.all([
         ofertasClienteApi.getAll(),
         ofertasGeneralesApi.getAll(),
@@ -484,6 +503,20 @@ export default function OfertasClientePage(): React.ReactElement {
       />
 
       <div className="p-4 sm:p-6 lg:p-8">
+        <div className="mb-4 sm:mb-6">
+          <div className="relative w-full sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Buscar por número, cliente, producto, estado..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10"
+            />
+          </div>
+        </div>
         <div className="bg-white rounded-lg border shadow-sm">
           <Table>
             <TableHeader>
@@ -502,17 +535,17 @@ export default function OfertasClientePage(): React.ReactElement {
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">Cargando...</TableCell>
                 </TableRow>
-              ) : ofertas.length === 0 ? (
+              ) : filteredOfertas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-slate-500">
-                    No hay ofertas
+                    {ofertas.length === 0 ? "No hay ofertas" : "No hay resultados para la búsqueda"}
                   </TableCell>
                 </TableRow>
               ) : (
-                ofertas.map((oferta) => (
+                paginatedOfertas.map((oferta) => (
                   <TableRow key={oferta.id}>
                     <TableCell className="font-medium">{oferta.numero}</TableCell>
-                    <TableCell>{oferta.cliente.nombre} {oferta.cliente.apellidos}</TableCell>
+                    <TableCell>{oferta.cliente?.nombre ?? ""} {oferta.cliente?.apellidos ?? ""}</TableCell>
                     <TableCell className="max-w-[200px]">
                       <div className="text-sm text-slate-700 truncate" title={formatProductos(oferta.items)}>
                         {formatProductos(oferta.items)}
@@ -554,6 +587,39 @@ export default function OfertasClientePage(): React.ReactElement {
               )}
             </TableBody>
           </Table>
+          {!loading && filteredOfertas.length > 0 && (
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-t bg-slate-50/50">
+              <p className="text-xs sm:text-sm text-slate-500">
+                <span className="hidden sm:inline">Mostrando </span>
+                {start + 1}-{Math.min(start + PAGE_SIZE, filteredOfertas.length)} de {filteredOfertas.length}
+              </p>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 sm:h-9"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Anterior</span>
+                </Button>
+                <span className="hidden sm:inline text-xs sm:text-sm text-slate-600">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 sm:h-9"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  <span className="hidden sm:inline">Siguiente</span>
+                  <ChevronRight className="h-4 w-4 sm:ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
