@@ -67,6 +67,29 @@ import type {
 
 const PAGE_SIZE = 10;
 
+// Texto por defecto para bloques de documento en facturas
+const defaultTerminosDocumentoTextoFactura = [
+  "Validez de la Oferta: 15 días.",
+  "Puerto Destino: Mariel, Cuba.",
+  "Puerto de Embarque: ",
+  "Origen: Estados Unidos.",
+  "Términos de Entrega: Máximo 15 días posteriores al pago.",
+  "Pago: 100% del valor a la firma del contrato.",
+  "Moneda: Dólar Americano (USD).",
+  "Métodos de Pago: Transferencia bancaria o cheques del banco pagador.",
+  "ZAS BY JMC CORP no se hace responsable por retrasos ocasionados por la naviera, puertos u otros factores externos considerados de FUERZA MAYOR que puedan provocar demoras en los embarques. En estos casos, la empresa proveerá evidencias y mantendrá informado al cliente.",
+  "El cliente tiene la responsabilidad de devolver el o los contenedores en un plazo máximo de 72 horas después de haber sido extraídos del puerto en destino.",
+  "Condición de pago original: PAGO 100% ANTES DEL EMBARQUE",
+].join("\n");
+
+const defaultMetodoPagoDocumentoTextoFactura = [
+  "Banco: Truist Bank",
+  "Titular: ZAS BY JMC CORP",
+  "Número de Cuenta: 1100035647757",
+  "Número de Ruta (transferencias dentro de USA): 263191387",
+  "Dirección de la Empresa: 7081 NW 82 AVE MIAMI FL 33166",
+].join("\n");
+
 export default function FacturasPage(): React.ReactElement {
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [ofertasCliente, setOfertasCliente] = useState<OfertaCliente[]>([]);
@@ -105,6 +128,8 @@ export default function FacturasPage(): React.ReactElement {
     origen: "",
     moneda: "",
     terminosPago: "",
+    terminosDocumentoTexto: "",
+    metodoPagoDocumentoTexto: "",
     incluyeFirmaCliente: false,
     firmaClienteNombre: "",
     firmaClienteCargo: "",
@@ -127,6 +152,8 @@ export default function FacturasPage(): React.ReactElement {
     origen: "",
     moneda: "",
     terminosPago: "",
+    terminosDocumentoTexto: "",
+    metodoPagoDocumentoTexto: "",
     incluyeFirmaCliente: false,
     firmaClienteNombre: "",
     firmaClienteCargo: "",
@@ -242,6 +269,8 @@ export default function FacturasPage(): React.ReactElement {
       origen: "",
       moneda: "",
       terminosPago: "",
+      terminosDocumentoTexto: "",
+      metodoPagoDocumentoTexto: "",
       incluyeFirmaCliente: false,
       firmaClienteNombre: "",
       firmaClienteCargo: "",
@@ -271,10 +300,18 @@ export default function FacturasPage(): React.ReactElement {
         // Términos de la oferta importadora
         codigoMincex: oferta.codigoMincex || "",
         nroContrato: "",
-        puertoEmbarque: oferta.puertoEmbarque || "NEW ORLEANS, LA",
-        origen: oferta.origen || "ESTADOS UNIDOS",
-        moneda: oferta.moneda || "USD",
-        terminosPago: oferta.terminosPago || "PAGO 100% ANTES DEL EMBARQUE",
+        puertoEmbarque: oferta.puertoEmbarque || "",
+        origen: oferta.origen || "",
+        moneda: oferta.moneda || "",
+        terminosPago: oferta.terminosPago || "",
+        terminosDocumentoTexto:
+          oferta.terminosDocumentoTexto && oferta.terminosDocumentoTexto.trim() !== ""
+            ? oferta.terminosDocumentoTexto
+            : defaultTerminosDocumentoTextoFactura,
+        metodoPagoDocumentoTexto:
+          oferta.metodoPagoDocumentoTexto && oferta.metodoPagoDocumentoTexto.trim() !== ""
+            ? oferta.metodoPagoDocumentoTexto
+            : defaultMetodoPagoDocumentoTextoFactura,
         // Flete y seguro desde oferta importadora
         flete: oferta.flete?.toString() || "0",
         tieneSeguro: oferta.tieneSeguro || false,
@@ -327,6 +364,8 @@ export default function FacturasPage(): React.ReactElement {
         origen: newFormData.origen || undefined,
         moneda: newFormData.moneda || undefined,
         terminosPago: newFormData.terminosPago || undefined,
+        terminosDocumentoTexto: newFormData.terminosDocumentoTexto || undefined,
+        metodoPagoDocumentoTexto: newFormData.metodoPagoDocumentoTexto || undefined,
         incluyeFirmaCliente: newFormData.incluyeFirmaCliente,
         firmaClienteNombre: newFormData.firmaClienteNombre || undefined,
         firmaClienteCargo: newFormData.firmaClienteCargo || undefined,
@@ -364,6 +403,14 @@ export default function FacturasPage(): React.ReactElement {
       origen: factura.origen || "",
       moneda: factura.moneda || "",
       terminosPago: factura.terminosPago || "",
+      terminosDocumentoTexto:
+        factura.terminosDocumentoTexto && factura.terminosDocumentoTexto.trim() !== ""
+          ? factura.terminosDocumentoTexto
+          : defaultTerminosDocumentoTextoFactura,
+      metodoPagoDocumentoTexto:
+        factura.metodoPagoDocumentoTexto && factura.metodoPagoDocumentoTexto.trim() !== ""
+          ? factura.metodoPagoDocumentoTexto
+          : defaultMetodoPagoDocumentoTextoFactura,
       incluyeFirmaCliente: factura.incluyeFirmaCliente || false,
       firmaClienteNombre: factura.firmaClienteNombre || "",
       firmaClienteCargo: factura.firmaClienteCargo || "",
@@ -391,6 +438,8 @@ export default function FacturasPage(): React.ReactElement {
         origen: editFormData.origen || undefined,
         moneda: editFormData.moneda || undefined,
         terminosPago: editFormData.terminosPago || undefined,
+        terminosDocumentoTexto: editFormData.terminosDocumentoTexto || undefined,
+        metodoPagoDocumentoTexto: editFormData.metodoPagoDocumentoTexto || undefined,
         incluyeFirmaCliente: editFormData.incluyeFirmaCliente,
         firmaClienteNombre: editFormData.firmaClienteNombre || undefined,
         firmaClienteCargo: editFormData.firmaClienteCargo || undefined,
@@ -713,9 +762,9 @@ export default function FacturasPage(): React.ReactElement {
                       </div>
                     </div>
 
-                    {/* Términos */}
+                    {/* Fecha y contrato */}
                     <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-3">
-                      <h4 className="font-medium text-slate-700 text-sm sm:text-base">Términos</h4>
+                      <h4 className="font-medium text-slate-700 text-sm sm:text-base">Datos de contrato</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <Label className="text-slate-500 text-xs sm:text-sm">Fecha</Label>
@@ -733,34 +782,34 @@ export default function FacturasPage(): React.ReactElement {
                             placeholder="Número de contrato"
                           />
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-slate-500 text-xs sm:text-sm">Puerto de Embarque</Label>
-                          <Input
-                            value={newFormData.puertoEmbarque}
-                            onChange={(e) => setNewFormData((p) => ({ ...p, puertoEmbarque: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-slate-500 text-xs sm:text-sm">Origen</Label>
-                          <Input
-                            value={newFormData.origen}
-                            onChange={(e) => setNewFormData((p) => ({ ...p, origen: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-slate-500 text-xs sm:text-sm">Moneda</Label>
-                          <Input
-                            value={newFormData.moneda}
-                            onChange={(e) => setNewFormData((p) => ({ ...p, moneda: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-1 sm:col-span-2">
-                          <Label className="text-slate-500 text-xs sm:text-sm">Términos de Pago</Label>
-                          <Input
-                            value={newFormData.terminosPago}
-                            onChange={(e) => setNewFormData((p) => ({ ...p, terminosPago: e.target.value }))}
-                          />
-                        </div>
+                      </div>
+                    </div>
+
+                    {/* Términos y método de pago para el documento */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-2">
+                        <Label className="text-slate-500 text-xs sm:text-sm">
+                          Términos y condiciones (documento)
+                        </Label>
+                        <textarea
+                          className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                          value={newFormData.terminosDocumentoTexto}
+                          onChange={(e) =>
+                            setNewFormData((p) => ({ ...p, terminosDocumentoTexto: e.target.value }))
+                          }
+                        />
+                      </div>
+                      <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-2">
+                        <Label className="text-slate-500 text-xs sm:text-sm">
+                          Método de pago (documento)
+                        </Label>
+                        <textarea
+                          className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                          value={newFormData.metodoPagoDocumentoTexto}
+                          onChange={(e) =>
+                            setNewFormData((p) => ({ ...p, metodoPagoDocumentoTexto: e.target.value }))
+                          }
+                        />
                       </div>
                     </div>
 
@@ -1123,45 +1172,30 @@ export default function FacturasPage(): React.ReactElement {
               </div>
             </div>
 
-            {/* Términos */}
-            <div className="p-4 bg-slate-50 rounded-lg border space-y-3">
-              <h4 className="font-medium text-slate-700">Términos</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <div>
-                  <Label className="text-sm">Puerto Embarque</Label>
-                  <Input
-                    className="mt-1"
-                    value={editFormData.puertoEmbarque}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, puertoEmbarque: e.target.value }))}
-                    placeholder="NEW ORLEANS, LA"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Origen</Label>
-                  <Input
-                    className="mt-1"
-                    value={editFormData.origen}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, origen: e.target.value }))}
-                    placeholder="ESTADOS UNIDOS"
-                  />
-                </div>
-                <div>
-                  <Label className="text-sm">Moneda</Label>
-                  <Input
-                    className="mt-1"
-                    value={editFormData.moneda}
-                    onChange={(e) => setEditFormData((p) => ({ ...p, moneda: e.target.value }))}
-                    placeholder="USD"
-                  />
-                </div>
+            {/* Términos y método de pago para el documento */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+              <div className="p-4 bg-slate-50 rounded-lg border space-y-2">
+                <Label className="text-sm">
+                  Términos y condiciones (documento)
+                </Label>
+                <textarea
+                  className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                  value={editFormData.terminosDocumentoTexto}
+                  onChange={(e) =>
+                    setEditFormData((p) => ({ ...p, terminosDocumentoTexto: e.target.value }))
+                  }
+                />
               </div>
-              <div>
-                <Label className="text-sm">Términos de Pago</Label>
-                <Input
-                  className="mt-1"
-                  value={editFormData.terminosPago}
-                  onChange={(e) => setEditFormData((p) => ({ ...p, terminosPago: e.target.value }))}
-                  placeholder="100% antes del embarque"
+              <div className="p-4 bg-slate-50 rounded-lg border space-y-2">
+                <Label className="text-sm">
+                  Método de pago (documento)
+                </Label>
+                <textarea
+                  className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                  value={editFormData.metodoPagoDocumentoTexto}
+                  onChange={(e) =>
+                    setEditFormData((p) => ({ ...p, metodoPagoDocumentoTexto: e.target.value }))
+                  }
                 />
               </div>
             </div>

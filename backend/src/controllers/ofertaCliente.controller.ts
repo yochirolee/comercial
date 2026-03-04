@@ -35,6 +35,9 @@ const ofertaClienteSchema = z.object({
   moneda: z.string().optional(),
   terminosPago: z.string().optional(),
   incluyeFirmaCliente: z.boolean().optional(),
+  // Texto configurable para documentos
+  terminosDocumentoTexto: z.string().optional(),
+  metodoPagoDocumentoTexto: z.string().optional(),
   // Items para crear en un solo paso
   items: z.array(itemSchema).optional(),
   campoExtra1: z.string().optional(),
@@ -91,6 +94,14 @@ async function calcularTotal(ofertaId: string): Promise<void> {
     where: { id: ofertaId },
     data: { total },
   });
+}
+
+function extractPuertoEmbarqueFromText(text?: string | null): string | null {
+  if (!text) return null;
+  const match = text.match(/^Puerto de Embarque:\s*(.+)$/mi);
+  if (!match) return null;
+  const value = match[1].trim();
+  return value || null;
 }
 
 export const OfertaClienteController = {
@@ -216,17 +227,25 @@ export const OfertaClienteController = {
       }) || []
     );
 
+    const puertoFromText = extractPuertoEmbarqueFromText(ofertaData.terminosDocumentoTexto);
+
+    const dataToCreate: any = {
+      ...ofertaData,
+      numero,
+      fecha: ofertaData.fecha ? new Date(ofertaData.fecha) : new Date(),
+      vigenciaHasta: ofertaData.vigenciaHasta ? new Date(ofertaData.vigenciaHasta) : null,
+      total,
+      items: itemsToCreate && itemsToCreate.length > 0 ? {
+        create: itemsToCreate,
+      } : undefined,
+    };
+
+    if (puertoFromText) {
+      dataToCreate.puertoEmbarque = puertoFromText;
+    }
+
     const oferta = await prisma.ofertaCliente.create({
-      data: {
-        ...ofertaData,
-        numero,
-        fecha: ofertaData.fecha ? new Date(ofertaData.fecha) : new Date(),
-        vigenciaHasta: ofertaData.vigenciaHasta ? new Date(ofertaData.vigenciaHasta) : null,
-        total,
-        items: itemsToCreate && itemsToCreate.length > 0 ? {
-          create: itemsToCreate,
-        } : undefined,
-      },
+      data: dataToCreate,
       include: {
         cliente: true,
         items: {
@@ -267,6 +286,11 @@ export const OfertaClienteController = {
 
     // Extraer items y clienteId del data (no se pueden actualizar directamente)
     const { items, clienteId, ...updateData } = validation.data;
+
+    const puertoFromText = extractPuertoEmbarqueFromText(updateData.terminosDocumentoTexto);
+    if (puertoFromText) {
+      (updateData as any).puertoEmbarque = puertoFromText;
+    }
 
     const oferta = await prisma.ofertaCliente.update({
       where: { id },

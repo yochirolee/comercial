@@ -24,6 +24,9 @@ const facturaSchema = z.object({
   origen: z.string().optional(),
   moneda: z.string().optional(),
   terminosPago: z.string().optional(),
+  // Texto configurable para documentos
+  terminosDocumentoTexto: z.string().optional(),
+  metodoPagoDocumentoTexto: z.string().optional(),
   // Firmas
   incluyeFirmaCliente: z.boolean().optional(),
   firmaClienteNombre: z.string().optional(),
@@ -64,6 +67,8 @@ const fromOfertaClienteSchema = z.object({
   origen: z.string().optional(),
   moneda: z.string().optional(),
   terminosPago: z.string().optional(),
+  terminosDocumentoTexto: z.string().optional(),
+  metodoPagoDocumentoTexto: z.string().optional(),
   // Firma cliente
   incluyeFirmaCliente: z.boolean().optional(),
   firmaClienteNombre: z.string().optional(),
@@ -87,6 +92,8 @@ const fromOfertaImportadoraSchema = z.object({
   origen: z.string().optional(),
   moneda: z.string().optional(),
   terminosPago: z.string().optional(),
+  terminosDocumentoTexto: z.string().optional(),
+  metodoPagoDocumentoTexto: z.string().optional(),
   // Firma cliente
   incluyeFirmaCliente: z.boolean().optional(),
   firmaClienteNombre: z.string().optional(),
@@ -115,6 +122,14 @@ async function calcularTotales(facturaId: string): Promise<void> {
     where: { id: facturaId },
     data: { subtotal, total },
   });
+}
+
+function extractPuertoEmbarqueFromText(text?: string | null): string | null {
+  if (!text) return null;
+  const match = text.match(/^Puerto de Embarque:\s*(.+)$/mi);
+  if (!match) return null;
+  const value = match[1].trim();
+  return value || null;
 }
 
 /** Al marcar factura como pagada, pone la oferta a importadora y la oferta a cliente en aceptada (opción A). */
@@ -246,6 +261,8 @@ export const FacturaController = {
       origen,
       moneda,
       terminosPago,
+      terminosDocumentoTexto,
+      metodoPagoDocumentoTexto,
       incluyeFirmaCliente = false,
       firmaClienteNombre,
       firmaClienteCargo,
@@ -382,31 +399,43 @@ export const FacturaController = {
       }
     }
 
+    const puertoFromTextCliente = extractPuertoEmbarqueFromText(
+      terminosDocumentoTexto || (ofertaCliente as any).terminosDocumentoTexto
+    );
+
+    const dataFacturaFromCliente: any = {
+      numero: numeroFactura,
+      fecha: fecha ? new Date(fecha) : new Date(),
+      clienteId: ofertaCliente.clienteId,
+      importadoraId,
+      tipoOfertaOrigen: ofertaImportadora ? 'importadora' : 'cliente',
+      ofertaOrigenId: ofertaImportadora ? ofertaImportadora.id : ofertaClienteId,
+      flete,
+      seguro,
+      tieneSeguro,
+      codigoMincex: codigoMincex || ofertaCliente.codigoMincex,
+      puertoEmbarque: puertoEmbarque || ofertaCliente.puertoEmbarque,
+      origen: origen || ofertaCliente.origen,
+      moneda: moneda || ofertaCliente.moneda,
+      terminosPago: terminosPago || ofertaCliente.terminosPago,
+      terminosDocumentoTexto: terminosDocumentoTexto || (ofertaCliente as any).terminosDocumentoTexto,
+      metodoPagoDocumentoTexto: metodoPagoDocumentoTexto || (ofertaCliente as any).metodoPagoDocumentoTexto,
+      incluyeFirmaCliente,
+      firmaClienteNombre,
+      firmaClienteCargo,
+      firmaClienteEmpresa,
+      items: {
+        create: itemsData,
+      },
+    };
+
+    if (puertoFromTextCliente) {
+      dataFacturaFromCliente.puertoEmbarque = puertoFromTextCliente;
+    }
+
     // Crear factura con items
     const factura = await prisma.factura.create({
-      data: {
-        numero: numeroFactura,
-        fecha: fecha ? new Date(fecha) : new Date(),
-        clienteId: ofertaCliente.clienteId,
-        importadoraId,
-        tipoOfertaOrigen: ofertaImportadora ? 'importadora' : 'cliente',
-        ofertaOrigenId: ofertaImportadora ? ofertaImportadora.id : ofertaClienteId,
-        flete,
-        seguro,
-        tieneSeguro,
-        codigoMincex: codigoMincex || ofertaCliente.codigoMincex,
-        puertoEmbarque: puertoEmbarque || ofertaCliente.puertoEmbarque,
-        origen: origen || ofertaCliente.origen,
-        moneda: moneda || ofertaCliente.moneda,
-        terminosPago: terminosPago || ofertaCliente.terminosPago,
-        incluyeFirmaCliente,
-        firmaClienteNombre,
-        firmaClienteCargo,
-        firmaClienteEmpresa,
-        items: {
-          create: itemsData,
-        },
-      },
+      data: dataFacturaFromCliente,
       include: includeFactura,
     });
 
@@ -465,6 +494,8 @@ export const FacturaController = {
       origen,
       moneda,
       terminosPago,
+      terminosDocumentoTexto,
+      metodoPagoDocumentoTexto,
       incluyeFirmaCliente = false,
       firmaClienteNombre,
       firmaClienteCargo,
@@ -581,33 +612,46 @@ export const FacturaController = {
     const empresaCliente = firmaClienteEmpresa || 
       (ofertaCliente?.cliente.nombreCompania || ofertaImportadora.cliente.nombreCompania || "");
 
+    const puertoFromTextImp = extractPuertoEmbarqueFromText(
+      terminosDocumentoTexto || (ofertaImportadora as any).terminosDocumentoTexto
+    );
+
+    const dataFacturaFromImp: any = {
+      numero: numeroFactura,
+      fecha: fecha ? new Date(fecha) : new Date(),
+      clienteId: ofertaImportadora.clienteId,
+      importadoraId: ofertaImportadora.importadoraId,
+      tipoOfertaOrigen: 'importadora',
+      ofertaOrigenId: ofertaImportadoraId,
+      flete: fleteFinal,
+      seguro: seguroFinal,
+      tieneSeguro: tieneSeguro !== undefined ? tieneSeguro : ofertaImportadora.tieneSeguro,
+      codigoMincex: codigoMincex || ofertaImportadora.codigoMincex,
+      puertoEmbarque: puertoEmbarque || ofertaImportadora.puertoEmbarque,
+      origen: origen || ofertaImportadora.origen,
+      moneda: moneda || ofertaImportadora.moneda,
+      terminosPago: terminosPago || ofertaImportadora.terminosPago,
+      terminosDocumentoTexto:
+        terminosDocumentoTexto || (ofertaImportadora as any).terminosDocumentoTexto,
+      metodoPagoDocumentoTexto:
+        metodoPagoDocumentoTexto || (ofertaImportadora as any).metodoPagoDocumentoTexto,
+      incluyeFirmaCliente:
+        incluyeFirmaCliente !== undefined ? incluyeFirmaCliente : ofertaImportadora.incluyeFirmaCliente || false,
+      firmaClienteNombre: incluyeFirmaCliente ? nombreCliente : undefined,
+      firmaClienteCargo: incluyeFirmaCliente ? cargoCliente : undefined,
+      firmaClienteEmpresa: incluyeFirmaCliente ? empresaCliente : undefined,
+      items: {
+        create: itemsData,
+      },
+    };
+
+    if (puertoFromTextImp) {
+      dataFacturaFromImp.puertoEmbarque = puertoFromTextImp;
+    }
+
     // Crear factura con items
     const factura = await prisma.factura.create({
-      data: {
-        numero: numeroFactura,
-        fecha: fecha ? new Date(fecha) : new Date(),
-        clienteId: ofertaImportadora.clienteId,
-        importadoraId: ofertaImportadora.importadoraId,
-        tipoOfertaOrigen: 'importadora',
-        ofertaOrigenId: ofertaImportadoraId,
-        flete: fleteFinal,
-        seguro: seguroFinal,
-        tieneSeguro: tieneSeguro !== undefined ? tieneSeguro : ofertaImportadora.tieneSeguro,
-        codigoMincex: codigoMincex || ofertaImportadora.codigoMincex,
-        puertoEmbarque: puertoEmbarque || ofertaImportadora.puertoEmbarque,
-        origen: origen || ofertaImportadora.origen,
-        moneda: moneda || ofertaImportadora.moneda,
-        terminosPago: terminosPago || ofertaImportadora.terminosPago,
-        incluyeFirmaCliente: incluyeFirmaCliente !== undefined 
-          ? incluyeFirmaCliente 
-          : (ofertaImportadora.incluyeFirmaCliente || false),
-        firmaClienteNombre: incluyeFirmaCliente ? nombreCliente : undefined,
-        firmaClienteCargo: incluyeFirmaCliente ? cargoCliente : undefined,
-        firmaClienteEmpresa: incluyeFirmaCliente ? empresaCliente : undefined,
-        items: {
-          create: itemsData,
-        },
-      },
+      data: dataFacturaFromImp,
       include: includeFactura,
     });
 
@@ -680,6 +724,11 @@ export const FacturaController = {
       fecha: validation.data.fecha ? new Date(validation.data.fecha) : undefined,
       fechaVencimiento: validation.data.fechaVencimiento ? new Date(validation.data.fechaVencimiento) : undefined,
     };
+
+    const puertoFromTextUpdate = extractPuertoEmbarqueFromText(validation.data.terminosDocumentoTexto);
+    if (puertoFromTextUpdate) {
+      updateData.puertoEmbarque = puertoFromTextUpdate;
+    }
     
     // Manejar importadoraId explícitamente para permitir null
     if ('importadoraId' in validation.data) {

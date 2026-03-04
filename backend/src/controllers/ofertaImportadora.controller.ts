@@ -21,6 +21,9 @@ const ofertaImportadoraSchema = z.object({
   flete: z.number().min(0).optional(),
   seguro: z.number().min(0).optional(),
   tieneSeguro: z.boolean().optional(),
+  // Texto configurable para documentos (bloques Términos y Método de pago)
+  terminosDocumentoTexto: z.string().optional(),
+  metodoPagoDocumentoTexto: z.string().optional(),
 });
 
 // Genera el siguiente número de oferta en formato Z26XXX
@@ -92,6 +95,9 @@ const crearDesdeOfertaSchema = z.object({
   origen: z.string().optional(),
   moneda: z.string().optional(),
   terminosPago: z.string().optional(),
+  // Texto configurable para documentos
+  terminosDocumentoTexto: z.string().optional(),
+  metodoPagoDocumentoTexto: z.string().optional(),
   // Items opcionales: si se proporcionan, se usan; si no, se copian de la oferta cliente
   items: z.array(itemSchema).optional(),
 });
@@ -118,6 +124,14 @@ async function actualizarTotales(ofertaId: string): Promise<void> {
       precioCIF: subtotalProductos + flete + seguro,
     },
   });
+}
+
+function extractPuertoEmbarqueFromText(text?: string | null): string | null {
+  if (!text) return null;
+  const match = text.match(/^Puerto de Embarque:\s*(.+)$/mi);
+  if (!match) return null;
+  const value = match[1].trim();
+  return value || null;
 }
 
 export const OfertaImportadoraController = {
@@ -200,13 +214,21 @@ export const OfertaImportadoraController = {
       return;
     }
 
+    const puertoFromText = extractPuertoEmbarqueFromText(validation.data.terminosDocumentoTexto);
+
+    const dataToCreate: any = {
+      ...validation.data,
+      numero,
+      fecha: validation.data.fecha ? new Date(validation.data.fecha) : new Date(),
+      vigenciaHasta: validation.data.vigenciaHasta ? new Date(validation.data.vigenciaHasta) : null,
+    };
+
+    if (puertoFromText) {
+      dataToCreate.puertoEmbarque = puertoFromText;
+    }
+
     const oferta = await prisma.ofertaImportadora.create({
-      data: {
-        ...validation.data,
-        numero,
-        fecha: validation.data.fecha ? new Date(validation.data.fecha) : new Date(),
-        vigenciaHasta: validation.data.vigenciaHasta ? new Date(validation.data.vigenciaHasta) : null,
-      },
+      data: dataToCreate,
       include: {
         cliente: true,
         ofertaCliente: true,
@@ -235,7 +257,8 @@ export const OfertaImportadoraController = {
 
     const { 
       ofertaClienteId, importadoraId, fecha, flete, seguro, tieneSeguro, incluyeFirmaCliente, totalCifDeseado,
-      puertoEmbarque, origen, moneda, terminosPago, items: itemsProporcionados,
+      puertoEmbarque, origen, moneda, terminosPago, terminosDocumentoTexto, metodoPagoDocumentoTexto,
+      items: itemsProporcionados,
     } = validation.data;
     
     const numero = validation.data.numero || await generarNumeroOferta();
@@ -368,30 +391,42 @@ export const OfertaImportadoraController = {
       // Si ya existe, no hacer nada
     }
 
+    const puertoFromText = extractPuertoEmbarqueFromText(
+      terminosDocumentoTexto || ofertaCliente.terminosDocumentoTexto
+    );
+
+    const dataOfertaImportadora: any = {
+      numero,
+      fecha: fecha ? new Date(fecha) : new Date(),
+      clienteId: ofertaCliente.clienteId,
+      importadoraId,
+      ofertaClienteId,
+      codigoMincex: ofertaCliente.codigoMincex,
+      // Usar valores proporcionados si existen, si no usar los de oferta cliente
+      puertoEmbarque: puertoEmbarque || ofertaCliente.puertoEmbarque,
+      origen: origen || ofertaCliente.origen,
+      moneda: moneda || ofertaCliente.moneda,
+      terminosPago: terminosPago || ofertaCliente.terminosPago,
+      terminosDocumentoTexto: terminosDocumentoTexto || ofertaCliente.terminosDocumentoTexto,
+      metodoPagoDocumentoTexto: metodoPagoDocumentoTexto || ofertaCliente.metodoPagoDocumentoTexto,
+      incluyeFirmaCliente: incluyeFirmaCliente ?? true,
+      flete,
+      seguro: seguroFinal,
+      tieneSeguro: tieneSeguro || false,
+      subtotalProductos,
+      precioCIF: cifCalculado,
+      items: {
+        create: itemsParaCrear,
+      },
+    };
+
+    if (puertoFromText) {
+      dataOfertaImportadora.puertoEmbarque = puertoFromText;
+    }
+
     // Crear oferta importadora con los items determinados
     const ofertaImportadora = await prisma.ofertaImportadora.create({
-      data: {
-        numero,
-        fecha: fecha ? new Date(fecha) : new Date(),
-        clienteId: ofertaCliente.clienteId,
-        importadoraId,
-        ofertaClienteId,
-        codigoMincex: ofertaCliente.codigoMincex,
-        // Usar valores proporcionados si existen, si no usar los de oferta cliente
-        puertoEmbarque: puertoEmbarque || ofertaCliente.puertoEmbarque,
-        origen: origen || ofertaCliente.origen,
-        moneda: moneda || ofertaCliente.moneda,
-        terminosPago: terminosPago || ofertaCliente.terminosPago,
-        incluyeFirmaCliente: incluyeFirmaCliente ?? true,
-        flete,
-        seguro: seguroFinal,
-        tieneSeguro: tieneSeguro || false,
-        subtotalProductos,
-        precioCIF: cifCalculado,
-        items: {
-          create: itemsParaCrear,
-        },
-      },
+      data: dataOfertaImportadora,
       include: {
         cliente: true,
         importadora: true,
@@ -517,13 +552,21 @@ export const OfertaImportadoraController = {
       }
     }
 
+    const puertoFromTextUpdate = extractPuertoEmbarqueFromText(validation.data.terminosDocumentoTexto);
+
+    const dataToUpdate: any = {
+      ...validation.data,
+      fecha: validation.data.fecha ? new Date(validation.data.fecha) : undefined,
+      vigenciaHasta: validation.data.vigenciaHasta ? new Date(validation.data.vigenciaHasta) : undefined,
+    };
+
+    if (puertoFromTextUpdate) {
+      dataToUpdate.puertoEmbarque = puertoFromTextUpdate;
+    }
+
     await prisma.ofertaImportadora.update({
       where: { id },
-      data: {
-        ...validation.data,
-        fecha: validation.data.fecha ? new Date(validation.data.fecha) : undefined,
-        vigenciaHasta: validation.data.vigenciaHasta ? new Date(validation.data.vigenciaHasta) : undefined,
-      },
+      data: dataToUpdate,
     });
     
     // Solo actualizar totales (CIF = subtotal + flete + seguro) sin tocar precios

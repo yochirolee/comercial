@@ -985,16 +985,97 @@ export const ExportController = {
     const { yPos, totalImporte } = renderPdfTable(doc, oferta.items, margin, false, true, 'TOTAL CIF');
     doc.y = yPos + 15;
 
-    // TÉRMINOS + Puerto + Origen + Moneda
-    doc.font('Helvetica').fontSize(9);
-    doc.text(`TERMINOS Y CONDICIONES: ${oferta.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE'}`, margin, doc.y);
-    doc.text(`PUERTO DE EMBARQUE: ${oferta.puertoEmbarque || 'NEW ORLEANS, LA'}`);
-    doc.text(`ORIGEN: ${oferta.origen || 'ESTADOS UNIDOS'}`);
-    doc.text(`MONEDA: ${oferta.moneda || 'USD'}`);
+    // Bloque en DOS COLUMNAS: Términos (izquierda 60%) y Método de pago (derecha 40%)
+    const leftWidth = contentWidth * 0.6;
+    const rightWidth = contentWidth - leftWidth;
+    const leftX = margin;
+    const rightX = margin + leftWidth + 10; // pequeño espacio entre columnas
+    const topY = doc.y;
 
-    // FIRMAS - Si incluye firma cliente, ambas en la misma línea
-    doc.moveDown(4);
-    
+    // Columna izquierda: TÉRMINOS Y CONDICIONES
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text('TÉRMINOS Y CONDICIONES', leftX, topY, { width: leftWidth, align: 'left' });
+    doc.moveDown(0.3);
+    doc.font('Helvetica').fontSize(8.5);
+
+    const puertoDestino = 'Mariel, Cuba.';
+    // Oferta a cliente: no mostrar valor por defecto; dejar en blanco si está vacío o es "NEW ORLEANS, LA"
+    const rawPuerto = (oferta.puertoEmbarque ?? '').trim();
+    const puertoEmbarque = rawPuerto && rawPuerto.toUpperCase() !== 'NEW ORLEANS, LA' ? rawPuerto : '';
+    const origen = oferta.origen || 'Estados Unidos.';
+    const terminosPago = oferta.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE';
+    const moneda = oferta.moneda || 'USD';
+
+    const terminosDoc = (oferta as any).terminosDocumentoTexto?.trim();
+
+    let leftBottomY = doc.y;
+    if (terminosDoc && terminosDoc.length > 0) {
+      const lineas = terminosDoc.split(/\r?\n/);
+      for (const linea of lineas) {
+        doc.text(linea, { width: leftWidth, align: 'left' });
+        doc.moveDown(0.2);
+        leftBottomY = doc.y;
+      }
+    } else {
+      const terminosParrafos = [
+        `Validez de la Oferta: 15 días.`,
+        `Puerto Destino: ${puertoDestino}`,
+        `Puerto de Embarque: ${puertoEmbarque}`,
+        `Origen: ${origen}`,
+        `Términos de Entrega: Máximo 15 días posteriores al pago.`,
+        `Pago: 100% del valor a la firma del contrato.`,
+        `Moneda: Dólar Americano (${moneda}).`,
+        `Métodos de Pago: Transferencia bancaria o cheques del banco pagador.`,
+        `ZAS BY JMC CORP no se hace responsable por retrasos ocasionados por la naviera, puertos u otros factores externos considerados de FUERZA MAYOR que puedan provocar demoras en los embarques. En estos casos, la empresa proveerá evidencias y mantendrá informado al cliente.`,
+        `El cliente tiene la responsabilidad de devolver el o los contenedores en un plazo máximo de 72 horas después de haber sido extraídos del puerto en destino.`,
+        // Dejamos el término original al final, por si quieres conservarlo
+        `Condición de pago original: ${terminosPago}`,
+      ];
+
+      for (const p of terminosParrafos) {
+        doc.text(p, { width: leftWidth, align: 'left' });
+        doc.moveDown(0.2);
+        leftBottomY = doc.y;
+      }
+    }
+
+    // Columna derecha: MÉTODO DE PAGO
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text('MÉTODO DE PAGO', rightX, topY, { width: rightWidth, align: 'left' });
+    doc.moveDown(0.3);
+    doc.font('Helvetica').fontSize(8.5);
+
+    const metodoPagoDoc = (oferta as any).metodoPagoDocumentoTexto?.trim();
+
+    let rightBottomY = doc.y;
+    if (metodoPagoDoc && metodoPagoDoc.length > 0) {
+      const lineasMetodo = metodoPagoDoc.split(/\r?\n/);
+      for (const linea of lineasMetodo) {
+        doc.text(linea, { width: rightWidth, align: 'left' });
+        doc.moveDown(0.2);
+        rightBottomY = doc.y;
+      }
+    } else {
+      const metodoPagoParrafos = [
+        `Banco: Truist Bank`,
+        `Titular: ZAS BY JMC CORP`,
+        `Número de Cuenta: 1100035647757`,
+        `Número de Ruta (transferencias dentro de USA): 263191387`,
+        `Dirección de la Empresa: 7081 NW 82 AVE MIAMI FL 33166`,
+      ];
+
+      for (const p of metodoPagoParrafos) {
+        doc.text(p, { width: rightWidth, align: 'left' });
+        doc.moveDown(0.2);
+        rightBottomY = doc.y;
+      }
+    }
+
+    // Continuar debajo de la columna más larga
+    doc.y = Math.max(leftBottomY, rightBottomY) + 18;
+
+    // FIRMAS Y CUÑO - misma página
+    doc.moveDown(2);
     const firmaStartY = doc.y;
     const firmaWidth = 180;
     const firmaClienteX = pageWidth - margin - firmaWidth;
@@ -1148,24 +1229,82 @@ export const ExportController = {
     row = renderExcelTotalRow(worksheet, endRow, totalImporte, numCols, lastCol);
     row++; // Espacio
 
-    // TÉRMINOS + Puerto + Origen + Moneda
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `TERMINOS Y CONDICIONES: ${oferta.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE'}`;
-    row++;
+    // Bloque en DOS COLUMNAS: Términos (izquierda ~60%) y Método de pago (derecha ~40%)
+    const leftLastColIndex = Math.max(1, Math.floor(lastColIndex * 0.6));
+    const rightFirstColIndex = Math.min(lastColIndex, leftLastColIndex + 1);
 
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `PUERTO DE EMBARQUE: ${oferta.puertoEmbarque || 'NEW ORLEANS, LA'}`;
-    row++;
+    const getColLetter = (index: number): string => {
+      if (index <= 26) {
+        return String.fromCharCode(64 + index);
+      }
+      const first = String.fromCharCode(64 + Math.floor((index - 1) / 26));
+      const second = String.fromCharCode(65 + ((index - 1) % 26));
+      return `${first}${second}`;
+    };
 
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `ORIGEN: ${oferta.origen || 'ESTADOS UNIDOS'}`;
-    row++;
+    const leftLastCol = getColLetter(leftLastColIndex);
+    const rightFirstCol = getColLetter(rightFirstColIndex);
 
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `MONEDA: ${oferta.moneda || 'USD'}`;
-    row++;
+    const puertoDestino = 'Mariel, Cuba.';
+    // Oferta a cliente: no mostrar valor por defecto; dejar en blanco si está vacío o es "NEW ORLEANS, LA"
+    const rawPuertoExcel = (oferta.puertoEmbarque ?? '').trim();
+    const puertoEmbarqueExcel =
+      rawPuertoExcel && rawPuertoExcel.toUpperCase() !== 'NEW ORLEANS, LA'
+        ? rawPuertoExcel
+        : '';
+    const origen = oferta.origen || 'Estados Unidos.';
+    const terminosPago = oferta.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE';
+    const moneda = oferta.moneda || 'USD';
 
-    // FIRMAS - Empresa a la izquierda, Cliente a la derecha (en la misma fila)
+    const terminosDocExcel = (oferta as any).terminosDocumentoTexto?.trim();
+    const metodoPagoDocExcel = (oferta as any).metodoPagoDocumentoTexto?.trim();
+
+    const terminosTexto = terminosDocExcel && terminosDocExcel.length > 0
+      ? ['TÉRMINOS Y CONDICIONES', '', terminosDocExcel].join('\n')
+      : [
+          'TÉRMINOS Y CONDICIONES',
+          '',
+          'Validez de la Oferta: 15 días.',
+          `Puerto Destino: ${puertoDestino}`,
+          puertoEmbarqueExcel ? `Puerto de Embarque: ${puertoEmbarqueExcel}` : 'Puerto de Embarque:',
+          `Origen: ${origen}`,
+          'Términos de Entrega: Máximo 15 días posteriores al pago.',
+          'Pago: 100% del valor a la firma del contrato.',
+          `Moneda: Dólar Americano (${moneda}).`,
+          'Métodos de Pago: Transferencia bancaria o cheques del banco pagador.',
+          'ZAS BY JMC CORP no se hace responsable por retrasos ocasionados por la naviera, puertos u otros factores externos considerados de FUERZA MAYOR que puedan provocar demoras en los embarques. En estos casos, la empresa proveerá evidencias y mantendrá informado al cliente.',
+          'El cliente tiene la responsabilidad de devolver el o los contenedores en un plazo máximo de 72 horas después de haber sido extraídos del puerto en destino.',
+          `Condición de pago original: ${terminosPago}`,
+        ].join('\n');
+
+    const metodoPagoTexto = metodoPagoDocExcel && metodoPagoDocExcel.length > 0
+      ? ['MÉTODO DE PAGO', '', metodoPagoDocExcel].join('\n')
+      : [
+          'MÉTODO DE PAGO',
+          '',
+          'Banco: Truist Bank',
+          'Titular: ZAS BY JMC CORP',
+          'Número de Cuenta: 1100035647757',
+          'Número de Ruta (transferencias dentro de USA): 263191387',
+          'Dirección de la Empresa: 7081 NW 82 AVE MIAMI FL 33166',
+        ].join('\n');
+
+    // Columna izquierda: términos
+    worksheet.mergeCells(`A${row}:${leftLastCol}${row + 6}`);
+    const leftCell = worksheet.getCell(`A${row}`);
+    leftCell.value = terminosTexto;
+    leftCell.alignment = { vertical: 'top', wrapText: true };
+
+    // Columna derecha: método de pago
+    worksheet.mergeCells(`${rightFirstCol}${row}:${lastCol}${row + 6}`);
+    const rightCell = worksheet.getCell(`${rightFirstCol}${row}`);
+    rightCell.value = metodoPagoTexto;
+    rightCell.alignment = { vertical: 'top', wrapText: true };
+
+    row = row + 7; // Continuar después del bloque
+
+    // FIRMAS Y CUÑO - Empresa a la izquierda, Cliente a la derecha (en la misma fila)
+    row += 2; // Espacio para separar del bloque de términos
     const firmaStartRow = row + 2;
 
     // FIRMA EMPRESA - Imagen
@@ -1314,15 +1453,97 @@ export const ExportController = {
     
     doc.moveDown(1.5);
 
-    // TÉRMINOS + Puerto + Origen + Moneda
-    doc.font('Helvetica').fontSize(9);
-    doc.text(`TERMINOS Y CONDICIONES: ${oferta.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE'}`, margin, doc.y);
-    doc.text(`PUERTO DE EMBARQUE: ${oferta.puertoEmbarque || 'NEW ORLEANS, LA'}`);
-    doc.text(`ORIGEN: ${oferta.origen || 'ESTADOS UNIDOS'}`);
-    doc.text(`MONEDA: ${oferta.moneda || 'USD'}`);
+    // Bloque en DOS COLUMNAS: Términos (izquierda 60%) y Método de pago (derecha 40%)
+    const leftWidthImp = contentWidth * 0.6;
+    const rightWidthImp = contentWidth - leftWidthImp;
+    const leftXImp = margin;
+    const rightXImp = margin + leftWidthImp + 10; // pequeño espacio entre columnas
+    const topYImp = doc.y;
+
+    // Columna izquierda: TÉRMINOS Y CONDICIONES
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text('TÉRMINOS Y CONDICIONES', leftXImp, topYImp, { width: leftWidthImp, align: 'left' });
+    doc.moveDown(0.3);
+    doc.font('Helvetica').fontSize(8.5);
+
+    const puertoDestinoImp = 'Mariel, Cuba.';
+    // No usar valor por defecto fijo; si está vacío o es "NEW ORLEANS, LA" lo dejamos en blanco
+    const rawPuertoImp = (oferta.puertoEmbarque ?? '').trim();
+    const puertoEmbarqueImp =
+      rawPuertoImp && rawPuertoImp.toUpperCase() !== 'NEW ORLEANS, LA' ? rawPuertoImp : '';
+    const origenImp = oferta.origen || 'Estados Unidos.';
+    const terminosPagoImp = oferta.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE';
+    const monedaImp = oferta.moneda || 'USD';
+
+    const terminosImpDoc = (oferta as any).terminosDocumentoTexto?.trim();
+
+    let leftBottomYImp = doc.y;
+    if (terminosImpDoc && terminosImpDoc.length > 0) {
+      const lineasImp = terminosImpDoc.split(/\r?\n/);
+      for (const linea of lineasImp) {
+        doc.text(linea, { width: leftWidthImp, align: 'left' });
+        doc.moveDown(0.2);
+        leftBottomYImp = doc.y;
+      }
+    } else {
+      const terminosParrafosImp = [
+        `Validez de la Oferta: 15 días.`,
+        `Puerto Destino: ${puertoDestinoImp}`,
+        `Puerto de Embarque: ${puertoEmbarqueImp}`,
+        `Origen: ${origenImp}`,
+        `Términos de Entrega: Máximo 15 días posteriores al pago.`,
+        `Pago: 100% del valor a la firma del contrato.`,
+        `Moneda: Dólar Americano (${monedaImp}).`,
+        `Métodos de Pago: Transferencia bancaria o cheques del banco pagador.`,
+        `ZAS BY JMC CORP no se hace responsable por retrasos ocasionados por la naviera, puertos u otros factores externos considerados de FUERZA MAYOR que puedan provocar demoras en los embarques. En estos casos, la empresa proveerá evidencias y mantendrá informado al cliente.`,
+        `El cliente tiene la responsabilidad de devolver el o los contenedores en un plazo máximo de 72 horas después de haber sido extraídos del puerto en destino.`,
+        `Condición de pago original: ${terminosPagoImp}`,
+      ];
+
+      for (const p of terminosParrafosImp) {
+        doc.text(p, { width: leftWidthImp, align: 'left' });
+        doc.moveDown(0.2);
+        leftBottomYImp = doc.y;
+      }
+    }
+
+    // Columna derecha: MÉTODO DE PAGO
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text('MÉTODO DE PAGO', rightXImp, topYImp, { width: rightWidthImp, align: 'left' });
+    doc.moveDown(0.3);
+    doc.font('Helvetica').fontSize(8.5);
+
+    const metodoPagoImpDoc = (oferta as any).metodoPagoDocumentoTexto?.trim();
+
+    let rightBottomYImp = doc.y;
+    if (metodoPagoImpDoc && metodoPagoImpDoc.length > 0) {
+      const lineasMetodoImp = metodoPagoImpDoc.split(/\r?\n/);
+      for (const linea of lineasMetodoImp) {
+        doc.text(linea, { width: rightWidthImp, align: 'left' });
+        doc.moveDown(0.2);
+        rightBottomYImp = doc.y;
+      }
+    } else {
+      const metodoPagoParrafosImp = [
+        `Banco: Truist Bank`,
+        `Titular: ZAS BY JMC CORP`,
+        `Número de Cuenta: 1100035647757`,
+        `Número de Ruta (transferencias dentro de USA): 263191387`,
+        `Dirección de la Empresa: 7081 NW 82 AVE MIAMI FL 33166`,
+      ];
+
+      for (const p of metodoPagoParrafosImp) {
+        doc.text(p, { width: rightWidthImp, align: 'left' });
+        doc.moveDown(0.2);
+        rightBottomYImp = doc.y;
+      }
+    }
+
+    // Continuar debajo de la columna más larga
+    doc.y = Math.max(leftBottomYImp, rightBottomYImp) + 18;
 
     // FIRMAS
-    doc.moveDown(4);
+    doc.moveDown(2);
     
     const firmaStartY = doc.y;
     const firmaWidth = 180;
@@ -1507,22 +1728,76 @@ export const ExportController = {
     worksheet.getCell(`${lastCol}${row}`).font = { bold: true };
     row += 2;
 
-    // TÉRMINOS + Puerto + Origen + Moneda
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `TERMINOS Y CONDICIONES: ${oferta.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE'}`;
-    row++;
+    // Bloque en DOS COLUMNAS: Términos (izquierda ~60%) y Método de pago (derecha ~40%)
+    const lastColIndexImp = lastCol.charCodeAt(0) - 64; // A=1, B=2, ...
+    const leftLastColIndexImp = Math.max(1, Math.floor(lastColIndexImp * 0.6));
+    const rightFirstColIndexImp = Math.min(lastColIndexImp, leftLastColIndexImp + 1);
 
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `PUERTO DE EMBARQUE: ${oferta.puertoEmbarque || 'NEW ORLEANS, LA'}`;
-    row++;
+    const getColLetterImp = (index: number): string => {
+      return String.fromCharCode(64 + index);
+    };
 
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `ORIGEN: ${oferta.origen || 'ESTADOS UNIDOS'}`;
-    row++;
+    const leftLastColImp = getColLetterImp(leftLastColIndexImp);
+    const rightFirstColImp = getColLetterImp(rightFirstColIndexImp);
 
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `MONEDA: ${oferta.moneda || 'USD'}`;
-    row++;
+    const puertoDestinoImpX = 'Mariel, Cuba.';
+    const rawPuertoExcelImp = (oferta.puertoEmbarque ?? '').trim();
+    const puertoEmbarqueExcelImp =
+      rawPuertoExcelImp && rawPuertoExcelImp.toUpperCase() !== 'NEW ORLEANS, LA'
+        ? rawPuertoExcelImp
+        : '';
+    const origenImpX = oferta.origen || 'Estados Unidos.';
+    const terminosPagoImpX = oferta.terminosPago || 'PAGO 100% ANTES DEL EMBARQUE';
+    const monedaImpX = oferta.moneda || 'USD';
+
+    const terminosImpDocExcel = (oferta as any).terminosDocumentoTexto?.trim();
+    const metodoPagoImpDocExcel = (oferta as any).metodoPagoDocumentoTexto?.trim();
+
+    const terminosTextoImp =
+      terminosImpDocExcel && terminosImpDocExcel.length > 0
+        ? ['TÉRMINOS Y CONDICIONES', '', terminosImpDocExcel].join('\n')
+        : [
+            'TÉRMINOS Y CONDICIONES',
+            '',
+            'Validez de la Oferta: 15 días.',
+            `Puerto Destino: ${puertoDestinoImpX}`,
+            puertoEmbarqueExcelImp ? `Puerto de Embarque: ${puertoEmbarqueExcelImp}` : 'Puerto de Embarque:',
+            `Origen: ${origenImpX}`,
+            'Términos de Entrega: Máximo 15 días posteriores al pago.',
+            'Pago: 100% del valor a la firma del contrato.',
+            `Moneda: Dólar Americano (${monedaImpX}).`,
+            'Métodos de Pago: Transferencia bancaria o cheques del banco pagador.',
+            'ZAS BY JMC CORP no se hace responsable por retrasos ocasionados por la naviera, puertos u otros factores externos considerados de FUERZA MAYOR que puedan provocar demoras en los embarques. En estos casos, la empresa proveerá evidencias y mantendrá informado al cliente.',
+            'El cliente tiene la responsabilidad de devolver el o los contenedores en un plazo máximo de 72 horas después de haber sido extraídos del puerto en destino.',
+            `Condición de pago original: ${terminosPagoImpX}`,
+          ].join('\n');
+
+    const metodoPagoTextoImp =
+      metodoPagoImpDocExcel && metodoPagoImpDocExcel.length > 0
+        ? ['MÉTODO DE PAGO', '', metodoPagoImpDocExcel].join('\n')
+        : [
+            'MÉTODO DE PAGO',
+            '',
+            'Banco: Truist Bank',
+            'Titular: ZAS BY JMC CORP',
+            'Número de Cuenta: 1100035647757',
+            'Número de Ruta (transferencias dentro de USA): 263191387',
+            'Dirección de la Empresa: 7081 NW 82 AVE MIAMI FL 33166',
+          ].join('\n');
+
+    // Columna izquierda: términos
+    worksheet.mergeCells(`A${row}:${leftLastColImp}${row + 6}`);
+    const leftCellImp = worksheet.getCell(`A${row}`);
+    leftCellImp.value = terminosTextoImp;
+    leftCellImp.alignment = { vertical: 'top', wrapText: true };
+
+    // Columna derecha: método de pago
+    worksheet.mergeCells(`${rightFirstColImp}${row}:${lastCol}${row + 6}`);
+    const rightCellImp = worksheet.getCell(`${rightFirstColImp}${row}`);
+    rightCellImp.value = metodoPagoTextoImp;
+    rightCellImp.alignment = { vertical: 'top', wrapText: true };
+
+    row = row + 7; // Continuar después del bloque
 
     // Firmas
     const firmaStartRow = row + 2;
@@ -1853,12 +2128,90 @@ export const ExportController = {
     doc.text(`COSTO CFR: $${formatCurrency(costoCFR)}`, margin, yPos, { width: tableWidth, align: 'right' });
     yPos += 20;
 
-    // TÉRMINOS Y CONDICIONES
+    // TÉRMINOS Y CONDICIONES / MÉTODO DE PAGO (bloques configurables en DOS COLUMNAS 60/40)
+    const leftWidthFac = contentWidth * 0.6;
+    const rightWidthFac = contentWidth - leftWidthFac;
+    const leftXFac = margin;
+    const rightXFac = margin + leftWidthFac + 10;
+    const topYFac = yPos;
+
+    // Columna izquierda: TÉRMINOS Y CONDICIONES
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text('TÉRMINOS Y CONDICIONES', leftXFac, topYFac, { width: leftWidthFac, align: 'left' });
+    doc.moveDown(0.3);
     doc.font('Helvetica').fontSize(9);
-    doc.text(`TERMINOS Y CONDICIONES: ${(factura as any).terminosPago || 'PAGO 100% ANTES DEL EMBARQUE'}`, margin, yPos);
-    doc.text(`PUERTO DE EMBARQUE: ${(factura as any).puertoEmbarque || 'NEW ORLEANS, LA'}`);
-    doc.text(`ORIGEN: ${(factura as any).origen || 'ESTADOS UNIDOS'}`);
-    doc.text(`MONEDA: ${(factura as any).moneda || 'USD'}`);
+
+    const terminosDocFactura = (factura as any).terminosDocumentoTexto?.trim();
+    const rawPuertoFac = ((factura as any).puertoEmbarque ?? '').trim();
+    const puertoEmbarqueFac =
+      rawPuertoFac && rawPuertoFac.toUpperCase() !== 'NEW ORLEANS, LA' ? rawPuertoFac : '';
+    const origenFac = (factura as any).origen || 'Estados Unidos.';
+    const terminosPagoFac = (factura as any).terminosPago || 'PAGO 100% ANTES DEL EMBARQUE';
+    const monedaFac = (factura as any).moneda || 'USD';
+
+    let leftBottomYFac = doc.y;
+    if (terminosDocFactura && terminosDocFactura.length > 0) {
+      const lineas = terminosDocFactura.split(/\r?\n/);
+      for (const linea of lineas) {
+        doc.text(linea, { width: leftWidthFac, align: 'left' });
+        doc.moveDown(0.2);
+        leftBottomYFac = doc.y;
+      }
+    } else {
+      const terminosParrafosFac = [
+        `Validez de la Oferta: 15 días.`,
+        `Puerto Destino: Mariel, Cuba.`,
+        `Puerto de Embarque: ${puertoEmbarqueFac}`,
+        `Origen: ${origenFac}`,
+        `Términos de Entrega: Máximo 15 días posteriores al pago.`,
+        `Pago: 100% del valor a la firma del contrato.`,
+        `Moneda: Dólar Americano (${monedaFac}).`,
+        `Métodos de Pago: Transferencia bancaria o cheques del banco pagador.`,
+        `ZAS BY JMC CORP no se hace responsable por retrasos ocasionados por la naviera, puertos u otros factores externos considerados de FUERZA MAYOR que puedan provocar demoras en los embarques. En estos casos, la empresa proveerá evidencias y mantendrá informado al cliente.`,
+        `El cliente tiene la responsabilidad de devolver el o los contenedores en un plazo máximo de 72 horas después de haber sido extraídos del puerto en destino.`,
+        `Condición de pago original: ${terminosPagoFac}`,
+      ];
+
+      for (const p of terminosParrafosFac) {
+        doc.text(p, { width: leftWidthFac, align: 'left' });
+        doc.moveDown(0.2);
+        leftBottomYFac = doc.y;
+      }
+    }
+
+    // Columna derecha: MÉTODO DE PAGO
+    doc.font('Helvetica-Bold').fontSize(9);
+    doc.text('MÉTODO DE PAGO', rightXFac, topYFac, { width: rightWidthFac, align: 'left' });
+    doc.moveDown(0.3);
+    doc.font('Helvetica').fontSize(9);
+
+    const metodoPagoDocFactura = (factura as any).metodoPagoDocumentoTexto?.trim();
+    let rightBottomYFac = doc.y;
+    if (metodoPagoDocFactura && metodoPagoDocFactura.length > 0) {
+      const lineasMetodo = metodoPagoDocFactura.split(/\r?\n/);
+      for (const linea of lineasMetodo) {
+        doc.text(linea, { width: rightWidthFac, align: 'left' });
+        doc.moveDown(0.2);
+        rightBottomYFac = doc.y;
+      }
+    } else {
+      const metodoPagoParrafosFac = [
+        `Banco: Truist Bank`,
+        `Titular: ZAS BY JMC CORP`,
+        `Número de Cuenta: 1100035647757`,
+        `Número de Ruta (transferencias dentro de USA): 263191387`,
+        `Dirección de la Empresa: 7081 NW 82 AVE MIAMI FL 33166`,
+      ];
+
+      for (const p of metodoPagoParrafosFac) {
+        doc.text(p, { width: rightWidthFac, align: 'left' });
+        doc.moveDown(0.2);
+        rightBottomYFac = doc.y;
+      }
+    }
+
+    // Continuar debajo de la columna más larga
+    doc.y = Math.max(leftBottomYFac, rightBottomYFac) + 18;
 
     // FIRMAS
     doc.moveDown(3);
@@ -2193,23 +2546,73 @@ export const ExportController = {
     worksheet.getCell(row, importeCol).font = { bold: true };
     row += 2;
 
-    // TÉRMINOS Y CONDICIONES
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `TERMINOS Y CONDICIONES: ${(factura as any).terminosPago || 'PAGO 100% ANTES DEL EMBARQUE'}`;
-    row++;
+    // TÉRMINOS Y CONDICIONES / MÉTODO DE PAGO (bloques configurables)
+    const terminosDocFacX = (factura as any).terminosDocumentoTexto?.trim();
+    const metodoPagoDocFacX = (factura as any).metodoPagoDocumentoTexto?.trim();
+    const rawPuertoFacX = ((factura as any).puertoEmbarque ?? '').trim();
+    const puertoEmbarqueFacX =
+      rawPuertoFacX && rawPuertoFacX.toUpperCase() !== 'NEW ORLEANS, LA' ? rawPuertoFacX : '';
+    const origenFacX = (factura as any).origen || 'Estados Unidos.';
+    const terminosPagoFacX = (factura as any).terminosPago || 'PAGO 100% ANTES DEL EMBARQUE';
+    const monedaFacX = (factura as any).moneda || 'USD';
 
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `PUERTO DE EMBARQUE: ${(factura as any).puertoEmbarque || 'NEW ORLEANS, LA'}`;
-    row++;
+    const terminosTextoFac =
+      terminosDocFacX && terminosDocFacX.length > 0
+        ? ['TÉRMINOS Y CONDICIONES', '', terminosDocFacX].join('\n')
+        : [
+            'TÉRMINOS Y CONDICIONES',
+            '',
+            'Validez de la Oferta: 15 días.',
+            'Puerto Destino: Mariel, Cuba.',
+            `Puerto de Embarque: ${puertoEmbarqueFacX}`,
+            `Origen: ${origenFacX}`,
+            'Términos de Entrega: Máximo 15 días posteriores al pago.',
+            'Pago: 100% del valor a la firma del contrato.',
+            `Moneda: Dólar Americano (${monedaFacX}).`,
+            'Métodos de Pago: Transferencia bancaria o cheques del banco pagador.',
+            'ZAS BY JMC CORP no se hace responsable por retrasos ocasionados por la naviera, puertos u otros factores externos considerados de FUERZA MAYOR que puedan provocar demoras en los embarques. En estos casos, la empresa proveerá evidencias y mantendrá informado al cliente.',
+            'El cliente tiene la responsabilidad de devolver el o los contenedores en un plazo máximo de 72 horas después de haber sido extraídos del puerto en destino.',
+            `Condición de pago original: ${terminosPagoFacX}`,
+          ].join('\n');
 
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `ORIGEN: ${(factura as any).origen || 'ESTADOS UNIDOS'}`;
-    row++;
+    const metodoPagoTextoFac =
+      metodoPagoDocFacX && metodoPagoDocFacX.length > 0
+        ? ['MÉTODO DE PAGO', '', metodoPagoDocFacX].join('\n')
+        : [
+            'MÉTODO DE PAGO',
+            '',
+            'Banco: Truist Bank',
+            'Titular: ZAS BY JMC CORP',
+            'Número de Cuenta: 1100035647757',
+            'Número de Ruta (transferencias dentro de USA): 263191387',
+            'Dirección de la Empresa: 7081 NW 82 AVE MIAMI FL 33166',
+          ].join('\n');
 
-    worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `MONEDA: ${(factura as any).moneda || 'USD'}`;
-    worksheet.getRow(row).height = 25;
-    row++;
+    // Bloque en DOS COLUMNAS: Términos (izquierda ~60%) y Método de pago (derecha ~40%)
+    const lastColIndexFac = numCols;
+    const leftLastColIndexFac = Math.max(1, Math.floor(lastColIndexFac * 0.6));
+    const rightFirstColIndexFac = Math.min(lastColIndexFac, leftLastColIndexFac + 1);
+
+    const getColLetterFac = (index: number): string => {
+      return String.fromCharCode(64 + index);
+    };
+
+    const leftLastColFac = getColLetterFac(leftLastColIndexFac);
+    const rightFirstColFac = getColLetterFac(rightFirstColIndexFac);
+
+    // Columna izquierda: términos
+    worksheet.mergeCells(`A${row}:${leftLastColFac}${row + 6}`);
+    const terminosCell = worksheet.getCell(`A${row}`);
+    terminosCell.value = terminosTextoFac;
+    terminosCell.alignment = { vertical: 'top', wrapText: true };
+
+    // Columna derecha: método de pago
+    worksheet.mergeCells(`${rightFirstColFac}${row}:${lastCol}${row + 6}`);
+    const metodoCell = worksheet.getCell(`${rightFirstColFac}${row}`);
+    metodoCell.value = metodoPagoTextoFac;
+    metodoCell.alignment = { vertical: 'top', wrapText: true };
+
+    row = row + 7;
 
     // FIRMAS
     const firmaStartRow = row + 2;

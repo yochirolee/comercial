@@ -52,6 +52,31 @@ export default function OfertasClientePage(): React.ReactElement {
   const [selectedOferta, setSelectedOferta] = useState<OfertaCliente | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Texto por defecto para bloques de documento (mismo contenido que el PDF/Excel)
+  const defaultTerminosTexto =
+    [
+      "Validez de la Oferta: 15 días.",
+      "Puerto Destino: Mariel, Cuba.",
+      "Puerto de Embarque: ",
+      "Origen: Estados Unidos.",
+      "Términos de Entrega: Máximo 15 días posteriores al pago.",
+      "Pago: 100% del valor a la firma del contrato.",
+      "Moneda: Dólar Americano (USD).",
+      "Métodos de Pago: Transferencia bancaria o cheques del banco pagador.",
+      "ZAS BY JMC CORP no se hace responsable por retrasos ocasionados por la naviera, puertos u otros factores externos considerados de FUERZA MAYOR que puedan provocar demoras en los embarques. En estos casos, la empresa proveerá evidencias y mantendrá informado al cliente.",
+      "El cliente tiene la responsabilidad de devolver el o los contenedores en un plazo máximo de 72 horas después de haber sido extraídos del puerto en destino.",
+      "Condición de pago original: PAGO 100% ANTES DEL EMBARQUE",
+    ].join("\n");
+
+  const defaultMetodoPagoTexto =
+    [
+      "Banco: Truist Bank",
+      "Titular: ZAS BY JMC CORP",
+      "Número de Cuenta: 1100035647757",
+      "Número de Ruta (transferencias dentro de USA): 263191387",
+      "Dirección de la Empresa: 7081 NW 82 AVE MIAMI FL 33166",
+    ].join("\n");
+
   // Form state para nueva oferta
   const [formData, setFormData] = useState({
     numero: "",
@@ -59,6 +84,8 @@ export default function OfertasClientePage(): React.ReactElement {
     clienteId: "",
     observaciones: "",
     campoExtra1: "OFERTA VALIDA POR 30 DIAS",
+    terminosDocumentoTexto: defaultTerminosTexto,
+    metodoPagoDocumentoTexto: defaultMetodoPagoTexto,
   });
   const [itemsTemp, setItemsTemp] = useState<ItemTemp[]>([]);
 
@@ -158,6 +185,8 @@ export default function OfertasClientePage(): React.ReactElement {
         clienteId: clientes[0]?.id || "",
         observaciones: "",
         campoExtra1: "OFERTA VALIDA POR 30 DIAS",
+        terminosDocumentoTexto: defaultTerminosTexto,
+        metodoPagoDocumentoTexto: defaultMetodoPagoTexto,
       });
       setItemsTemp([]);
       setShowAddItem(false);
@@ -296,6 +325,8 @@ export default function OfertasClientePage(): React.ReactElement {
     observaciones: "",
     campoExtra1: "",
     estado: "pendiente",
+    terminosDocumentoTexto: "",
+    metodoPagoDocumentoTexto: "",
   });
 
   async function openDetailDialog(oferta: OfertaCliente): Promise<void> {
@@ -303,10 +334,12 @@ export default function OfertasClientePage(): React.ReactElement {
     setSelectedOferta(updated);
     setEditFormData({
       numero: updated.numero || "",
-      fecha: updated.fecha ? updated.fecha.split('T')[0] : "",
+      fecha: updated.fecha ? updated.fecha.split("T")[0] : "",
       observaciones: updated.observaciones || "",
       campoExtra1: updated.campoExtra1 || "OFERTA VALIDA POR 30 DIAS",
       estado: updated.estado || "pendiente",
+      terminosDocumentoTexto: updated.terminosDocumentoTexto || defaultTerminosTexto,
+      metodoPagoDocumentoTexto: updated.metodoPagoDocumentoTexto || defaultMetodoPagoTexto,
     });
     setDetailDialogOpen(true);
   }
@@ -879,15 +912,32 @@ export default function OfertasClientePage(): React.ReactElement {
               )}
             </div>
 
-            {/* Campo de validez */}
-            <div className="border rounded-lg p-3 space-y-2">
-              <Label className="text-xs sm:text-sm">Texto de Validez</Label>
-              <Input
-                value={formData.campoExtra1}
-                onChange={(e) => setFormData((p) => ({ ...p, campoExtra1: e.target.value }))}
-                placeholder="OFERTA VALIDA POR 30 DIAS"
-                className="h-8 sm:h-9 text-sm"
-              />
+            {/* Términos y método de pago para el documento */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+              <div className="border rounded-lg p-3 space-y-2">
+                <Label className="text-xs sm:text-sm">
+                  Términos y condiciones (documento)
+                </Label>
+                <textarea
+                  className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                  value={formData.terminosDocumentoTexto}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, terminosDocumentoTexto: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="border rounded-lg p-3 space-y-2">
+                <Label className="text-xs sm:text-sm">
+                  Método de pago (documento)
+                </Label>
+                <textarea
+                  className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                  value={formData.metodoPagoDocumentoTexto}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, metodoPagoDocumentoTexto: e.target.value }))
+                  }
+                />
+              </div>
             </div>
 
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
@@ -990,15 +1040,38 @@ export default function OfertasClientePage(): React.ReactElement {
                 </div>
               </div>
 
-              {/* Campo de validez */}
-              <div className="border rounded-lg p-3 sm:p-4 space-y-1 sm:space-y-2">
-                <Label className="text-xs sm:text-sm">Texto de Validez</Label>
-                <Input
-                  value={editFormData.campoExtra1}
-                  onChange={(e) => setEditFormData((p) => ({ ...p, campoExtra1: e.target.value }))}
-                  placeholder="OFERTA VALIDA POR 30 DIAS"
-                  className="h-9 sm:h-10 text-sm"
-                />
+              {/* Términos y método de pago para el documento */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                <div className="border rounded-lg p-3 sm:p-4 space-y-1 sm:space-y-2">
+                  <Label className="text-xs sm:text-sm">
+                    Términos y condiciones (documento)
+                  </Label>
+                  <textarea
+                    className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                    value={editFormData.terminosDocumentoTexto}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({
+                        ...p,
+                        terminosDocumentoTexto: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="border rounded-lg p-3 sm:p-4 space-y-1 sm:space-y-2">
+                  <Label className="text-xs sm:text-sm">
+                    Método de pago (documento)
+                  </Label>
+                  <textarea
+                    className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                    value={editFormData.metodoPagoDocumentoTexto}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({
+                        ...p,
+                        metodoPagoDocumentoTexto: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
               </div>
 
               {/* Productos */}

@@ -1117,6 +1117,9 @@ export interface OfertaCliente {
   origen?: string;
   moneda?: string;
   terminosPago?: string;
+  // Texto configurable para los documentos (bloques de Términos y Método de pago)
+  terminosDocumentoTexto?: string;
+  metodoPagoDocumentoTexto?: string;
   // Firma del cliente
   incluyeFirmaCliente?: boolean;
   // Total acordado (sin desglose)
@@ -1144,6 +1147,8 @@ export interface OfertaClienteInput {
   moneda?: string;
   terminosPago?: string;
   incluyeFirmaCliente?: boolean;
+  terminosDocumentoTexto?: string;
+  metodoPagoDocumentoTexto?: string;
   campoExtra1?: string;
   campoExtra2?: string;
   campoExtra3?: string;
@@ -1212,6 +1217,9 @@ export interface OfertaImportadora {
   origen?: string;
   moneda?: string;
   terminosPago?: string;
+  // Texto configurable para los documentos (bloques de Términos y Método de pago)
+  terminosDocumentoTexto?: string;
+  metodoPagoDocumentoTexto?: string;
   // Firma del cliente
   incluyeFirmaCliente?: boolean;
   // Ajuste de precios
@@ -1266,6 +1274,8 @@ export interface CrearDesdeOfertaClienteInput {
   origen?: string;
   moneda?: string;
   terminosPago?: string;
+  terminosDocumentoTexto?: string;
+  metodoPagoDocumentoTexto?: string;
   // Items opcionales: si se proporcionan, se usan; si no, se copian de la oferta cliente
   items?: Array<{
     productoId: string;
@@ -1354,6 +1364,9 @@ export interface Factura {
   origen?: string;
   moneda?: string;
   terminosPago?: string;
+  // Texto configurable para documentos (bloques Términos y Método de pago)
+  terminosDocumentoTexto?: string;
+  metodoPagoDocumentoTexto?: string;
   // Firmas
   incluyeFirmaCliente: boolean;
   firmaClienteNombre?: string;
@@ -1386,6 +1399,8 @@ export interface FacturaInput {
   origen?: string;
   moneda?: string;
   terminosPago?: string;
+  terminosDocumentoTexto?: string;
+  metodoPagoDocumentoTexto?: string;
   // Firmas
   incluyeFirmaCliente?: boolean;
   firmaClienteNombre?: string;
@@ -1408,6 +1423,8 @@ export interface FacturaFromOfertaClienteInput {
   origen?: string;
   moneda?: string;
   terminosPago?: string;
+  terminosDocumentoTexto?: string;
+  metodoPagoDocumentoTexto?: string;
   // Firmas
   incluyeFirmaCliente?: boolean;
   firmaClienteNombre?: string;
@@ -1432,6 +1449,8 @@ export interface FacturaFromOfertaImportadoraInput {
   origen?: string;
   moneda?: string;
   terminosPago?: string;
+  terminosDocumentoTexto?: string;
+  metodoPagoDocumentoTexto?: string;
   // Firmas
   incluyeFirmaCliente?: boolean;
   firmaClienteNombre?: string;

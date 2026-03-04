@@ -197,6 +197,9 @@ model OfertaCliente {
   origen           String?  @default("ESTADOS UNIDOS")
   moneda           String?  @default("USD")
   terminosPago     String?  @default("PAGO 100% ANTES DEL EMBARQUE")
+  // Texto configurable para documentos (bloque Términos y bloque Método de pago)
+  terminosDocumentoTexto   String?
+  metodoPagoDocumentoTexto String?
   incluyeFirmaCliente Boolean @default(false)
   total            Float    @default(0)
   campoExtra1      String?
@@ -258,6 +261,9 @@ model OfertaImportadora {
   origen           String?  @default("ESTADOS UNIDOS")
   moneda           String?  @default("USD")
   terminosPago     String?  @default("PAGO 100% ANTES DEL EMBARQUE")
+  // Texto configurable para documentos (bloque Términos y bloque Método de pago)
+  terminosDocumentoTexto   String?
+  metodoPagoDocumentoTexto String?
   incluyeFirmaCliente Boolean @default(true)
   ajustarPrecios   Boolean  @default(true)
   precioAcordado   Float    @default(0)
@@ -334,6 +340,9 @@ model Factura {
   origen           String?  @default("ESTADOS UNIDOS")
   moneda           String?  @default("USD")
   terminosPago     String?  @default("PAGO 100% ANTES DEL EMBARQUE")
+  // Texto configurable para documentos (bloques Términos y Método de pago)
+  terminosDocumentoTexto   String?
+  metodoPagoDocumentoTexto String?
   
   // Firmas
   incluyeFirmaCliente Boolean @default(false)

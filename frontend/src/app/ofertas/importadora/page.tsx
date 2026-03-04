@@ -39,15 +39,38 @@ import {
   exportApi,
   importadorasApi
 } from "@/lib/api";
-import type { 
-  OfertaImportadora, 
-  OfertaCliente, 
-  Cliente, 
+import type {
+  OfertaImportadora,
+  OfertaCliente,
+  Cliente,
   Producto,
-  Importadora
+  Importadora,
 } from "@/lib/api";
 
 const PAGE_SIZE = 10;
+
+// Texto por defecto para bloques de documento (mismo contenido que en oferta a cliente)
+const defaultTerminosDocumentoTexto = [
+  "Validez de la Oferta: 15 días.",
+  "Puerto Destino: Mariel, Cuba.",
+  "Puerto de Embarque: ",
+  "Origen: Estados Unidos.",
+  "Términos de Entrega: Máximo 15 días posteriores al pago.",
+  "Pago: 100% del valor a la firma del contrato.",
+  "Moneda: Dólar Americano (USD).",
+  "Métodos de Pago: Transferencia bancaria o cheques del banco pagador.",
+  "ZAS BY JMC CORP no se hace responsable por retrasos ocasionados por la naviera, puertos u otros factores externos considerados de FUERZA MAYOR que puedan provocar demoras en los embarques. En estos casos, la empresa proveerá evidencias y mantendrá informado al cliente.",
+  "El cliente tiene la responsabilidad de devolver el o los contenedores en un plazo máximo de 72 horas después de haber sido extraídos del puerto en destino.",
+  "Condición de pago original: PAGO 100% ANTES DEL EMBARQUE",
+].join("\n");
+
+const defaultMetodoPagoDocumentoTexto = [
+  "Banco: Truist Bank",
+  "Titular: ZAS BY JMC CORP",
+  "Número de Cuenta: 1100035647757",
+  "Número de Ruta (transferencias dentro de USA): 263191387",
+  "Dirección de la Empresa: 7081 NW 82 AVE MIAMI FL 33166",
+].join("\n");
 
 export default function OfertasImportadoraPage(): React.ReactElement {
   const [ofertas, setOfertas] = useState<OfertaImportadora[]>([]);
@@ -77,6 +100,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   const [origen, setOrigen] = useState("");
   const [moneda, setMoneda] = useState("USD");
   const [terminosPago, setTerminosPago] = useState("");
+  const [terminosDocumentoTexto, setTerminosDocumentoTexto] = useState("");
+  const [metodoPagoDocumentoTexto, setMetodoPagoDocumentoTexto] = useState("");
   const [saving, setSaving] = useState(false);
   
   // Estado para diálogo de exportación con rango de fechas
@@ -192,6 +217,17 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setOrigen(primeraOferta?.origen || "");
     setMoneda(primeraOferta?.moneda || "USD");
     setTerminosPago(primeraOferta?.terminosPago || "");
+    setTerminosDocumentoTexto(
+      primeraOferta?.terminosDocumentoTexto && primeraOferta.terminosDocumentoTexto.trim() !== ""
+        ? primeraOferta.terminosDocumentoTexto
+        : defaultTerminosDocumentoTexto
+    );
+    setMetodoPagoDocumentoTexto(
+      primeraOferta?.metodoPagoDocumentoTexto &&
+      primeraOferta.metodoPagoDocumentoTexto.trim() !== ""
+        ? primeraOferta.metodoPagoDocumentoTexto
+        : defaultMetodoPagoDocumentoTexto
+    );
     setItemsEditables([]);
     setEditingItemIndex(null);
     setDialogOpen(true);
@@ -212,6 +248,16 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setOrigen(oferta?.origen || "");
     setMoneda(oferta?.moneda || "USD");
     setTerminosPago(oferta?.terminosPago || "");
+    setTerminosDocumentoTexto(
+      oferta?.terminosDocumentoTexto && oferta.terminosDocumentoTexto.trim() !== ""
+        ? oferta.terminosDocumentoTexto
+        : defaultTerminosDocumentoTexto
+    );
+    setMetodoPagoDocumentoTexto(
+      oferta?.metodoPagoDocumentoTexto && oferta.metodoPagoDocumentoTexto.trim() !== ""
+        ? oferta.metodoPagoDocumentoTexto
+        : defaultMetodoPagoDocumentoTexto
+    );
     
     // Cargar items de la oferta cliente para edición
     if (oferta && oferta.items) {
@@ -312,6 +358,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         origen: origen || undefined,
         moneda: moneda || undefined,
         terminosPago: terminosPago || undefined,
+        terminosDocumentoTexto: terminosDocumentoTexto || undefined,
+        metodoPagoDocumentoTexto: metodoPagoDocumentoTexto || undefined,
         // Enviar items editados
         items: itemsParaEnviar,
       });
@@ -372,6 +420,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         origen: selectedOferta.origen,
         moneda: selectedOferta.moneda,
         terminosPago: selectedOferta.terminosPago,
+        terminosDocumentoTexto: selectedOferta.terminosDocumentoTexto,
+        metodoPagoDocumentoTexto: selectedOferta.metodoPagoDocumentoTexto,
         incluyeFirmaCliente: selectedOferta.incluyeFirmaCliente,
         estado: selectedOferta.estado,
       });
@@ -788,51 +838,6 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                         </div>
                       </div>
 
-                    </div>
-                  )}
-
-                  {/* Términos */}
-                  {selectedOfertaCliente && (
-                    <div className="p-2 sm:p-3 md:p-4 bg-slate-50 rounded-lg border space-y-2 sm:space-y-3">
-                      <h4 className="font-medium text-slate-700 text-xs sm:text-sm">Términos</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-xs sm:text-sm">Puerto de Embarque</Label>
-                          <Input
-                            value={puertoEmbarque}
-                            onChange={(e) => setPuertoEmbarque(e.target.value)}
-                            placeholder="NEW ORLEANS, LA"
-                            className="h-9 sm:h-10 text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs sm:text-sm">Origen</Label>
-                          <Input
-                            value={origen}
-                            onChange={(e) => setOrigen(e.target.value)}
-                            placeholder="ESTADOS UNIDOS"
-                            className="h-9 sm:h-10 text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs sm:text-sm">Moneda</Label>
-                          <Input
-                            value={moneda}
-                            onChange={(e) => setMoneda(e.target.value)}
-                            placeholder="USD"
-                            className="h-9 sm:h-10 text-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs sm:text-sm">Términos de Pago</Label>
-                          <Input
-                            value={terminosPago}
-                            onChange={(e) => setTerminosPago(e.target.value)}
-                            placeholder="100% antes del embarque"
-                            className="h-9 sm:h-10 text-sm"
-                          />
-                        </div>
-                      </div>
                     </div>
                   )}
 
@@ -1315,46 +1320,69 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </div>
               </div>
 
-              {/* Términos */}
-              <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-2 sm:space-y-3">
-                <h4 className="font-medium text-slate-700 text-sm sm:text-base">Términos</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-                  <div>
-                    <Label className="text-xs sm:text-sm">Puerto Embarque</Label>
-                    <Input
-                      className="mt-1 h-9 sm:h-10 text-sm"
-                      value={selectedOferta?.puertoEmbarque || ""}
-                      onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, puertoEmbarque: e.target.value } : null)}
-                      placeholder="NEW ORLEANS, LA"
+              {/* Términos y método de pago para el documento (solo cuando hay oferta cliente y aún no estamos editando una oferta creada) */}
+              {selectedOfertaCliente && !selectedOferta && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-2 sm:p-3 md:p-4 bg-slate-50 rounded-lg border space-y-2">
+                    <h4 className="font-medium text-slate-700 text-xs sm:text-sm">
+                      Términos y condiciones (documento)
+                    </h4>
+                    <textarea
+                      className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                      value={terminosDocumentoTexto}
+                      onChange={(e) => setTerminosDocumentoTexto(e.target.value)}
                     />
                   </div>
-                  <div>
-                    <Label className="text-xs sm:text-sm">Origen</Label>
-                    <Input
-                      className="mt-1 h-9 sm:h-10 text-sm"
-                      value={selectedOferta?.origen || ""}
-                      onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, origen: e.target.value } : null)}
-                      placeholder="ESTADOS UNIDOS"
+                  <div className="p-2 sm:p-3 md:p-4 bg-slate-50 rounded-lg border space-y-2">
+                    <h4 className="font-medium text-slate-700 text-xs sm:text-sm">
+                      Método de pago (documento)
+                    </h4>
+                    <textarea
+                      className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                      value={metodoPagoDocumentoTexto}
+                      onChange={(e) => setMetodoPagoDocumentoTexto(e.target.value)}
                     />
                   </div>
-                  <div>
-                    <Label className="text-xs sm:text-sm">Moneda</Label>
-                    <Input
-                      className="mt-1 h-9 sm:h-10 text-sm"
-                      value={selectedOferta?.moneda || ""}
-                      onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, moneda: e.target.value } : null)}
-                      placeholder="USD"
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs sm:text-sm">Términos de Pago</Label>
-                    <Input
-                      className="mt-1 h-9 sm:h-10 text-sm"
-                      value={selectedOferta?.terminosPago || ""}
-                      onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, terminosPago: e.target.value } : null)}
-                      placeholder="100% antes del embarque"
-                    />
-                  </div>
+                </div>
+              )}
+
+              {/* Términos y método de pago para el documento */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-2">
+                  <Label className="text-xs sm:text-sm">
+                    Términos y condiciones (documento)
+                  </Label>
+                  <textarea
+                    className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                    value={
+                      selectedOferta?.terminosDocumentoTexto && selectedOferta.terminosDocumentoTexto.trim() !== ""
+                        ? selectedOferta.terminosDocumentoTexto
+                        : defaultTerminosDocumentoTexto
+                    }
+                    onChange={(e) =>
+                      setSelectedOferta(prev =>
+                        prev ? { ...prev, terminosDocumentoTexto: e.target.value } : null
+                      )
+                    }
+                  />
+                </div>
+                <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-2">
+                  <Label className="text-xs sm:text-sm">
+                    Método de pago (documento)
+                  </Label>
+                  <textarea
+                    className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                    value={
+                      selectedOferta?.metodoPagoDocumentoTexto && selectedOferta.metodoPagoDocumentoTexto.trim() !== ""
+                        ? selectedOferta.metodoPagoDocumentoTexto
+                        : defaultMetodoPagoDocumentoTexto
+                    }
+                    onChange={(e) =>
+                      setSelectedOferta(prev =>
+                        prev ? { ...prev, metodoPagoDocumentoTexto: e.target.value } : null
+                      )
+                    }
+                  />
                 </div>
               </div>
 
