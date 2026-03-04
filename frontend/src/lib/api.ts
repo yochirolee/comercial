@@ -1251,6 +1251,9 @@ export interface OfertaImportadoraInput {
   origen?: string;
   moneda?: string;
   terminosPago?: string;
+  // Texto configurable para los documentos (bloques de Términos y Método de pago)
+  terminosDocumentoTexto?: string;
+  metodoPagoDocumentoTexto?: string;
   incluyeFirmaCliente?: boolean;
   ajustarPrecios?: boolean;
   precioAcordado?: number;
