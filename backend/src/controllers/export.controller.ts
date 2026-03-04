@@ -267,10 +267,10 @@ interface DynamicColumns {
 function buildDynamicColumns(items: any[]): DynamicColumns {
   const optionalFields = detectOptionalFields(items);
   
-  // Columnas base: ITEM, DESCRIPCION
-  const headers: string[] = ['ITEM', 'DESCRIPCION'];
-  const widthsPdf: number[] = [30, 200]; // Descripción más ancha para tablas con pocas columnas
-  const widthsExcel: number[] = [6, 45];
+  // Columnas base: ITEM, DESCRIPCION, UM
+  const headers: string[] = ['ITEM', 'DESCRIPCION', 'UM'];
+  const widthsPdf: number[] = [30, 190, 30]; // Descripción ancha + columna UM
+  const widthsExcel: number[] = [6, 40, 8];
 
   // Agregar campos opcionales en orden lógico
   if (optionalFields.cantidadSacos) {
@@ -399,6 +399,11 @@ function renderPdfTable(
     
     // DESCRIPCION
     doc.text(item.producto.nombre, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6 });
+    xPos += widthsPdf[colIndex++];
+
+    // UNIDAD DE MEDIDA
+    const unidadMedidaAbrev = item.producto.unidadMedida?.abreviatura || '';
+    doc.text(unidadMedidaAbrev, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
     xPos += widthsPdf[colIndex++];
     
     // Campos opcionales
@@ -618,7 +623,8 @@ function renderExcelTable(
     totalImporte += importe;
 
     // Construir valores dinámicamente
-    const values: (string | number)[] = [itemNum, item.producto.nombre];
+    const unidadMedidaAbrev = item.producto.unidadMedida?.abreviatura || '';
+    const values: (string | number)[] = [itemNum, item.producto.nombre, unidadMedidaAbrev];
     
     if (optionalFields.cantidadSacos) values.push(item.cantidadSacos ?? '-');
     if (optionalFields.pesoXSaco) values.push(item.pesoXSaco ?? '-');
@@ -644,7 +650,7 @@ function renderExcelTable(
     dataRow.getCell(numCols).numFmt = '"$"#,##0.00';
     
     // Formatear campos opcionales de precio con $
-    let colIdx = 3;
+    let colIdx = 4;
     if (optionalFields.cantidadSacos) {
       dataRow.getCell(colIdx).alignment = { horizontal: 'center' };
       colIdx++;
