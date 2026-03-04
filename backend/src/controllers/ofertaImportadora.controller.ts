@@ -22,8 +22,8 @@ const ofertaImportadoraSchema = z.object({
   seguro: z.number().min(0).optional(),
   tieneSeguro: z.boolean().optional(),
   // Texto configurable para documentos (bloques Términos y Método de pago)
-  terminosDocumentoTexto: z.string().optional(),
-  metodoPagoDocumentoTexto: z.string().optional(),
+  terminosDocumentoTexto: z.string().nullable().optional(),
+  metodoPagoDocumentoTexto: z.string().nullable().optional(),
 });
 
 // Genera el siguiente número de oferta en formato Z26XXX
