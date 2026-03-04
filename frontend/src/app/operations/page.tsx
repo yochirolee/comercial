@@ -431,6 +431,26 @@ export default function OperationsPage(): React.ReactElement {
     router.push(`/operations/${operationId}`);
   }
 
+  function handleTracking(operation: Operation, container: OperationContainer): void {
+    if (!container.containerNo) {
+      toast.error("El contenedor no tiene número asignado.");
+      return;
+    }
+
+    if (!operation.carrier || !operation.carrier.trackingUrlTemplate) {
+      toast.error("La operación no tiene carrier configurado con URL de tracking.");
+      return;
+    }
+
+    const template = operation.carrier.trackingUrlTemplate;
+    const url = template.replace(
+      "{container}",
+      encodeURIComponent(container.containerNo)
+    );
+
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   async function handleDeleteClick(operationId: string): Promise<void> {
     const operation = operations.find(op => op.id === operationId);
     const confirmMessage = operation
@@ -801,6 +821,15 @@ export default function OperationsPage(): React.ReactElement {
                   </TableCell>
                   <TableCell className="py-3">
                     <div className="flex items-center justify-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleTracking(operation, container)}
+                        title="Ver tracking"
+                        className="h-8 w-8 text-slate-700 hover:text-slate-900"
+                      >
+                        <Ship className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

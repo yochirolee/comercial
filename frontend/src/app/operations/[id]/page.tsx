@@ -24,8 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, Save, Package, Ship, Clock, Trash2, ArrowUpDown } from "lucide-react";
-import { operationsApi, importadorasApi } from "@/lib/api";
-import type { Operation, OperationContainer, OperationEvent, ContainerEvent } from "@/lib/api";
+import { operationsApi, importadorasApi, carriersApi } from "@/lib/api";
+import type { Operation, OperationContainer, OperationEvent, ContainerEvent, Carrier } from "@/lib/api";
 
 const OPERATION_STATUSES = [
   "Draft",
@@ -72,6 +72,7 @@ export default function OperationDetailPage(): React.ReactElement {
   const [operation, setOperation] = useState<Operation | null>(null);
   const [loading, setLoading] = useState(true);
   const [importadoras, setImportadoras] = useState<Array<{ id: string; nombre: string }>>([]);
+  const [carriers, setCarriers] = useState<Carrier[]>([]);
   
   // Estado para ordenamiento de timeline de contenedores (por contenedor)
   const [containerEventOrder, setContainerEventOrder] = useState<Record<string, 'asc' | 'desc'>>({});
@@ -97,6 +98,7 @@ export default function OperationDetailPage(): React.ReactElement {
     destinationPort: "",
     notes: "",
     importadoraId: "",
+    carrierId: "",
   });
   
   const [containerForm, setContainerForm] = useState({
@@ -125,6 +127,7 @@ export default function OperationDetailPage(): React.ReactElement {
     if (operationId) {
       loadOperation();
       loadImportadoras();
+      loadCarriers();
     }
   }, [operationId]);
 
@@ -134,6 +137,15 @@ export default function OperationDetailPage(): React.ReactElement {
       setImportadoras(data);
     } catch (error) {
       console.error("Error al cargar importadoras:", error);
+    }
+  }
+
+  async function loadCarriers(): Promise<void> {
+    try {
+      const data = await carriersApi.getAll();
+      setCarriers(data);
+    } catch (error) {
+      console.error("Error al cargar carriers:", error);
     }
   }
 
@@ -149,6 +161,7 @@ export default function OperationDetailPage(): React.ReactElement {
         destinationPort: data.destinationPort || "MARIEL, Cuba",
         notes: data.notes || "",
         importadoraId: data.importadoraId || "",
+        carrierId: data.carrierId || "",
       });
     } catch (error) {
       toast.error("Error al cargar operación");
@@ -248,6 +261,26 @@ export default function OperationDetailPage(): React.ReactElement {
       currentLocation: container.currentLocation || "",
     });
     setEditContainerDialogOpen(true);
+  }
+
+  function handleTracking(container: OperationContainer): void {
+    if (!container.containerNo) {
+      toast.error("El contenedor no tiene número asignado.");
+      return;
+    }
+
+    if (!operation?.carrier || !operation.carrier.trackingUrlTemplate) {
+      toast.error("La operación no tiene carrier configurado con URL de tracking.");
+      return;
+    }
+
+    const template = operation.carrier.trackingUrlTemplate;
+    const url = template.replace(
+      "{container}",
+      encodeURIComponent(container.containerNo)
+    );
+
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   async function handleAddEvent(): Promise<void> {
@@ -373,6 +406,12 @@ export default function OperationDetailPage(): React.ReactElement {
                 <p className="font-medium mt-1">{operation.importadora?.nombre || "-"}</p>
               </div>
               <div>
+                <Label className="text-slate-500">Carrier</Label>
+                <p className="font-medium mt-1">
+                  {operation.carrier?.name || "-"}
+                </p>
+              </div>
+              <div>
                 <Label className="text-slate-500">Ubicación Actual</Label>
                 <p className="font-medium mt-1">{operation.currentLocation || "-"}</p>
               </div>
@@ -422,6 +461,16 @@ export default function OperationDetailPage(): React.ReactElement {
                         <Badge>{container.status}</Badge>
                       </div>
                       <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleTracking(container)}
+                          title="Ver tracking"
+                          className="mr-1"
+                        >
+                          <Ship className="h-4 w-4 mr-1" />
+                          Tracking
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -640,6 +689,24 @@ export default function OperationDetailPage(): React.ReactElement {
             <DialogTitle>Editar Operación</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label>Carrier</Label>
+              <Select
+                value={operationForm.carrierId}
+                onValueChange={(value) => setOperationForm((p) => ({ ...p, carrierId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin carrier" />
+                </SelectTrigger>
+                <SelectContent>
+                  {carriers.map((carrier) => (
+                    <SelectItem key={carrier.id} value={carrier.id}>
+                      {carrier.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Importadora *</Label>
               <Select

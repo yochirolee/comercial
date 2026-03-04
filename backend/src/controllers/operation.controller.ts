@@ -43,6 +43,7 @@ const operationSchema = z.object({
   offerCustomerId: z.string().optional(),
   importadoraId: z.string().min(1, 'Importadora es requerida'),
   invoiceId: z.string().optional(),
+  carrierId: z.string().optional(),
   status: z.string().optional().default('Draft'),
   currentLocation: z.string().optional(),
   originPort: z.string().optional(),
@@ -435,6 +436,7 @@ export const OperationController = {
         },
         importadora: true,
         invoice: true,
+        carrier: true,
         containers: {
           orderBy: { sequenceNo: 'asc' },
           include: {
@@ -463,6 +465,7 @@ export const OperationController = {
         },
         importadora: true,
         invoice: true,
+        carrier: true,
         containers: {
           orderBy: { sequenceNo: 'asc' },
           include: {
@@ -552,6 +555,7 @@ export const OperationController = {
         },
         importadora: true,
         invoice: true,
+        carrier: true,
         containers: {
           orderBy: { sequenceNo: 'asc' },
           include: {

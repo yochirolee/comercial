@@ -1501,6 +1501,14 @@ export interface ItemFacturaInput {
 // ==========================================
 // OPERATIONS - Tracking de operaciones
 // ==========================================
+export interface Carrier {
+  id: string;
+  name: string;
+  trackingUrlTemplate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Operation {
   id: string;
   operationNo: string;
@@ -1523,6 +1531,8 @@ export interface Operation {
     id: string;
     numero: string;
   };
+  carrierId?: string;
+  carrier?: Carrier | null;
   status: string;
   currentLocation?: string;
   originPort?: string;
@@ -1587,6 +1597,7 @@ export interface OperationInput {
   offerCustomerId?: string;
   importadoraId: string;
   invoiceId?: string;
+  carrierId?: string;
   status: string;
   currentLocation?: string;
   originPort?: string;
@@ -1700,6 +1711,32 @@ export const operationsApi = {
     fetchApi<ContainerEvent>(`/operations/${operationId}/containers/${containerId}/events`, {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+};
+
+// ==========================================
+// CARRIERS (Navieras)
+// ==========================================
+export interface CarrierInput {
+  name: string;
+  trackingUrlTemplate: string;
+}
+
+export const carriersApi = {
+  getAll: () => fetchApi<Carrier[]>('/carriers'),
+  create: (data: CarrierInput) =>
+    fetchApi<Carrier>('/carriers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: Partial<CarrierInput>) =>
+    fetchApi<Carrier>(`/carriers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    fetchApi<void>(`/carriers/${id}`, {
+      method: 'DELETE',
     }),
 };
 
