@@ -1,4 +1,4 @@
-# Optimización de Queries Lentos en Supabase
+# Optimización de Queries Lentos en Supabase.
 
 ## Análisis de Queries Lentos
 
