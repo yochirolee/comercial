@@ -125,7 +125,7 @@ export default function DashboardConfigPage(): React.ReactElement {
     <div>
       <Header 
         title="Configuración general" 
-        description="Ajustes del dashboard y carriers de operaciones"
+        description="Configura parámetros globales del sistema"
       />
       
       <div className="p-4 sm:p-6 lg:p-8">

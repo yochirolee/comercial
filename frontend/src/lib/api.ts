@@ -794,60 +794,7 @@ export const documentosApi = {
     document.body.removeChild(a);
   },
 
-  downloadSalesAgreementDocument: async (ofertaClienteId: string): Promise<void> => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
-    
-    const response = await fetch(`${API_URL}/documentos/sales-agreement/${ofertaClienteId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      let errorMessage = `Error ${response.status}`;
-      try {
-        const error = await response.json();
-        errorMessage = error.error || error.details || errorMessage;
-        if (error.details) {
-          console.error('Detalles del error:', error.details);
-        }
-        if (error.properties) {
-          console.error('Propiedades del error:', error.properties);
-        }
-      } catch {
-        // Si no se puede parsear como JSON, usar el texto de respuesta
-        const text = await response.text().catch(() => 'Error desconocido');
-        errorMessage = text || errorMessage;
-      }
-      throw new Error(errorMessage);
-    }
-
-    // Obtener el nombre del archivo del header Content-Disposition
-    const contentDisposition = response.headers.get('Content-Disposition');
-    let fileName = 'sales_agreement.docx';
-    if (contentDisposition) {
-      // Intentar diferentes formatos de Content-Disposition
-      let match = contentDisposition.match(/filename="([^"]+)"/);
-      if (!match) {
-        match = contentDisposition.match(/filename=([^;]+)/);
-      }
-      if (match && match[1]) {
-        fileName = match[1].trim();
-      }
-    }
-
-    // Crear blob y descargar
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-  },
+  // downloadSalesAgreementDocument eliminado (Sales Agreement ya no se usa)
 };
 
 // ==========================================
