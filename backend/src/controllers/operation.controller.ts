@@ -351,6 +351,11 @@ export const OperationController = {
         offerCustomerId,
         importadoraId,
         invoiceId,
+        // Si no viene carrierId o viene vacío, no asignar (queda null)
+        carrierId:
+          validation.data.carrierId && validation.data.carrierId.trim() !== ''
+            ? validation.data.carrierId
+            : undefined,
         status: status || 'Draft',
         currentLocation: validation.data.currentLocation,
         originPort: validation.data.originPort,
@@ -609,6 +614,14 @@ export const OperationController = {
         data[key] = value;
       }
     });
+
+    // Normalizar carrierId: si viene vacío, guardarlo como null (sin carrier)
+    if ('carrierId' in data) {
+      const raw = data.carrierId;
+      if (!raw || (typeof raw === 'string' && raw.trim() === '')) {
+        data.carrierId = null;
+      }
+    }
     
     const updated = await prisma.operation.update({
       where: { id },
