@@ -48,6 +48,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  X,
 } from "lucide-react";
 import {
   facturasApi,
@@ -66,6 +67,12 @@ import type {
 } from "@/lib/api";
 
 const PAGE_SIZE = 10;
+
+interface ExtraFieldForm {
+  id: string;
+  label: string;
+  value: string;
+}
 
 // Texto por defecto para bloques de documento en facturas
 const defaultTerminosDocumentoTextoFactura = [
@@ -174,6 +181,7 @@ export default function FacturasPage(): React.ReactElement {
     precioXCaja: "",
     codigoArancelario: "",
   });
+  const [editExtraFields, setEditExtraFields] = useState<ExtraFieldForm[]>([]);
 
   const [saving, setSaving] = useState(false);
 
@@ -507,6 +515,13 @@ export default function FacturasPage(): React.ReactElement {
       precioXCaja: String(item.precioXCaja || ""),
       codigoArancelario: item.codigoArancelario || "",
     });
+    setEditExtraFields(
+      (item.camposOpcionales || []).map((c, idx) => ({
+        id: `fact-${c.label}-${idx}`,
+        label: c.label,
+        value: (c.value ?? "").toString(),
+      })),
+    );
     setEditItemDialogOpen(true);
   }
 
@@ -532,6 +547,9 @@ export default function FacturasPage(): React.ReactElement {
     setSaving(true);
     try {
       // Siempre enviar todos los campos opcionales, incluso si están vacíos (como null para limpiar)
+      const cleanedExtra = editExtraFields
+        .map((f) => ({ label: f.label.trim(), value: f.value.trim() || null }))
+        .filter((f) => f.label);
       await facturasApi.updateItem(selectedFactura.id, editingItemId, {
         cantidad: parseFloat(editItemForm.cantidad) || undefined,
         pesoNeto: editItemForm.pesoNeto && editItemForm.pesoNeto.trim() !== '' 
@@ -562,6 +580,7 @@ export default function FacturasPage(): React.ReactElement {
         codigoArancelario: editItemForm.codigoArancelario && editItemForm.codigoArancelario.trim() !== '' 
           ? editItemForm.codigoArancelario 
           : null,
+        camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
       });
       toast.success("Item actualizado");
       const updated = await facturasApi.getById(selectedFactura.id);
@@ -1429,6 +1448,24 @@ export default function FacturasPage(): React.ReactElement {
                 />
               </div>
               <div className="space-y-2">
+                <Label>Peso x Caja</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editItemForm.pesoXCaja}
+                  onChange={(e) => setEditItemForm((p) => ({ ...p, pesoXCaja: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Precio x Caja</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={editItemForm.precioXCaja}
+                  onChange={(e) => setEditItemForm((p) => ({ ...p, precioXCaja: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
                 <Label>Código Arancelario</Label>
                 <Input
                   value={editItemForm.codigoArancelario}
@@ -1436,6 +1473,67 @@ export default function FacturasPage(): React.ReactElement {
                   placeholder="Ej: M1500CIULB"
                 />
               </div>
+            </div>
+            
+            {/* Campos dinámicos */}
+            <div className="space-y-2 mt-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm text-slate-600 font-medium">Campos extra (label / valor)</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setEditExtraFields((prev) => [
+                      ...prev,
+                      { id: `fact-extra-${Date.now()}-${prev.length}`, label: "", value: "" },
+                    ])
+                  }
+                  className="shrink-0"
+                >
+                  <Plus className="h-4 w-4" />
+                  Agregar campo
+                </Button>
+              </div>
+              {editExtraFields.length > 0 && (
+                <div className="space-y-1">
+                  {editExtraFields.map((field) => (
+                    <div key={field.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                      <Input
+                        placeholder="Label (ej: Cant. x Contenedor)"
+                        value={field.label}
+                        onChange={(e) =>
+                          setEditExtraFields((prev) =>
+                            prev.map((f) => (f.id === field.id ? { ...f, label: e.target.value } : f)),
+                          )
+                        }
+                        className="h-8 text-sm px-2"
+                      />
+                      <Input
+                        placeholder="Valor"
+                        value={field.value}
+                        onChange={(e) =>
+                          setEditExtraFields((prev) =>
+                            prev.map((f) => (f.id === field.id ? { ...f, value: e.target.value } : f)),
+                          )
+                        }
+                        className="h-8 text-sm px-2"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          setEditExtraFields((prev) => prev.filter((f) => f.id !== field.id))
+                        }
+                        className="h-8 w-8 shrink-0"
+                      >
+                        <X className="h-3 w-3 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             
             <div className="flex justify-end gap-2">

@@ -238,6 +238,8 @@ model ItemOfertaCliente {
   campoExtra2      String?
   campoExtra3      String?
   campoExtra4      String?
+  // Campos opcionales dinámicos por ítem (JSON string: [{label, value}])
+  camposOpcionales String?
   
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -307,6 +309,7 @@ model ItemOfertaImportadora {
   campoExtra2          String?
   campoExtra3          String?
   campoExtra4          String?
+  camposOpcionales     String?
   
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
@@ -389,6 +392,8 @@ model ItemFactura {
   campoExtra2      String?
   campoExtra3      String?
   campoExtra4      String?
+  // Campos opcionales dinámicos por ítem (JSON string: [{label, value}])
+  camposOpcionales String?
   
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

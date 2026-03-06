@@ -20,6 +20,16 @@ const itemSchema = z.object({
   campoExtra2: z.string().nullable().optional(),
   campoExtra3: z.string().nullable().optional(),
   campoExtra4: z.string().nullable().optional(),
+  // Campos opcionales dinámicos: pares label/valor
+  camposOpcionales: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        value: z.string().nullable().optional(),
+      }),
+    )
+    .nullable()
+    .optional(),
 });
 
 const ofertaClienteSchema = z.object({
@@ -104,6 +114,23 @@ function extractPuertoEmbarqueFromText(text?: string | null): string | null {
   return value || null;
 }
 
+function parseItemCamposOpcionales(item: any): any {
+  if (!item) return item;
+  if (item.camposOpcionales != null && typeof item.camposOpcionales === 'string') {
+    try {
+      return { ...item, camposOpcionales: JSON.parse(item.camposOpcionales) };
+    } catch {
+      return { ...item, camposOpcionales: [] };
+    }
+  }
+  return item;
+}
+
+function parseOfertaItems(oferta: any): any {
+  if (!oferta?.items) return oferta;
+  return { ...oferta, items: oferta.items.map(parseItemCamposOpcionales) };
+}
+
 export const OfertaClienteController = {
   // Obtener el siguiente número de oferta disponible
   async getNextNumber(req: Request, res: Response): Promise<void> {
@@ -134,7 +161,7 @@ export const OfertaClienteController = {
       orderBy: { fecha: 'desc' },
     });
     
-    res.json(ofertas);
+    res.json(ofertas.map(parseOfertaItems));
   },
 
   async getById(req: Request, res: Response): Promise<void> {
@@ -158,8 +185,8 @@ export const OfertaClienteController = {
       res.status(404).json({ error: 'Oferta no encontrada' });
       return;
     }
-    
-    res.json(oferta);
+
+    res.json(parseOfertaItems(oferta));
   },
 
   async create(req: Request, res: Response): Promise<void> {
@@ -223,6 +250,7 @@ export const OfertaClienteController = {
           campoExtra2: item.campoExtra2,
           campoExtra3: item.campoExtra3,
           campoExtra4: item.campoExtra4,
+          camposOpcionales: item.camposOpcionales != null ? JSON.stringify(item.camposOpcionales) : null,
         };
       }) || []
     );
@@ -258,7 +286,7 @@ export const OfertaClienteController = {
       },
     });
     
-    res.status(201).json(oferta);
+    res.status(201).json(parseOfertaItems(oferta));
   },
 
   async update(req: Request, res: Response): Promise<void> {
@@ -311,7 +339,7 @@ export const OfertaClienteController = {
       },
     });
     
-    res.json(oferta);
+    res.json(parseOfertaItems(oferta));
   },
 
   async delete(req: Request, res: Response): Promise<void> {
@@ -348,11 +376,13 @@ export const OfertaClienteController = {
     const cantidadParaCalculo = validation.data.pesoNeto || validation.data.cantidad;
     const subtotal = cantidadParaCalculo * validation.data.precioUnitario;
 
+    const { camposOpcionales: camposRaw, ...rest } = validation.data;
     const item = await prisma.itemOfertaCliente.create({
       data: {
         ofertaClienteId: id,
-        ...validation.data,
+        ...rest,
         codigoArancelario: codigoArancelario ?? null,
+        camposOpcionales: camposRaw != null ? JSON.stringify(camposRaw) : null,
         subtotal,
       },
       include: {
@@ -364,7 +394,7 @@ export const OfertaClienteController = {
     
     await calcularTotal(id);
     
-    res.status(201).json(item);
+    res.status(201).json(parseItemCamposOpcionales(item));
   },
 
   async updateItem(req: Request, res: Response): Promise<void> {
@@ -407,6 +437,10 @@ export const OfertaClienteController = {
     if ('pesoXCaja' in req.body) updateData.pesoXCaja = validation.data.pesoXCaja ?? null;
     if ('precioXCaja' in req.body) updateData.precioXCaja = validation.data.precioXCaja ?? null;
     if ('codigoArancelario' in req.body) updateData.codigoArancelario = validation.data.codigoArancelario ?? null;
+    if ('camposOpcionales' in req.body) {
+      const co = validation.data.camposOpcionales;
+      updateData.camposOpcionales = co != null ? JSON.stringify(co) : null;
+    }
 
     const item = await prisma.itemOfertaCliente.update({
       where: { id: itemId },
@@ -420,7 +454,7 @@ export const OfertaClienteController = {
     
     await calcularTotal(id);
     
-    res.json(item);
+    res.json(parseItemCamposOpcionales(item));
   },
 
   async removeItem(req: Request, res: Response): Promise<void> {
@@ -531,6 +565,6 @@ export const OfertaClienteController = {
       },
     });
 
-    res.json(ofertaActualizada);
+    res.json(parseOfertaItems(ofertaActualizada));
   },
 };

@@ -45,12 +45,22 @@ const itemSchema = z.object({
   cantidadSacos: z.number().nullable().optional(),
   pesoNeto: z.number().nullable().optional(),
   pesoBruto: z.number().nullable().optional(),
-  precioUnitario: z.number().positive('El precio debe ser positivo'),
+  precioUnitario: z.number().positive('La cantidad debe ser positiva'),
   pesoXSaco: z.number().nullable().optional(),
   precioXSaco: z.number().nullable().optional(),
   pesoXCaja: z.number().nullable().optional(),
   precioXCaja: z.number().nullable().optional(),
   codigoArancelario: z.string().nullable().optional(),
+  // Campos opcionales dinámicos por ítem
+  camposOpcionales: z
+    .array(
+      z.object({
+        label: z.string().min(1),
+        value: z.string().nullable().optional(),
+      }),
+    )
+    .nullable()
+    .optional(),
 });
 
 const fromOfertaClienteSchema = z.object({
@@ -132,6 +142,23 @@ function extractPuertoEmbarqueFromText(text?: string | null): string | null {
   return value || null;
 }
 
+function parseItemCamposOpcionales(item: any): any {
+  if (!item) return item;
+  if (item.camposOpcionales != null && typeof item.camposOpcionales === 'string') {
+    try {
+      return { ...item, camposOpcionales: JSON.parse(item.camposOpcionales) };
+    } catch {
+      return { ...item, camposOpcionales: [] };
+    }
+  }
+  return item;
+}
+
+function parseFacturaItems(factura: any): any {
+  if (!factura?.items) return factura;
+  return { ...factura, items: factura.items.map(parseItemCamposOpcionales) };
+}
+
 /** Al marcar factura como pagada, pone la oferta a importadora y la oferta a cliente en aceptada (opción A). */
 async function marcarOfertasComoAceptadasSiFacturaPagada(factura: {
   tipoOfertaOrigen: string | null;
@@ -192,7 +219,7 @@ export const FacturaController = {
       orderBy: { numero: 'desc' },
     });
     
-    res.json(facturas);
+    res.json(facturas.map(parseFacturaItems));
   },
 
   async getById(req: Request, res: Response): Promise<void> {
@@ -208,7 +235,7 @@ export const FacturaController = {
       return;
     }
     
-    res.json(factura);
+    res.json(parseFacturaItems(factura));
   },
 
   async create(req: Request, res: Response): Promise<void> {
@@ -237,7 +264,7 @@ export const FacturaController = {
       include: includeFactura,
     });
     
-    res.status(201).json(factura);
+    res.status(201).json(parseFacturaItems(factura));
   },
 
   async createFromOfertaCliente(req: Request, res: Response): Promise<void> {
@@ -352,6 +379,7 @@ export const FacturaController = {
       const cantidadParaCalculo = (item.pesoNeto || item.cantidad);
       let subtotal = Math.round(cantidadParaCalculo * precioAjustado * 100) / 100; // Redondear subtotal a 2 decimales
       
+      const campos = (item as any).camposOpcionales;
       return {
         productoId: item.productoId,
         descripcion: item.producto.nombre,
@@ -367,6 +395,7 @@ export const FacturaController = {
         pesoXCaja: item.pesoXCaja,
         precioXCaja: item.precioXCaja,
         codigoArancelario: item.codigoArancelario,
+        camposOpcionales: typeof campos === 'string' ? campos : campos != null ? JSON.stringify(campos) : null,
       };
     });
 
@@ -470,7 +499,7 @@ export const FacturaController = {
       include: includeFactura,
     });
     
-    res.status(201).json(facturaActualizada);
+    res.status(201).json(parseFacturaItems(facturaActualizada));
   },
 
   async createFromOfertaImportadora(req: Request, res: Response): Promise<void> {
@@ -570,6 +599,7 @@ export const FacturaController = {
       const cantidadParaCalculo = (item.pesoNeto || item.cantidad);
       let subtotal = Math.round(cantidadParaCalculo * precioAjustado * 100) / 100; // Redondear subtotal a 2 decimales
       
+      const campos = item.camposOpcionales;
       return {
         productoId: item.productoId,
         descripcion: item.producto.nombre,
@@ -585,6 +615,7 @@ export const FacturaController = {
         pesoXCaja: item.pesoXCaja,
         precioXCaja: item.precioXCaja,
         codigoArancelario: item.codigoArancelario,
+        camposOpcionales: typeof campos === 'string' ? campos : campos != null ? JSON.stringify(campos) : null,
       };
     });
 
@@ -693,7 +724,7 @@ export const FacturaController = {
       include: includeFactura,
     });
     
-    res.status(201).json(facturaActualizada);
+    res.status(201).json(parseFacturaItems(facturaActualizada));
   },
 
   async update(req: Request, res: Response): Promise<void> {
@@ -743,7 +774,7 @@ export const FacturaController = {
     });
     
     await calcularTotales(id);
-
+    
     const factura = await prisma.factura.findUnique({
       where: { id },
       include: includeFactura,
@@ -753,7 +784,7 @@ export const FacturaController = {
       await marcarOfertasComoAceptadasSiFacturaPagada(factura);
     }
     
-    res.json(factura);
+    res.json(parseFacturaItems(factura));
   },
 
   async delete(req: Request, res: Response): Promise<void> {
@@ -776,13 +807,15 @@ export const FacturaController = {
     }
 
     const subtotal = validation.data.cantidad * validation.data.precioUnitario;
+    const { camposOpcionales: camposRaw, ...rest } = validation.data;
 
     const item = await prisma.itemFactura.create({
       data: {
         facturaId: id,
-        ...validation.data,
+        ...rest,
         pesoNeto: validation.data.pesoNeto || validation.data.cantidad,
         subtotal,
+        camposOpcionales: camposRaw != null ? JSON.stringify(camposRaw) : null,
       },
       include: {
         producto: {
@@ -793,7 +826,7 @@ export const FacturaController = {
     
     await calcularTotales(id);
     
-    res.status(201).json(item);
+    res.status(201).json(parseItemCamposOpcionales(item));
   },
 
   async updateItem(req: Request, res: Response): Promise<void> {
@@ -837,6 +870,10 @@ export const FacturaController = {
     if ('precioXCaja' in req.body) updateData.precioXCaja = validation.data.precioXCaja ?? null;
     if ('codigoArancelario' in req.body) updateData.codigoArancelario = validation.data.codigoArancelario ?? null;
     if ('descripcion' in req.body) updateData.descripcion = validation.data.descripcion ?? null;
+    if ('camposOpcionales' in req.body) {
+      const co = validation.data.camposOpcionales;
+      updateData.camposOpcionales = co != null ? JSON.stringify(co) : null;
+    }
 
     const item = await prisma.itemFactura.update({
       where: { id: itemId },
@@ -850,7 +887,7 @@ export const FacturaController = {
     
     await calcularTotales(id);
     
-    res.json(item);
+    res.json(parseItemCamposOpcionales(item));
   },
 
   async removeItem(req: Request, res: Response): Promise<void> {

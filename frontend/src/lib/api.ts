@@ -1123,6 +1123,8 @@ export interface ItemOfertaCliente {
   pesoXCaja?: number;
   precioXCaja?: number;
   codigoArancelario?: string; // Partida arancelaria
+  // Campos opcionales dinámicos exportables (label/valor)
+  camposOpcionales?: { label: string; value?: string | null }[];
 }
 
 export interface ItemOfertaClienteInput {
@@ -1139,6 +1141,7 @@ export interface ItemOfertaClienteInput {
   pesoXCaja?: number | null;
   precioXCaja?: number | null;
   codigoArancelario?: string | null; // Partida arancelaria
+  camposOpcionales?: { label: string; value?: string | null }[] | null;
 }
 
 // ==========================================
@@ -1245,6 +1248,7 @@ export interface CrearDesdeOfertaClienteInput {
     campoExtra2?: string | null;
     campoExtra3?: string | null;
     campoExtra4?: string | null;
+    camposOpcionales?: { label: string; value?: string | null }[] | null;
   }>;
 }
 
@@ -1266,6 +1270,7 @@ export interface ItemOfertaImportadora {
   pesoXCaja?: number;
   precioXCaja?: number;
   codigoArancelario?: string; // Partida arancelaria
+  camposOpcionales?: { label: string; value?: string | null }[];
 }
 
 export interface ItemOfertaImportadoraInput {
@@ -1283,6 +1288,7 @@ export interface ItemOfertaImportadoraInput {
   pesoXCaja?: number;
   precioXCaja?: number;
   codigoArancelario?: string; // Partida arancelaria
+  camposOpcionales?: { label: string; value?: string | null }[] | null;
 }
 
 // ==========================================
@@ -1427,6 +1433,7 @@ export interface ItemFactura {
   pesoXCaja?: number;
   precioXCaja?: number;
   codigoArancelario?: string;
+  camposOpcionales?: { label: string; value?: string | null }[] | null;
 }
 
 export interface ItemFacturaInput {
@@ -1443,6 +1450,7 @@ export interface ItemFacturaInput {
   pesoXCaja?: number | null;
   precioXCaja?: number | null;
   codigoArancelario?: string | null;
+  camposOpcionales?: { label: string; value?: string | null }[] | null;
 }
 
 // ==========================================

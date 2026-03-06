@@ -78,6 +78,7 @@ const itemSchema = z.object({
   campoExtra2: z.string().nullable().optional(),
   campoExtra3: z.string().nullable().optional(),
   campoExtra4: z.string().nullable().optional(),
+  camposOpcionales: z.array(z.object({ label: z.string().min(1), value: z.string().nullable().optional() })).nullable().optional(),
 });
 
 const crearDesdeOfertaSchema = z.object({
@@ -134,6 +135,23 @@ function extractPuertoEmbarqueFromText(text?: string | null): string | null {
   return value || null;
 }
 
+function parseItemCamposOpcionales(item: any): any {
+  if (!item) return item;
+  if (item.camposOpcionales != null && typeof item.camposOpcionales === 'string') {
+    try {
+      return { ...item, camposOpcionales: JSON.parse(item.camposOpcionales) };
+    } catch {
+      return { ...item, camposOpcionales: [] };
+    }
+  }
+  return item;
+}
+
+function parseOfertaItems(oferta: any): any {
+  if (!oferta?.items) return oferta;
+  return { ...oferta, items: oferta.items.map(parseItemCamposOpcionales) };
+}
+
 export const OfertaImportadoraController = {
   async getNextNumber(req: Request, res: Response): Promise<void> {
     const numero = await generarNumeroOferta();
@@ -165,7 +183,7 @@ export const OfertaImportadoraController = {
       orderBy: { fecha: 'desc' },
     });
     
-    res.json(ofertas);
+    res.json(ofertas.map(parseOfertaItems));
   },
 
   async getById(req: Request, res: Response): Promise<void> {
@@ -191,8 +209,8 @@ export const OfertaImportadoraController = {
       res.status(404).json({ error: 'Oferta no encontrada' });
       return;
     }
-    
-    res.json(oferta);
+
+    res.json(parseOfertaItems(oferta));
   },
 
   async create(req: Request, res: Response): Promise<void> {
@@ -242,7 +260,7 @@ export const OfertaImportadoraController = {
       },
     });
     
-    res.status(201).json(oferta);
+    res.status(201).json(parseOfertaItems(oferta));
   },
 
   // Crear oferta importadora desde una oferta al cliente
@@ -312,15 +330,16 @@ export const OfertaImportadoraController = {
       campoExtra2?: string | null;
       campoExtra3?: string | null;
       campoExtra4?: string | null;
+      camposOpcionales?: string | null;
     }>;
 
     if (itemsProporcionados && itemsProporcionados.length > 0) {
-      // Usar items proporcionados por el frontend
+      // Usar items proporcionados por el frontend (incl. campos dinámicos de oferta cliente)
       itemsParaCrear = itemsProporcionados.map(item => {
         const precioFinal = item.precioAjustado || item.precioUnitario;
         const cantidadParaCalculo = item.pesoNeto || item.cantidad;
         const subtotal = precioFinal * cantidadParaCalculo;
-        
+        const camposOpcionalesStr = item.camposOpcionales != null ? JSON.stringify(item.camposOpcionales) : null;
         return {
           productoId: item.productoId,
           cantidad: item.cantidad,
@@ -340,10 +359,11 @@ export const OfertaImportadoraController = {
           campoExtra2: item.campoExtra2 || null,
           campoExtra3: item.campoExtra3 || null,
           campoExtra4: item.campoExtra4 || null,
+          camposOpcionales: camposOpcionalesStr,
         };
       });
     } else {
-      // Copiar items de la oferta cliente (comportamiento original)
+      // Copiar items de la oferta cliente (incl. campos dinámicos ya guardados como string)
       itemsParaCrear = ofertaCliente.items.map(item => ({
         productoId: item.productoId,
         cantidad: item.cantidad,
@@ -363,6 +383,7 @@ export const OfertaImportadoraController = {
         campoExtra2: item.campoExtra2,
         campoExtra3: item.campoExtra3,
         campoExtra4: item.campoExtra4,
+        camposOpcionales: item.camposOpcionales ?? null,
       }));
     }
     
@@ -525,7 +546,7 @@ export const OfertaImportadoraController = {
       },
     });
 
-    res.status(201).json(ofertaFinal);
+    res.status(201).json(parseOfertaItems(ofertaFinal));
   },
 
   // Actualizar datos generales de la oferta (NO toca precios de items)
@@ -587,7 +608,7 @@ export const OfertaImportadoraController = {
       },
     });
     
-    res.json(oferta);
+    res.json(parseOfertaItems(oferta));
   },
 
   async delete(req: Request, res: Response): Promise<void> {
@@ -644,6 +665,7 @@ export const OfertaImportadoraController = {
         campoExtra2: validation.data.campoExtra2,
         campoExtra3: validation.data.campoExtra3,
         campoExtra4: validation.data.campoExtra4,
+        camposOpcionales: validation.data.camposOpcionales != null ? JSON.stringify(validation.data.camposOpcionales) : null,
       },
     });
     
@@ -663,7 +685,7 @@ export const OfertaImportadoraController = {
       },
     });
     
-    res.status(201).json(oferta);
+    res.status(201).json(parseOfertaItems(oferta));
   },
 
   // Actualizar un item - solo cambia los campos enviados, NO recalcula precios ajustados
@@ -703,6 +725,10 @@ export const OfertaImportadoraController = {
     if (validation.data.campoExtra2 !== undefined) updateData.campoExtra2 = validation.data.campoExtra2;
     if (validation.data.campoExtra3 !== undefined) updateData.campoExtra3 = validation.data.campoExtra3;
     if (validation.data.campoExtra4 !== undefined) updateData.campoExtra4 = validation.data.campoExtra4;
+    if ('camposOpcionales' in req.body) {
+      const co = validation.data.camposOpcionales;
+      updateData.camposOpcionales = co != null ? JSON.stringify(co) : null;
+    }
     
     // Cantidad: si cambia, marcar para recalcular subtotal
     let recalcularSubtotal = false;
@@ -760,7 +786,7 @@ export const OfertaImportadoraController = {
       },
     });
     
-    res.json(oferta);
+    res.json(parseOfertaItems(oferta));
   },
 
   async removeItem(req: Request, res: Response): Promise<void> {
@@ -879,6 +905,6 @@ export const OfertaImportadoraController = {
       },
     });
 
-    res.json(ofertaActualizada);
+    res.json(parseOfertaItems(ofertaActualizada));
   },
 };

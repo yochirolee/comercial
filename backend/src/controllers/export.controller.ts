@@ -256,23 +256,70 @@ function detectOptionalFields(items: any[]): OptionalFields {
   return fields;
 }
 
+function getCamposOpcionalesArray(item: any): { label: string; value?: string }[] {
+  if (!item?.camposOpcionales) return [];
+  const raw = item.camposOpcionales;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function getDynamicOptionalLabels(items: any[]): string[] {
+  const labelsSet = new Set<string>();
+  for (const item of items) {
+    const campos = getCamposOpcionalesArray(item);
+    for (const campo of campos) {
+      if (!campo || typeof campo.label !== 'string') continue;
+      const label = campo.label.trim();
+      if (!label) continue;
+      if (!labelsSet.has(label)) {
+        labelsSet.add(label);
+      }
+    }
+  }
+  return Array.from(labelsSet);
+}
+
 // Construir headers y anchos dinámicamente
 interface DynamicColumns {
   headers: string[];
   widthsPdf: number[];
   widthsExcel: number[];
   optionalFields: OptionalFields;
+  dynamicLabels: string[];
 }
 
 function buildDynamicColumns(items: any[]): DynamicColumns {
   const optionalFields = detectOptionalFields(items);
+  const dynamicLabels = getDynamicOptionalLabels(items);
   
   // Columnas base: ITEM, DESCRIPCION, UM
   const headers: string[] = ['ITEM', 'DESCRIPCION', 'UM'];
   const widthsPdf: number[] = [30, 190, 30]; // Descripción ancha + columna UM
   const widthsExcel: number[] = [6, 40, 8];
 
-  // Agregar campos opcionales en orden lógico
+  // Campos opcionales dinámicos (por label), justo después de UM
+  for (const label of dynamicLabels) {
+    const trimmed = label.trim();
+    // Evitar headers larguísimos que se parten feo en PDF:
+    // recortamos a ~12 caracteres y agregamos punto si se truncó.
+    let headerLabel = trimmed;
+    if (headerLabel.length > 12) {
+      headerLabel = headerLabel.slice(0, 11) + '.';
+    }
+    headers.push(headerLabel.toUpperCase());
+    widthsPdf.push(45);
+    widthsExcel.push(12);
+  }
+
+  // Agregar campos opcionales fijos en orden lógico
   if (optionalFields.cantidadSacos) {
     headers.push('CANT.\nSACOS');
     widthsPdf.push(50);
@@ -309,7 +356,20 @@ function buildDynamicColumns(items: any[]): DynamicColumns {
   widthsPdf.push(55, 55, 70);
   widthsExcel.push(11, 11, 13);
 
-  return { headers, widthsPdf, widthsExcel, optionalFields };
+  // Ajustar anchos PDF si la tabla se pasa del ancho disponible
+  // (por ejemplo cuando hay muchos campos dinámicos)
+  const maxTableWidth = 520; // ~ ancho útil en carta con márgenes
+  const totalWidth = widthsPdf.reduce((sum, w) => sum + w, 0);
+  if (totalWidth > maxTableWidth) {
+    const scale = maxTableWidth / totalWidth;
+    for (let i = 0; i < widthsPdf.length; i++) {
+      // Mantener un mínimo para que las columnas sigan siendo legibles
+      const minWidth = i === 0 ? 20 : 25; // ITEM puede ser un poco más angosto
+      widthsPdf[i] = Math.max(minWidth, Math.round(widthsPdf[i] * scale));
+    }
+  }
+
+  return { headers, widthsPdf, widthsExcel, optionalFields, dynamicLabels };
 }
 
 // ==========================================
@@ -351,7 +411,7 @@ function renderPdfTable(
   includeTotal: boolean = false,
   totalLabel: string = 'TOTAL CIF'
 ): { yPos: number; totalImporte: number; tableLeft: number; tableWidth: number; lastColWidth: number } {
-  const { headers, widthsPdf, optionalFields } = buildDynamicColumns(items);
+  const { headers, widthsPdf, optionalFields, dynamicLabels } = buildDynamicColumns(items);
   
   const tableTop = doc.y;
   const tableWidth = widthsPdf.reduce((a, b) => a + b, 0);
@@ -371,7 +431,8 @@ function renderPdfTable(
   
   headers.forEach((header, i) => {
     const align = i <= 1 ? 'left' : 'center';
-    doc.text(header, xPos + 2, headerTextY, { width: widthsPdf[i] - 4, align, lineGap: 1 });
+    // lineBreak: false para que no corte las palabras del header en varias líneas
+    doc.text(header, xPos + 2, headerTextY, { width: widthsPdf[i] - 4, align, lineGap: 1, lineBreak: false });
     xPos += widthsPdf[i];
   });
   
@@ -405,6 +466,17 @@ function renderPdfTable(
     const unidadMedidaAbrev = item.producto.unidadMedida?.abreviatura || '';
     doc.text(unidadMedidaAbrev, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
     xPos += widthsPdf[colIndex++];
+
+    // Campos opcionales dinámicos (por label), se muestran en el orden detectado
+    if (dynamicLabels.length > 0) {
+      const campos = getCamposOpcionalesArray(item);
+      for (const label of dynamicLabels) {
+        const campo = campos.find((c: any) => typeof c?.label === 'string' && c.label.trim() === label);
+        const val = campo && campo.value != null && String(campo.value).trim() !== '' ? String(campo.value) : '-';
+        doc.text(val, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
+        xPos += widthsPdf[colIndex++];
+      }
+    }
     
     // Campos opcionales
     if (optionalFields.cantidadSacos) {
@@ -470,10 +542,8 @@ function renderPdfTable(
     const totalLabelX = tableLeft + tableWidth - widthsPdf[widthsPdf.length - 1] - widthsPdf[widthsPdf.length - 2];
     const totalValueX = tableLeft + tableWidth - widthsPdf[widthsPdf.length - 1];
     
-    doc.text(totalLabel + ':', totalLabelX + 3, yPos, { 
-      width: widthsPdf[widthsPdf.length - 2] - 6, 
-      align: 'right' 
-    });
+    const totalLabelWidth = Math.max(widthsPdf[widthsPdf.length - 2] - 6, 58);
+    doc.text(totalLabel + ':', totalLabelX + 3, yPos, { width: totalLabelWidth, align: 'right', lineBreak: false });
     doc.text(`$${formatCurrency(totalImporte)}`, totalValueX + 3, yPos, { 
       width: widthsPdf[widthsPdf.length - 1] - 6, 
       align: 'right' 
@@ -587,7 +657,7 @@ function renderExcelTable(
   startRow: number,
   usePrecioAjustado: boolean = false
 ): { endRow: number; totalImporte: number; lastCol: string; numCols: number } {
-  const { headers, widthsExcel, optionalFields } = buildDynamicColumns(items);
+  const { headers, widthsExcel, optionalFields, dynamicLabels } = buildDynamicColumns(items);
   
   let row = startRow;
 
@@ -626,6 +696,16 @@ function renderExcelTable(
     const unidadMedidaAbrev = item.producto.unidadMedida?.abreviatura || '';
     const values: (string | number)[] = [itemNum, item.producto.nombre, unidadMedidaAbrev];
     
+    // Campos opcionales dinámicos (por label) inmediatamente después de UM
+    if (dynamicLabels.length > 0) {
+      const campos = getCamposOpcionalesArray(item);
+      for (const label of dynamicLabels) {
+        const campo = campos.find((c: any) => typeof c?.label === 'string' && c.label.trim() === label);
+        const val = campo && campo.value != null && String(campo.value).trim() !== '' ? String(campo.value) : '-';
+        values.push(val);
+      }
+    }
+    
     if (optionalFields.cantidadSacos) values.push(item.cantidadSacos ?? '-');
     if (optionalFields.pesoXSaco) values.push(item.pesoXSaco ?? '-');
     if (optionalFields.precioXSaco) values.push(item.precioXSaco ?? '-');
@@ -650,7 +730,7 @@ function renderExcelTable(
     dataRow.getCell(numCols).numFmt = '"$"#,##0.00';
     
     // Formatear campos opcionales de precio con $
-    let colIdx = 4;
+    let colIdx = 4 + dynamicLabels.length;
     if (optionalFields.cantidadSacos) {
       dataRow.getCell(colIdx).alignment = { horizontal: 'center' };
       colIdx++;
@@ -1934,9 +2014,10 @@ export const ExportController = {
     const margin = 40;
     const contentWidth = pageWidth - margin * 2;
 
-    // TÍTULO: FACTURA - PACKING LIST {numero de oferta cliente}
+    // TÍTULO: FACTURA - PACKING LIST {solo número, sin prefijo FAC-}
+    const tituloNumero = (numeroOfertaCliente || '').replace(/^FAC-/i, '');
     doc.fontSize(16).font('Helvetica-Bold');
-    doc.text(`FACTURA- PACKING LIST ${numeroOfertaCliente}`, { align: 'center' });
+    doc.text(`FACTURA- PACKING LIST ${tituloNumero}`, { align: 'center' });
     doc.moveDown(0.5);
 
     // LOGO (si existe) a la izquierda
@@ -1987,20 +2068,35 @@ export const ExportController = {
     // Headers de tabla para factura (con PESO NETO y PESO BRUTO)
     const facturaHeaders = ['PRODUCTO', 'UM'];
     
-    // Detectar campos opcionales
+    // Detectar campos opcionales fijos y dinámicos
     const optionalFields = detectOptionalFields(factura.items);
+    const dynamicLabels = getDynamicOptionalLabels(factura.items);
     
-    // Contar columnas opcionales para ajustar ancho de descripción
+    // Contar columnas opcionales (fijas + dinámicas) para ajustar ancho de descripción
     let numOptionalCols = 0;
     if (optionalFields.cantidadSacos) numOptionalCols++;
     if (optionalFields.pesoXSaco) numOptionalCols++;
     if (optionalFields.precioXSaco) numOptionalCols++;
     if (optionalFields.cantidadCajas) numOptionalCols++;
+    if (optionalFields.pesoXCaja) numOptionalCols++;
+    if (optionalFields.precioXCaja) numOptionalCols++;
+    const numOptionalTotal = numOptionalCols + dynamicLabels.length;
     
-    // Ajustar ancho de PRODUCTO según columnas opcionales
-    const descWidthPdf = numOptionalCols >= 4 ? 100 : numOptionalCols >= 2 ? 140 : 180;
+    // Ajustar ancho de PRODUCTO según columnas opcionales totales
+    const descWidthPdf = numOptionalTotal >= 6 ? 90 : numOptionalTotal >= 4 ? 120 : numOptionalTotal >= 2 ? 150 : 190;
     const facturaWidths = [descWidthPdf, 30];
     
+    // Campos opcionales dinámicos (por label) después de UM
+    for (const label of dynamicLabels) {
+      const trimmed = label.trim();
+      let headerLabel = trimmed;
+      if (headerLabel.length > 12) {
+        headerLabel = headerLabel.slice(0, 11) + '.';
+      }
+      facturaHeaders.push(headerLabel.toUpperCase());
+      facturaWidths.push(45);
+    }
+
     if (optionalFields.cantidadSacos) {
       facturaHeaders.push('CANT.\nSACOS');
       facturaWidths.push(40);
@@ -2016,6 +2112,14 @@ export const ExportController = {
     if (optionalFields.cantidadCajas) {
       facturaHeaders.push('CANT.\nCAJAS');
       facturaWidths.push(40);
+    }
+    if (optionalFields.pesoXCaja) {
+      facturaHeaders.push('PESO\nX CAJA');
+      facturaWidths.push(40);
+    }
+    if (optionalFields.precioXCaja) {
+      facturaHeaders.push('PRECIO\nX CAJA');
+      facturaWidths.push(45);
     }
     
     // Columnas finales fijas
@@ -2036,7 +2140,7 @@ export const ExportController = {
     const headerTextY = tableTop + 4;
     
     facturaHeaders.forEach((header, i) => {
-      doc.text(header, xPos + 2, headerTextY, { width: facturaWidths[i] - 4, align: 'center', lineGap: 1 });
+      doc.text(header, xPos + 2, headerTextY, { width: facturaWidths[i] - 4, align: 'center', lineGap: 1, lineBreak: false });
       xPos += facturaWidths[i];
     });
     
@@ -2074,7 +2178,18 @@ export const ExportController = {
       
       let colIdx = 2;
       
-      // Campos opcionales
+      // Campos opcionales dinámicos
+      if (dynamicLabels.length > 0) {
+        const campos = getCamposOpcionalesArray(item);
+        for (const label of dynamicLabels) {
+          const campo = campos.find((c: any) => typeof c?.label === 'string' && c.label.trim() === label);
+          const val = campo && campo.value != null && String(campo.value).trim() !== '' ? String(campo.value) : '-';
+          doc.text(val, xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'center' });
+          xPos += facturaWidths[colIdx++];
+        }
+      }
+      
+      // Campos opcionales fijos
       if (optionalFields.cantidadSacos) {
         doc.text(String((item as any).cantidadSacos ?? '-'), xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'center' });
         xPos += facturaWidths[colIdx++];
@@ -2089,6 +2204,14 @@ export const ExportController = {
       }
       if (optionalFields.cantidadCajas) {
         doc.text(String((item as any).cantidadCajas ?? '-'), xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'center' });
+        xPos += facturaWidths[colIdx++];
+      }
+      if (optionalFields.pesoXCaja) {
+        doc.text((item as any).pesoXCaja ? formatCurrency((item as any).pesoXCaja) : '-', xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
+        xPos += facturaWidths[colIdx++];
+      }
+      if (optionalFields.precioXCaja) {
+        doc.text((item as any).precioXCaja ? `$${formatCurrency((item as any).precioXCaja)}` : '-', xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
         xPos += facturaWidths[colIdx++];
       }
       
@@ -2319,6 +2442,7 @@ export const ExportController = {
 
     const unidadMedida = factura.items[0]?.producto?.unidadMedida?.abreviatura || 'KG';
     const optionalFields = detectOptionalFields(factura.items);
+    const dynamicLabels = getDynamicOptionalLabels(factura.items);
     
     // Calcular número de columnas
     let numCols = 7; // PRODUCTO, UM, CANT, PESO NETO, PESO BRUTO, PRECIO, IMPORTE
@@ -2326,14 +2450,18 @@ export const ExportController = {
     if (optionalFields.pesoXSaco) numCols++;
     if (optionalFields.precioXSaco) numCols++;
     if (optionalFields.cantidadCajas) numCols++;
+    if (optionalFields.pesoXCaja) numCols++;
+    if (optionalFields.precioXCaja) numCols++;
+    numCols += dynamicLabels.length;
     
     const lastCol = numCols <= 26 ? String.fromCharCode(64 + numCols) : 'A' + String.fromCharCode(64 + numCols - 26);
     
     let row = 1;
 
-    // TÍTULO: FACTURA - PACKING LIST {numero de oferta cliente}
+    // TÍTULO: FACTURA - PACKING LIST {solo número, sin prefijo FAC-}
+    const tituloNumero = (numeroOfertaCliente || '').replace(/^FAC-/i, '');
     worksheet.mergeCells(`A${row}:${lastCol}${row}`);
-    worksheet.getCell(`A${row}`).value = `FACTURA- PACKING LIST ${numeroOfertaCliente}`;
+    worksheet.getCell(`A${row}`).value = `FACTURA- PACKING LIST ${tituloNumero}`;
     worksheet.getCell(`A${row}`).font = { bold: true, size: 14 };
     worksheet.getCell(`A${row}`).alignment = { horizontal: 'center' };
     worksheet.getRow(row).height = 22;
@@ -2405,16 +2533,30 @@ export const ExportController = {
     // ENCABEZADOS DE TABLA
     const headers: string[] = ['PRODUCTO', 'UM'];
     
-    // Contar columnas opcionales para ajustar ancho de descripción
+    // Contar columnas opcionales (fijas + dinámicas) para ajustar ancho de descripción
     let numOptionalCols = 0;
     if (optionalFields.cantidadSacos) numOptionalCols++;
     if (optionalFields.pesoXSaco) numOptionalCols++;
     if (optionalFields.precioXSaco) numOptionalCols++;
     if (optionalFields.cantidadCajas) numOptionalCols++;
+    if (optionalFields.pesoXCaja) numOptionalCols++;
+    if (optionalFields.precioXCaja) numOptionalCols++;
+    const numOptionalTotal = numOptionalCols + dynamicLabels.length;
     
     // Ajustar ancho de PRODUCTO según columnas opcionales
-    const descWidthExcel = numOptionalCols >= 4 ? 25 : numOptionalCols >= 2 ? 32 : 40;
+    const descWidthExcel = numOptionalTotal >= 6 ? 22 : numOptionalTotal >= 4 ? 28 : numOptionalTotal >= 2 ? 34 : 40;
     const widths: number[] = [descWidthExcel, 8];
+    
+    // Campos dinámicos después de UM
+    for (const label of dynamicLabels) {
+      const trimmed = label.trim();
+      let headerLabel = trimmed;
+      if (headerLabel.length > 16) {
+        headerLabel = headerLabel.slice(0, 15) + '.';
+      }
+      headers.push(headerLabel.toUpperCase());
+      widths.push(10);
+    }
     
     if (optionalFields.cantidadSacos) {
       headers.push('CANT SACOS');
@@ -2431,6 +2573,14 @@ export const ExportController = {
     if (optionalFields.cantidadCajas) {
       headers.push('CANT CAJAS');
       widths.push(10);
+    }
+    if (optionalFields.pesoXCaja) {
+      headers.push('PESO X CAJA');
+      widths.push(10);
+    }
+    if (optionalFields.precioXCaja) {
+      headers.push('PRECIO X CAJA');
+      widths.push(12);
     }
     
     headers.push(`CANT ${unidadMedida}`, 'PESO NETO', 'PESO BRUTO', `PRECIO/${unidadMedida}`, 'IMPORTE');
@@ -2469,10 +2619,22 @@ export const ExportController = {
 
       const values: (string | number)[] = [item.producto.nombre, item.producto.unidadMedida.abreviatura];
       
+      // Campos dinámicos
+      if (dynamicLabels.length > 0) {
+        const campos = getCamposOpcionalesArray(item);
+        for (const label of dynamicLabels) {
+          const campo = campos.find((c: any) => typeof c?.label === 'string' && c.label.trim() === label);
+          const val = campo && campo.value != null && String(campo.value).trim() !== '' ? String(campo.value) : '-';
+          values.push(val);
+        }
+      }
+      
       if (optionalFields.cantidadSacos) values.push((item as any).cantidadSacos ?? '-');
       if (optionalFields.pesoXSaco) values.push((item as any).pesoXSaco ?? '-');
       if (optionalFields.precioXSaco) values.push((item as any).precioXSaco ?? '-');
       if (optionalFields.cantidadCajas) values.push((item as any).cantidadCajas ?? '-');
+      if (optionalFields.pesoXCaja) values.push((item as any).pesoXCaja ?? '-');
+      if (optionalFields.precioXCaja) values.push((item as any).precioXCaja ?? '-');
       
       values.push(item.cantidad, pesoNeto, pesoBruto, item.precioUnitario, importe);
       

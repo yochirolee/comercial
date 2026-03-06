@@ -39,6 +39,12 @@ interface ItemTemp extends ItemOfertaClienteInput {
   producto?: Producto;
 }
 
+interface ExtraFieldForm {
+  id: string;
+  label: string;
+  value: string;
+}
+
 export default function OfertasClientePage(): React.ReactElement {
   const [ofertas, setOfertas] = useState<OfertaCliente[]>([]);
   const [ofertasGenerales, setOfertasGenerales] = useState<OfertaGeneral[]>([]);
@@ -103,6 +109,7 @@ export default function OfertasClientePage(): React.ReactElement {
     precioXCaja: "",
     codigoArancelario: "",
   });
+  const [extraFields, setExtraFields] = useState<ExtraFieldForm[]>([]);
 
   // Estado para agregar items a oferta existente
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
@@ -121,6 +128,7 @@ export default function OfertasClientePage(): React.ReactElement {
     precioXCaja: "",
     codigoArancelario: "",
   });
+  const [editExtraFields, setEditExtraFields] = useState<ExtraFieldForm[]>([]);
 
   // Estado para ajustar precios por total deseado
   const [showAdjustPrices, setShowAdjustPrices] = useState(false);
@@ -235,6 +243,14 @@ export default function OfertasClientePage(): React.ReactElement {
 
   // Convierte el formulario de strings a números para enviar al API
   function getItemFormAsNumbers(): ItemOfertaClienteInput {
+    const cleanedExtra =
+      extraFields
+        .map((f) => ({
+          label: f.label.trim(),
+          value: f.value.trim() || null,
+        }))
+        .filter((f) => f.label) || [];
+
     return {
       productoId: itemFormStrings.productoId,
       cantidad: parseFloat(itemFormStrings.cantidad) || 0,
@@ -246,6 +262,7 @@ export default function OfertasClientePage(): React.ReactElement {
       pesoXCaja: itemFormStrings.pesoXCaja ? parseFloat(itemFormStrings.pesoXCaja) : undefined,
       precioXCaja: itemFormStrings.precioXCaja ? parseFloat(itemFormStrings.precioXCaja) : undefined,
       codigoArancelario: itemFormStrings.codigoArancelario?.trim() || undefined,
+      camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : undefined,
     };
   }
 
@@ -270,6 +287,40 @@ export default function OfertasClientePage(): React.ReactElement {
 
   function removeItemFromList(tempId: string): void {
     setItemsTemp((prev) => prev.filter((item) => item.tempId !== tempId));
+  }
+
+  function addExtraField(): void {
+    setExtraFields((prev) => [
+      ...prev,
+      { id: `extra-${Date.now()}-${prev.length}`, label: "", value: "" },
+    ]);
+  }
+
+  function updateExtraField(id: string, key: "label" | "value", value: string): void {
+    setExtraFields((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, [key]: value } : f)),
+    );
+  }
+
+  function removeExtraField(id: string): void {
+    setExtraFields((prev) => prev.filter((f) => f.id !== id));
+  }
+
+  function addEditExtraField(): void {
+    setEditExtraFields((prev) => [
+      ...prev,
+      { id: `edit-extra-${Date.now()}-${prev.length}`, label: "", value: "" },
+    ]);
+  }
+
+  function updateEditExtraField(id: string, key: "label" | "value", value: string): void {
+    setEditExtraFields((prev) =>
+      prev.map((f) => (f.id === id ? { ...f, [key]: value } : f)),
+    );
+  }
+
+  function removeEditExtraField(id: string): void {
+    setEditExtraFields((prev) => prev.filter((f) => f.id !== id));
   }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
@@ -410,6 +461,13 @@ export default function OfertasClientePage(): React.ReactElement {
       precioXCaja: item.precioXCaja?.toString() || "",
       codigoArancelario: item.codigoArancelario || "",
     });
+    setEditExtraFields(
+      (item.camposOpcionales || []).map((c, idx) => ({
+        id: `${c.label}-${idx}`,
+        label: c.label,
+        value: (c.value ?? "").toString(),
+      })),
+    );
     setEditItemDialogOpen(true);
   }
 
@@ -419,6 +477,14 @@ export default function OfertasClientePage(): React.ReactElement {
 
     try {
       // Siempre enviar todos los campos opcionales, incluso si están vacíos (como null para limpiar)
+      const cleanedExtra =
+        editExtraFields
+          .map((f) => ({
+            label: f.label.trim(),
+            value: f.value.trim() || null,
+          }))
+          .filter((f) => f.label) || [];
+
       const updateData: Partial<ItemOfertaClienteInput> = {
         cantidad: parseFloat(editItemFormStrings.cantidad) || 0,
         precioUnitario: parseFloat(editItemFormStrings.precioUnitario) || 0,
@@ -443,6 +509,7 @@ export default function OfertasClientePage(): React.ReactElement {
         codigoArancelario: editItemFormStrings.codigoArancelario && editItemFormStrings.codigoArancelario.trim() !== '' 
           ? editItemFormStrings.codigoArancelario 
           : null,
+        camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
       };
       
       await ofertasClienteApi.updateItem(selectedOferta.id, editingItemId, updateData);
@@ -777,10 +844,11 @@ export default function OfertasClientePage(): React.ReactElement {
                     </div>
                   </div>
 
-                  {/* Campos informativos opcionales */}
-                  <div className="border-t pt-2 sm:pt-3">
-                    <p className="text-xs text-slate-500 mb-2">Opcionales</p>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                  {/* Campos informativos opcionales fijos */}
+                  <div className="border-t pt-2 sm:pt-3 space-y-3">
+                    <div>
+                      <p className="text-xs text-slate-500 mb-2">Opcionales</p>
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
                       <div className="space-y-0.5">
                         <Label className="text-[10px] sm:text-xs">Sacos</Label>
                         <Input
@@ -835,15 +903,56 @@ export default function OfertasClientePage(): React.ReactElement {
                           className="h-8 text-xs px-2"
                         />
                       </div>
-                      <div className="space-y-0.5 col-span-2">
-                        <Label className="text-[10px] sm:text-xs">Cód. Arancelario</Label>
-                        <Input
-                          placeholder="Ej: M1500CIULB"
-                          value={itemFormStrings.codigoArancelario}
-                          className="h-8 text-xs px-2"
-                          onChange={(e) => setItemFormStrings((prev) => ({ ...prev, codigoArancelario: e.target.value }))}
-                        />
+                        <div className="space-y-0.5 col-span-2">
+                          <Label className="text-[10px] sm:text-xs">Cód. Arancelario</Label>
+                          <Input
+                            placeholder="Ej: M1500CIULB"
+                            value={itemFormStrings.codigoArancelario}
+                            className="h-8 text-xs px-2"
+                            onChange={(e) => setItemFormStrings((prev) => ({ ...prev, codigoArancelario: e.target.value }))}
+                          />
+                        </div>
                       </div>
+                    </div>
+
+                    {/* Campos opcionales dinámicos */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-600">Campos extra (label / valor)</p>
+                        <Button type="button" variant="outline" size="sm" onClick={addExtraField} className="shrink-0">
+                          <Plus className="h-4 w-4" />
+                          Agregar campo
+                        </Button>
+                      </div>
+                      {extraFields.length > 0 && (
+                        <div className="space-y-1">
+                          {extraFields.map((field) => (
+                            <div key={field.id} className="grid grid-cols-7 gap-1 items-center">
+                              <Input
+                                placeholder="Label (ej: Cant. x Contenedor)"
+                                value={field.label}
+                                onChange={(e) => updateExtraField(field.id, "label", e.target.value)}
+                                className="col-span-3 h-8 text-[11px] px-2"
+                              />
+                              <Input
+                                placeholder="Valor"
+                                value={field.value}
+                                onChange={(e) => updateExtraField(field.id, "value", e.target.value)}
+                                className="col-span-3 h-8 text-[11px] px-2"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeExtraField(field.id)}
+                                className="h-8 w-8"
+                              >
+                                <X className="h-3 w-3 text-red-500" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1304,65 +1413,107 @@ export default function OfertasClientePage(): React.ReactElement {
               </div>
             </div>
             {/* Campos informativos opcionales */}
-            <div className="border-t pt-4">
-              <p className="text-sm text-slate-500 mb-3">Campos informativos (opcionales)</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs">Cant. Sacos</Label>
-                  <Input
-                    placeholder="-"
-                    value={editItemFormStrings.cantidadSacos}
-                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
-                  />
+            <div className="border-t pt-4 space-y-3">
+              <div>
+                <p className="text-sm text-slate-500 mb-3">Campos informativos (opcionales)</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Cant. Sacos</Label>
+                    <Input
+                      placeholder="-"
+                      value={editItemFormStrings.cantidadSacos}
+                      onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Peso x Saco</Label>
+                    <Input
+                      placeholder="-"
+                      value={editItemFormStrings.pesoXSaco}
+                      onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Precio x Saco</Label>
+                    <Input
+                      placeholder="-"
+                      value={editItemFormStrings.precioXSaco}
+                      onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioXSaco: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Cant. Cajas</Label>
+                    <Input
+                      placeholder="-"
+                      value={editItemFormStrings.cantidadCajas}
+                      onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Peso x Caja</Label>
+                    <Input
+                      placeholder="-"
+                      value={editItemFormStrings.pesoXCaja}
+                      onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Precio x Caja</Label>
+                    <Input
+                      placeholder="-"
+                      value={editItemFormStrings.precioXCaja}
+                      onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Peso x Saco</Label>
+                <div className="mt-3 space-y-1">
+                  <Label className="text-xs">Código Arancelario</Label>
                   <Input
-                    placeholder="-"
-                    value={editItemFormStrings.pesoXSaco}
-                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Precio x Saco</Label>
-                  <Input
-                    placeholder="-"
-                    value={editItemFormStrings.precioXSaco}
-                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioXSaco: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Cant. Cajas</Label>
-                  <Input
-                    placeholder="-"
-                    value={editItemFormStrings.cantidadCajas}
-                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Peso x Caja</Label>
-                  <Input
-                    placeholder="-"
-                    value={editItemFormStrings.pesoXCaja}
-                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Precio x Caja</Label>
-                  <Input
-                    placeholder="-"
-                    value={editItemFormStrings.precioXCaja}
-                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, precioXCaja: e.target.value }))}
+                    placeholder="Ej: M1500CIULB"
+                    value={editItemFormStrings.codigoArancelario}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, codigoArancelario: e.target.value }))}
                   />
                 </div>
               </div>
-              <div className="mt-3 space-y-1">
-                <Label className="text-xs">Código Arancelario</Label>
-                <Input
-                  placeholder="Ej: M1500CIULB"
-                  value={editItemFormStrings.codigoArancelario}
-                  onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, codigoArancelario: e.target.value }))}
-                />
+
+              {/* Campos opcionales dinámicos en edición */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-slate-600">Campos extra (label / valor)</p>
+                  <Button type="button" variant="outline" size="sm" onClick={addEditExtraField} className="shrink-0">
+                    <Plus className="h-4 w-4" />
+                    Agregar campo
+                  </Button>
+                </div>
+                {editExtraFields.length > 0 && (
+                  <div className="space-y-1">
+                    {editExtraFields.map((field) => (
+                      <div key={field.id} className="grid grid-cols-7 gap-1 items-center">
+                        <Input
+                          placeholder="Label"
+                          value={field.label}
+                          onChange={(e) => updateEditExtraField(field.id, "label", e.target.value)}
+                          className="col-span-3 h-8 text-[11px] px-2"
+                        />
+                        <Input
+                          placeholder="Valor"
+                          value={field.value}
+                          onChange={(e) => updateEditExtraField(field.id, "value", e.target.value)}
+                          className="col-span-3 h-8 text-[11px] px-2"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeEditExtraField(field.id)}
+                          className="h-8 w-8"
+                        >
+                          <X className="h-3 w-3 text-red-500" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex justify-end gap-2">

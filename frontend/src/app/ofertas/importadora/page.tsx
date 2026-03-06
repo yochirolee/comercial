@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight, Pencil, Save, Download, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight, Pencil, Save, Download, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { 
   ofertasImportadoraApi, 
   ofertasClienteApi, 
@@ -48,6 +48,12 @@ import type {
 } from "@/lib/api";
 
 const PAGE_SIZE = 10;
+
+interface ExtraFieldForm {
+  id: string;
+  label: string;
+  value: string;
+}
 
 // Texto por defecto para bloques de documento (mismo contenido que en oferta a cliente)
 const defaultTerminosDocumentoTexto = [
@@ -128,6 +134,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     precioXCaja: "",
     codigoArancelario: "",
   });
+  const [editExtraFields, setEditExtraFields] = useState<ExtraFieldForm[]>([]);
 
   // Estado para items editables en creación
   const [itemsEditables, setItemsEditables] = useState<Array<{
@@ -146,6 +153,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     pesoXCaja?: number | null;
     precioXCaja?: number | null;
     codigoArancelario?: string | null;
+    camposOpcionales?: { label: string; value?: string | null }[] | null;
   }>>([]);
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 
@@ -259,7 +267,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         : defaultMetodoPagoDocumentoTexto
     );
     
-    // Cargar items de la oferta cliente para edición
+    // Cargar items de la oferta cliente para edición (incl. campos dinámicos)
     if (oferta && oferta.items) {
       const itemsCargados = oferta.items.map((item, index) => ({
         id: `temp-${index}-${Date.now()}`,
@@ -277,6 +285,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         pesoXCaja: item.pesoXCaja || null,
         precioXCaja: item.precioXCaja || null,
         codigoArancelario: item.codigoArancelario || null,
+        camposOpcionales: item.camposOpcionales ?? null,
       }));
       setItemsEditables(itemsCargados);
     } else {
@@ -334,6 +343,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
           pesoXCaja: item.pesoXCaja ?? null,
           precioXCaja: item.precioXCaja ?? null,
           codigoArancelario: item.codigoArancelario ?? null,
+          camposOpcionales: item.camposOpcionales ?? null,
         };
       });
       
@@ -481,6 +491,13 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       precioXCaja: item.precioXCaja?.toString() || "",
       codigoArancelario: item.codigoArancelario || "",
     });
+    setEditExtraFields(
+      (item.camposOpcionales || []).map((c, idx) => ({
+        id: `edit-${c.label}-${idx}`,
+        label: c.label,
+        value: (c.value ?? "").toString(),
+      }))
+    );
     setEditItemDialogOpen(true);
   }
 
@@ -500,7 +517,21 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       precioXCaja: "",
       codigoArancelario: "",
     });
+    setEditExtraFields([]);
     setEditItemDialogOpen(true);
+  }
+
+  function addEditExtraField(): void {
+    setEditExtraFields((prev) => [
+      ...prev,
+      { id: `edit-extra-${Date.now()}-${prev.length}`, label: "", value: "" },
+    ]);
+  }
+  function updateEditExtraField(id: string, key: "label" | "value", value: string): void {
+    setEditExtraFields((prev) => prev.map((f) => (f.id === id ? { ...f, [key]: value } : f)));
+  }
+  function removeEditExtraField(id: string): void {
+    setEditExtraFields((prev) => prev.filter((f) => f.id !== id));
   }
 
   // Guardar cambios de item
@@ -509,6 +540,9 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     if (!selectedOferta || !editingItemId) return;
 
     try {
+      const cleanedExtra = editExtraFields
+        .map((f) => ({ label: f.label.trim(), value: f.value.trim() || null }))
+        .filter((f) => f.label);
       const itemData = {
         cantidad: editItemForm.cantidad ? parseFloat(editItemForm.cantidad) : undefined,
         // Enviar precio ajustado si fue modificado
@@ -520,6 +554,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         pesoXCaja: editItemForm.pesoXCaja ? parseFloat(editItemForm.pesoXCaja) : undefined,
         precioXCaja: editItemForm.precioXCaja ? parseFloat(editItemForm.precioXCaja) : undefined,
         codigoArancelario: editItemForm.codigoArancelario || undefined,
+        camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
       };
 
       const updated = await ofertasImportadoraApi.updateItem(selectedOferta.id, editingItemId, itemData);
@@ -564,6 +599,9 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         return;
       }
 
+      const cleanedExtra = editExtraFields
+        .map((f) => ({ label: f.label.trim(), value: f.value.trim() || null }))
+        .filter((f) => f.label);
       const itemData = {
         productoId: editItemForm.productoId,
         cantidad: parseFloat(editItemForm.cantidad),
@@ -575,6 +613,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         pesoXCaja: editItemForm.pesoXCaja && editItemForm.pesoXCaja.trim() !== '' ? parseFloat(editItemForm.pesoXCaja) : undefined,
         precioXCaja: editItemForm.precioXCaja && editItemForm.precioXCaja.trim() !== '' ? parseFloat(editItemForm.precioXCaja) : undefined,
         codigoArancelario: editItemForm.codigoArancelario && editItemForm.codigoArancelario.trim() !== '' ? editItemForm.codigoArancelario : (productoSeleccionado.codigoArancelario || undefined),
+        camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : undefined,
       };
 
       const updated = await ofertasImportadoraApi.addItem(selectedOferta.id, itemData);
@@ -639,6 +678,13 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       precioXCaja: item.precioXCaja?.toString() || "",
       codigoArancelario: item.codigoArancelario || "",
     });
+    setEditExtraFields(
+      (item.camposOpcionales || []).map((c, idx) => ({
+        id: `create-${c.label}-${idx}`,
+        label: c.label,
+        value: (c.value ?? "").toString(),
+      }))
+    );
     setEditItemDialogOpen(true);
   }
 
@@ -652,6 +698,9 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     const cantidad = parseFloat(editItemForm.cantidad) || item.cantidad;
     const precioAjustado = parseFloat(editItemForm.precioUnitario) || item.precioAjustado;
     
+    const cleanedExtra = editExtraFields
+      .map((f) => ({ label: f.label.trim(), value: f.value.trim() || null }))
+      .filter((f) => f.label);
     updatedItems[editingItemIndex] = {
       ...item,
       cantidad,
@@ -664,11 +713,13 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       pesoXCaja: editItemForm.pesoXCaja && editItemForm.pesoXCaja.trim() !== '' ? parseFloat(editItemForm.pesoXCaja) : null,
       precioXCaja: editItemForm.precioXCaja && editItemForm.precioXCaja.trim() !== '' ? parseFloat(editItemForm.precioXCaja) : null,
       codigoArancelario: editItemForm.codigoArancelario && editItemForm.codigoArancelario.trim() !== '' ? editItemForm.codigoArancelario : null,
+      camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
     };
     
     setItemsEditables(updatedItems);
     setEditItemDialogOpen(false);
     setEditingItemIndex(null);
+    setEditExtraFields([]);
     setEditItemForm({
       productoId: "",
       cantidad: "",
@@ -1686,6 +1737,46 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   className="w-full"
                 />
               </div>
+            </div>
+
+            {/* Campos opcionales dinámicos */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-slate-600">Campos extra (label / valor)</p>
+                <Button type="button" variant="outline" size="sm" onClick={addEditExtraField} className="shrink-0">
+                  <Plus className="h-4 w-4" />
+                  Agregar campo
+                </Button>
+              </div>
+              {editExtraFields.length > 0 && (
+                <div className="space-y-1">
+                  {editExtraFields.map((field) => (
+                    <div key={field.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                      <Input
+                        placeholder="Label (ej: Cant. x Contenedor)"
+                        value={field.label}
+                        onChange={(e) => updateEditExtraField(field.id, "label", e.target.value)}
+                        className="h-8 text-sm px-2"
+                      />
+                      <Input
+                        placeholder="Valor"
+                        value={field.value}
+                        onChange={(e) => updateEditExtraField(field.id, "value", e.target.value)}
+                        className="h-8 text-sm px-2"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeEditExtraField(field.id)}
+                        className="h-8 w-8 shrink-0"
+                      >
+                        <X className="h-3 w-3 text-red-500" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-2">
