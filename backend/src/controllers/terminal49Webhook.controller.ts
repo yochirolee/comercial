@@ -116,10 +116,6 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
       if (portOfLading) updateData.originPort = portOfLading;
       if (portOfDischarge) updateData.destinationPort = portOfDischarge;
       if (eventLocation) updateData.currentLocation = eventLocation;
-      if (eventTimestamp) {
-        const d = parseWebhookTimestamp(eventTimestamp);
-        if (d) updateData.trackingLastEventAt = d;
-      }
       if (firstContainerNumber) updateData.containerNo = firstContainerNumber;
 
       const t49Status = eventToTerminal49Status(event);
@@ -128,7 +124,35 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
       const transportEventType = lastTransportEvent?.attributes
         ? (lastTransportEvent.attributes as { event?: string }).event
         : null;
-      if (transportEventType && TRANSPORT_EVENT_TO_STATUS[transportEventType]) {
+
+      const isEstimatedEvent = transportEventType?.includes('.estimated.') ||
+        event === 'shipment.estimated.arrival';
+
+      if (eventTimestamp) {
+        const d = parseWebhookTimestamp(eventTimestamp);
+        if (d) {
+          if (isEstimatedEvent) {
+            // Eventos estimated.*: el timestamp es la nueva ETA/ETD estimada
+            if (
+              transportEventType === 'container.transport.estimated.vessel_arrived' ||
+              event === 'shipment.estimated.arrival'
+            ) {
+              updateData.etaActual = d;
+              console.log('[Terminal49 webhook backend] ETA updated to', d);
+            } else if (transportEventType === 'container.transport.estimated.vessel_departed') {
+              updateData.etdActual = d;
+              console.log('[Terminal49 webhook backend] ETD updated to', d);
+            }
+            // Para estimated events no actualizar trackingLastEventAt (no es un evento real)
+          } else {
+            // Eventos reales: actualizar trackingLastEventAt
+            updateData.trackingLastEventAt = d;
+          }
+        }
+      }
+
+      // Solo cambiar status con eventos de transporte reales (no estimated)
+      if (!isEstimatedEvent && transportEventType && TRANSPORT_EVENT_TO_STATUS[transportEventType]) {
         updateData.status = TRANSPORT_EVENT_TO_STATUS[transportEventType];
       }
 
