@@ -485,10 +485,10 @@ export default function OperationsPage(): React.ReactElement {
     }
   }
 
-  async function handleSyncTerminal49(): Promise<void> {
+  async function handleSyncTerminal49(operationId: string): Promise<void> {
     setSyncingTerminal49(true);
     try {
-      const result = await operationsApi.syncTerminal49();
+      const result = await operationsApi.syncTerminal49(operationId);
       toast.success(
         `Sincronizado: ${result.containersUpdated}/${result.containersProcessed} contenedores`
       );
@@ -886,7 +886,7 @@ export default function OperationsPage(): React.ReactElement {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={handleSyncTerminal49}
+                        onClick={() => void handleSyncTerminal49(operation.id)}
                         title="Sincronizar Terminal49 (GET/POST)"
                         disabled={syncingTerminal49}
                         className="h-8 w-8 text-slate-700 hover:text-slate-900"
