@@ -431,6 +431,7 @@ model Carrier {
   id                  String      @id @default(cuid())
   name                String
   trackingUrlTemplate String      // Ej: https://.../tracking?eq_number={container}
+  scac                String?     // 4 chars, para Terminal49 (ej: CWLQ, MSCU)
 
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
@@ -454,7 +455,11 @@ model OperationContainer {
   etaActual         DateTime?
   status            String
   currentLocation   String?
-  
+  trackingLastEventAt DateTime?
+  trackingLastSyncAt  DateTime?
+  terminal49RequestId String? // UUID del tracking_request en Terminal49
+  terminal49Status   String? // Estado en Terminal49: created, awaiting_manifest, succeeded, failed, tracking_stopped (no sobrescribe status nuestro)
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   

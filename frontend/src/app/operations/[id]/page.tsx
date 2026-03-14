@@ -332,6 +332,21 @@ export default function OperationDetailPage(): React.ReactElement {
     }
   }
 
+  async function handleSyncTerminal49(): Promise<void> {
+    try {
+      const result = await operationsApi.syncTerminal49();
+      toast.success(
+        `Terminal49: ${result.containersUpdated}/${result.containersProcessed} contenedores`
+      );
+      await loadOperation();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(
+        error instanceof Error ? error.message : "Error al actualizar tracking con Terminal49"
+      );
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -435,14 +450,26 @@ export default function OperationDetailPage(): React.ReactElement {
         <Card>
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <CardTitle>Contenedores</CardTitle>
-            <Button
-              size="sm"
-              onClick={() => setAddContainerDialogOpen(true)}
-              className="w-full sm:w-auto"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Agregar Contenedor
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSyncTerminal49}
+                className="w-full sm:w-auto"
+                title="Sincronizar con Terminal49 (BL/booking + SCAC)"
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                Sincronizar
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setAddContainerDialogOpen(true)}
+                className="w-full sm:w-auto"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar Contenedor
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

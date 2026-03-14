@@ -1460,6 +1460,7 @@ export interface Carrier {
   id: string;
   name: string;
   trackingUrlTemplate: string;
+  scac?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1514,6 +1515,9 @@ export interface OperationContainer {
   etaActual?: string;
   status: string;
   currentLocation?: string;
+  trackingLastSyncAt?: string | null;
+  trackingLastEventAt?: string | null;
+  terminal49Status?: string | null;
   createdAt: string;
   updatedAt: string;
   events?: ContainerEvent[];
@@ -1667,6 +1671,12 @@ export const operationsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  // Sincronizar tracking con Terminal49 (BL/booking + SCAC por carrier)
+  syncTerminal49: () =>
+    fetchApi<{ containersProcessed: number; containersUpdated: number }>('/operations/terminal49-sync', {
+      method: 'POST',
+    }),
 };
 
 // ==========================================
@@ -1675,6 +1685,7 @@ export const operationsApi = {
 export interface CarrierInput {
   name: string;
   trackingUrlTemplate: string;
+  scac?: string | null;
 }
 
 export const carriersApi = {

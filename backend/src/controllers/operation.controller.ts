@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { createContainsFilter } from '../lib/search-utils.js';
 import { z } from 'zod';
+import { syncOperationSummaryFromContainers } from '../lib/operation-summary.js';
+import { fetchTerminal49Tracking } from '../services/terminal49.service.js';
 
 // Statuses válidos
 const OPERATION_STATUSES = [
@@ -120,6 +122,94 @@ async function generarNumeroParcel(): Promise<string> {
 }
 
 export const OperationController = {
+  // Sincronizar contenedores activos con Terminal49 (BL/booking + SCAC por carrier)
+  async syncTerminal49(req: Request, res: Response): Promise<void> {
+    try {
+      const internalSecret = process.env.INTERNAL_SYNC_SECRET;
+      if (internalSecret) {
+        const header = req.headers['x-internal-secret'];
+        if (header !== internalSecret) {
+          res.status(401).json({ error: 'No autorizado' });
+          return;
+        }
+      }
+
+      const inactiveStatuses = ['Delivered', 'Closed', 'Cancelled'];
+
+      const containers = await prisma.operationContainer.findMany({
+        where: {
+          status: { notIn: inactiveStatuses },
+          OR: [{ blNo: { not: null } }, { bookingNo: { not: null } }],
+        },
+        select: {
+          id: true,
+          operationId: true,
+          blNo: true,
+          bookingNo: true,
+          terminal49RequestId: true,
+          trackingLastEventAt: true,
+          operation: {
+            select: {
+              operationNo: true,
+              carrierId: true,
+              carrier: { select: { scac: true } },
+            },
+          },
+        },
+      });
+
+      let updatedCount = 0;
+      for (const c of containers) {
+        const scac = c.operation.carrier?.scac?.trim();
+        if (!scac || scac.length !== 4) continue;
+
+        try {
+          const out = await fetchTerminal49Tracking({
+            blNo: c.blNo ?? undefined,
+            bookingNo: c.bookingNo ?? undefined,
+            scac,
+            existingRequestId: c.terminal49RequestId ?? undefined,
+          });
+          if (!out) continue;
+
+          const { requestId, result } = out;
+          const updateData: any = {
+            trackingLastSyncAt: new Date(),
+            terminal49RequestId: requestId,
+          };
+          if (result.etaActual) updateData.etaActual = result.etaActual;
+          if (result.etdActual) updateData.etdActual = result.etdActual;
+          if (result.statusText) updateData.terminal49Status = result.statusText;
+          if (result.lastLocation) updateData.currentLocation = result.lastLocation;
+          // GET devuelve "última actividad" (line_tracking_last_succeeded_at), no el timestamp del evento.
+          // Solo rellenar trackingLastEventAt si no existe (p. ej. aún no ha llegado webhook con transport_event.timestamp).
+          if (result.lastEventAt && !c.trackingLastEventAt) {
+            updateData.trackingLastEventAt = result.lastEventAt;
+          }
+          if (result.originPort) updateData.originPort = result.originPort;
+          if (result.destinationPort) updateData.destinationPort = result.destinationPort;
+
+          await prisma.operationContainer.update({
+            where: { id: c.id },
+            data: updateData,
+          });
+          await syncOperationSummaryFromContainers(c.operationId);
+          updatedCount++;
+        } catch (err) {
+          console.error('[Terminal49] Error al sincronizar contenedor', c.id, err);
+        }
+      }
+
+      res.json({
+        containersProcessed: containers.length,
+        containersUpdated: updatedCount,
+      });
+    } catch (error) {
+      console.error('[Terminal49] Error en syncTerminal49', error);
+      res.status(500).json({ error: 'Error al sincronizar con Terminal49' });
+    }
+  },
+
   // Crear operación desde Oferta a Cliente
   async createFromOffer(req: Request, res: Response): Promise<void> {
     const { offerCustomerId, importadoraId } = req.body;

@@ -117,10 +117,16 @@ function formatETA(container: OperationContainer): string {
   return formatDate(eta);
 }
 
-// Helper para obtener última actualización (del último evento o updatedAt)
+// Helper: mostrar fecha del último evento de tracking (o cuándo se sincronizó / último evento manual)
+// Priorizamos trackingLastEventAt (fecha del evento en el webhook) para que el día mostrado coincida con el evento.
 function getLastUpdate(container: OperationContainer): string {
+  if (container.trackingLastEventAt) {
+    return formatDateTime(container.trackingLastEventAt);
+  }
+  if (container.trackingLastSyncAt) {
+    return formatDateTime(container.trackingLastSyncAt);
+  }
   if (container.events && container.events.length > 0) {
-    // El backend ya ordena por eventDate desc y toma solo 1, así que el primero es el más reciente
     return formatDateTime(container.events[0].eventDate);
   }
   return formatDateTime(container.updatedAt);
@@ -275,14 +281,17 @@ export default function OperationsPage(): React.ReactElement {
         }
 
         case "last-update": {
-          const lastUpdateA = a.container.events && a.container.events.length > 0
-            ? new Date(a.container.events[0].eventDate).getTime()
-            : new Date(a.container.updatedAt).getTime();
-          const lastUpdateB = b.container.events && b.container.events.length > 0
-            ? new Date(b.container.events[0].eventDate).getTime()
-            : new Date(b.container.updatedAt).getTime();
-          
-          comparison = lastUpdateA - lastUpdateB; // Comparación base (ascendente: más antiguo primero)
+          const lastUpdateA = a.container.trackingLastSyncAt
+            ? new Date(a.container.trackingLastSyncAt).getTime()
+            : a.container.events && a.container.events.length > 0
+              ? new Date(a.container.events[0].eventDate).getTime()
+              : new Date(a.container.updatedAt).getTime();
+          const lastUpdateB = b.container.trackingLastSyncAt
+            ? new Date(b.container.trackingLastSyncAt).getTime()
+            : b.container.events && b.container.events.length > 0
+              ? new Date(b.container.events[0].eventDate).getTime()
+              : new Date(b.container.updatedAt).getTime();
+          comparison = lastUpdateA - lastUpdateB;
           break;
         }
 
@@ -451,6 +460,48 @@ export default function OperationsPage(): React.ReactElement {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
+  const [syncingTerminal49, setSyncingTerminal49] = useState(false);
+  const [syncingGlobal, setSyncingGlobal] = useState(false);
+
+  async function handleGlobalSync(): Promise<void> {
+    setSyncingGlobal(true);
+    try {
+      const res = await fetch("/api/terminal49/global-sync");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data?.error ?? "Error en sync global");
+        return;
+      }
+      toast.success(
+        data.processed != null
+          ? `Sync global: ${data.processed} procesados, ${data.skipped ?? 0} omitidos, ${data.updated ?? 0} contenedores actualizados`
+          : "Sync global completado"
+      );
+      await loadData();
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Error en sync global");
+    } finally {
+      setSyncingGlobal(false);
+    }
+  }
+
+  async function handleSyncTerminal49(): Promise<void> {
+    setSyncingTerminal49(true);
+    try {
+      const result = await operationsApi.syncTerminal49();
+      toast.success(
+        `Sincronizado: ${result.containersUpdated}/${result.containersProcessed} contenedores`
+      );
+      await loadData();
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error ? error.message : "Error al sincronizar con Terminal49"
+      );
+    } finally {
+      setSyncingTerminal49(false);
+    }
+  }
+
   async function handleDeleteClick(operationId: string): Promise<void> {
     const operation = operations.find(op => op.id === operationId);
     const confirmMessage = operation
@@ -477,13 +528,23 @@ export default function OperationsPage(): React.ReactElement {
         title="Operations Board"
         description="Tracking de operaciones comerciales y paquetería"
         actions={
-          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva Operación
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleGlobalSync}
+              disabled={syncingGlobal}
+              title="Sincronización global con Terminal49 (tracking requests actualizados desde LAST_SYNC)"
+            >
+              <Ship className="h-4 w-4 mr-2" />
+              {syncingGlobal ? "Sincronizando…" : "Tracking global"}
+            </Button>
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nueva Operación
+                </Button>
+              </DialogTrigger>
             <DialogContent className="w-[95vw] max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Nueva Operación</DialogTitle>
@@ -547,7 +608,8 @@ export default function OperationsPage(): React.ReactElement {
                 )}
               </div>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         }
       />
 
@@ -824,8 +886,9 @@ export default function OperationsPage(): React.ReactElement {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleTracking(operation, container)}
-                        title="Ver tracking"
+                        onClick={handleSyncTerminal49}
+                        title="Sincronizar Terminal49 (GET/POST)"
+                        disabled={syncingTerminal49}
                         className="h-8 w-8 text-slate-700 hover:text-slate-900"
                       >
                         <Ship className="h-4 w-4" />
