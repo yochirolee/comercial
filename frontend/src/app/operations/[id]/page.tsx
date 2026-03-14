@@ -334,7 +334,7 @@ export default function OperationDetailPage(): React.ReactElement {
 
   async function handleSyncTerminal49(): Promise<void> {
     try {
-      const result = await operationsApi.syncTerminal49();
+      const result = await operationsApi.syncTerminal49(operationId);
       toast.success(
         `Terminal49: ${result.containersUpdated}/${result.containersProcessed} contenedores`
       );

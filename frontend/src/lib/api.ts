@@ -1673,10 +1673,11 @@ export const operationsApi = {
     }),
 
   // Sincronizar tracking con Terminal49 (BL/booking + SCAC por carrier)
-  syncTerminal49: () =>
-    fetchApi<{ containersProcessed: number; containersUpdated: number }>('/operations/terminal49-sync', {
-      method: 'POST',
-    }),
+  syncTerminal49: (operationId?: string) =>
+    fetchApi<{ containersProcessed: number; containersUpdated: number }>(
+      operationId ? `/operations/${operationId}/terminal49-sync` : '/operations/terminal49-sync',
+      { method: 'POST' }
+    ),
 };
 
 // ==========================================

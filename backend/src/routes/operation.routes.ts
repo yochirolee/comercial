@@ -40,5 +40,8 @@ operationRouter.post('/:id/events', OperationController.addEvent);
 // POST /api/operations/:id/containers/:containerId/events - Agregar evento a contenedor
 operationRouter.post('/:id/containers/:containerId/events', OperationController.addContainerEvent);
 
-// POST /api/operations/terminal49-sync - Sincronizar contenedores activos con Terminal49 (BL/booking + SCAC)
+// POST /api/operations/terminal49-sync - Sincronizar todos los contenedores activos con Terminal49
 operationRouter.post('/terminal49-sync', OperationController.syncTerminal49);
+
+// POST /api/operations/:id/terminal49-sync - Sincronizar solo los contenedores de una operación
+operationRouter.post('/:id/terminal49-sync', OperationController.syncTerminal49);

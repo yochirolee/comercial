@@ -136,8 +136,11 @@ export const OperationController = {
 
       const inactiveStatuses = ['Delivered', 'Closed', 'Cancelled'];
 
+      const operationId = req.params.id as string | undefined;
+
       const containers = await prisma.operationContainer.findMany({
         where: {
+          ...(operationId ? { operationId } : {}),
           status: { notIn: inactiveStatuses },
           OR: [{ blNo: { not: null } }, { bookingNo: { not: null } }],
         },
