@@ -59,7 +59,7 @@ export default function DashboardConfigPage(): React.ReactElement {
   const [config, setConfig] = useState<DashboardConfig>(getDefaultConfig());
   const [loaded, setLoaded] = useState(false);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
-  const [carrierScacEdits, setCarrierScacEdits] = useState<Record<string, string>>({});
+  const [carrierScacEdits, setCarrierScacEdits] = useState<Record<string, string | undefined>>({});
   const [newCarrier, setNewCarrier] = useState({ name: "", trackingUrlTemplate: "", scac: "" });
 
   useEffect(() => {
