@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { syncOperationSummaryFromContainers } from '../lib/operation-summary.js';
+import { createContainerEvent } from './operation.controller.js';
 
 type WebhookPayload = {
   data?: {
@@ -161,6 +162,27 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
         data: updateData as any,
       });
       await syncOperationSummaryFromContainers(container.operationId);
+
+      // Log en el timeline del contenedor
+      const eventDate = eventTimestamp ? (parseWebhookTimestamp(eventTimestamp) ?? new Date()) : new Date();
+      const logParts: string[] = [`Evento: ${event}`];
+      if (isEstimatedEvent) {
+        if (updateData.etaActual) logParts.push(`Nueva ETA: ${new Date(updateData.etaActual as Date).toLocaleDateString('es-ES')}`);
+        if (updateData.etdActual) logParts.push(`Nueva ETD: ${new Date(updateData.etdActual as Date).toLocaleDateString('es-ES')}`);
+      } else {
+        if (updateData.status) logParts.push(`Estado: ${updateData.status as string}`);
+        if (portOfLading) logParts.push(`Origen: ${portOfLading}`);
+        if (portOfDischarge) logParts.push(`Destino: ${portOfDischarge}`);
+      }
+      await createContainerEvent(
+        container.id,
+        'tracking',
+        isEstimatedEvent ? 'Cambio de ETA/ETD (Terminal49)' : 'Evento de transporte (Terminal49)',
+        logParts.join(' · '),
+        eventDate,
+        eventLocation ?? undefined
+      );
+
       console.log('[Terminal49 webhook backend] updated container', container.id, updateData);
     } else {
       console.log('[Terminal49 webhook backend] no container found for', { trackingRequestId, billOfLading });
@@ -298,6 +320,21 @@ export async function handleGlobalSyncUpdate(req: Request, res: Response): Promi
           data: updateData as Parameters<typeof prisma.operationContainer.update>[0]['data'],
         });
         await syncOperationSummaryFromContainers(container.operationId);
+
+        // Log en el timeline del contenedor
+        const syncParts: string[] = [];
+        if (item.terminal49_status) syncParts.push(`Estado T49: ${item.terminal49_status}`);
+        if (updateData.originPort) syncParts.push(`Origen: ${updateData.originPort as string}`);
+        if (updateData.destinationPort) syncParts.push(`Destino: ${updateData.destinationPort as string}`);
+        if (updateData.etaActual) syncParts.push(`ETA: ${new Date(updateData.etaActual as Date).toLocaleDateString('es-ES')}`);
+        if (updateData.etdActual) syncParts.push(`ETD: ${new Date(updateData.etdActual as Date).toLocaleDateString('es-ES')}`);
+        await createContainerEvent(
+          container.id,
+          'tracking',
+          'Sync Global Terminal49',
+          syncParts.length > 0 ? syncParts.join(' · ') : 'Datos actualizados desde Terminal49',
+          new Date()
+        );
 
         console.log('[Terminal49 global-sync] updated container', container.id, {
           tracking_request_id: item.tracking_request_id,

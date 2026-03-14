@@ -79,6 +79,28 @@ const eventSchema = z.object({
   createdBy: z.string().optional(),
 });
 
+// Helper para crear eventos en el timeline de un contenedor
+export async function createContainerEvent(
+  operationContainerId: string,
+  eventType: string,
+  title: string,
+  description?: string,
+  eventDate?: Date,
+  location?: string
+): Promise<void> {
+  await prisma.containerEvent.create({
+    data: {
+      operationContainerId,
+      eventType,
+      title,
+      description: description || null,
+      eventDate: eventDate || new Date(),
+      location: location || null,
+      createdBy: 'System',
+    },
+  });
+}
+
 // Helper para crear eventos automáticos en operaciones (exportable para otros controladores)
 export async function createOperationEvent(
   operationId: string,
@@ -197,6 +219,23 @@ export const OperationController = {
             data: updateData,
           });
           await syncOperationSummaryFromContainers(c.operationId);
+
+          // Log en el timeline del contenedor
+          const parts: string[] = [];
+          if (result.etaActual) parts.push(`ETA: ${new Date(result.etaActual).toLocaleDateString('es-ES')}`);
+          if (result.etdActual) parts.push(`ETD: ${new Date(result.etdActual).toLocaleDateString('es-ES')}`);
+          if (result.originPort) parts.push(`Origen: ${result.originPort}`);
+          if (result.destinationPort) parts.push(`Destino: ${result.destinationPort}`);
+          if (result.statusText) parts.push(`Estado T49: ${result.statusText}`);
+          await createContainerEvent(
+            c.id,
+            'tracking',
+            'Sincronización Terminal49',
+            parts.length > 0 ? parts.join(' · ') : 'Datos actualizados desde Terminal49',
+            new Date(),
+            result.lastLocation ?? undefined
+          );
+
           updatedCount++;
         } catch (err) {
           console.error('[Terminal49] Error al sincronizar contenedor', c.id, err);
