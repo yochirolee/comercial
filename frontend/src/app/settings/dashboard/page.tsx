@@ -59,7 +59,8 @@ export default function DashboardConfigPage(): React.ReactElement {
   const [config, setConfig] = useState<DashboardConfig>(getDefaultConfig());
   const [loaded, setLoaded] = useState(false);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
-  const [newCarrier, setNewCarrier] = useState({ name: "", trackingUrlTemplate: "" });
+  const [carrierScacEdits, setCarrierScacEdits] = useState<Record<string, string>>({});
+  const [newCarrier, setNewCarrier] = useState({ name: "", trackingUrlTemplate: "", scac: "" });
 
   useEffect(() => {
     setConfig(getDashboardConfig());
@@ -91,13 +92,27 @@ export default function DashboardConfigPage(): React.ReactElement {
       await carriersApi.create({
         name: newCarrier.name.trim(),
         trackingUrlTemplate: newCarrier.trackingUrlTemplate.trim(),
+        scac: newCarrier.scac.trim() || undefined,
       });
-      setNewCarrier({ name: "", trackingUrlTemplate: "" });
+      setNewCarrier({ name: "", trackingUrlTemplate: "", scac: "" });
       toast.success("Carrier creado");
       await loadCarriers();
     } catch (error) {
       console.error(error);
       toast.error("Error al crear carrier");
+    }
+  }
+
+  async function handleUpdateCarrierScac(carrier: Carrier): Promise<void> {
+    const scac = (carrierScacEdits[carrier.id] ?? carrier.scac ?? "").trim().toUpperCase().slice(0, 4);
+    try {
+      await carriersApi.update(carrier.id, { scac: scac || undefined });
+      setCarrierScacEdits((p) => ({ ...p, [carrier.id]: undefined }));
+      toast.success("SCAC actualizado");
+      await loadCarriers();
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al actualizar SCAC");
     }
   }
 
@@ -159,7 +174,7 @@ export default function DashboardConfigPage(): React.ReactElement {
               <div className="space-y-1">
                 <Label className="text-sm font-medium">Carriers (navieras)</Label>
                 <p className="text-xs text-slate-500">
-                  Configura los carriers disponibles para operaciones y la URL de tracking. Usa {'{container}'} donde va el número de contenedor.
+                  Configura los carriers para operaciones, URL de tracking y opcionalmente SCAC (4 letras) para Terminal49. Usa {'{container}'} donde va el número de contenedor.
                 </p>
               </div>
 
@@ -171,22 +186,46 @@ export default function DashboardConfigPage(): React.ReactElement {
                     {carriers.map((carrier) => (
                       <div
                         key={carrier.id}
-                        className="flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between border rounded-md px-3 py-2"
+                        className="flex flex-col gap-2 border rounded-md px-3 py-2"
                       >
-                        <div className="text-xs sm:text-sm">
-                          <div className="font-medium break-words">{carrier.name}</div>
-                          <div className="text-slate-500 break-all text-[11px] sm:text-xs">
-                            {carrier.trackingUrlTemplate}
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div className="text-xs sm:text-sm min-w-0">
+                            <div className="font-medium break-words">{carrier.name}</div>
+                            <div className="text-slate-500 break-all text-[11px] sm:text-xs">
+                              {carrier.trackingUrlTemplate}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Input
+                              placeholder="SCAC"
+                              className="w-14 h-8 text-xs uppercase"
+                              maxLength={4}
+                              value={carrierScacEdits[carrier.id] ?? carrier.scac ?? ""}
+                              onChange={(e) =>
+                                setCarrierScacEdits((p) => ({
+                                  ...p,
+                                  [carrier.id]: e.target.value.toUpperCase().slice(0, 4),
+                                }))
+                              }
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => void handleUpdateCarrierScac(carrier)}
+                            >
+                              SCAC
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
+                              onClick={() => void handleDeleteCarrier(carrier.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
-                          onClick={() => void handleDeleteCarrier(carrier.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </div>
                     ))}
                   </div>
@@ -195,6 +234,9 @@ export default function DashboardConfigPage(): React.ReactElement {
 
               <div className="space-y-2 pt-2 border-t">
                 <Label className="text-sm font-medium">Agregar nuevo carrier</Label>
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                  Completa los campos y haz clic en <strong>Agregar carrier</strong> para que aparezca en la lista. &quot;Guardar Configuración&quot; solo guarda el año del dashboard.
+                </p>
                 <div className="space-y-2">
                   <Input
                     placeholder="Nombre del carrier (ej: Seaboard Marine)"
@@ -208,8 +250,16 @@ export default function DashboardConfigPage(): React.ReactElement {
                       setNewCarrier((p) => ({ ...p, trackingUrlTemplate: e.target.value }))
                     }
                   />
+                  <Input
+                    placeholder="SCAC (4 letras, opcional, para Terminal49)"
+                    value={newCarrier.scac}
+                    onChange={(e) =>
+                      setNewCarrier((p) => ({ ...p, scac: e.target.value.toUpperCase().slice(0, 4) }))
+                    }
+                    maxLength={4}
+                  />
                   <Button
-                    variant="outline"
+                    variant="default"
                     size="sm"
                     className="gap-2"
                     onClick={() => void handleAddCarrier()}

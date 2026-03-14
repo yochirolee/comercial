@@ -16,6 +16,7 @@ import { uploadRouter } from './routes/upload.routes.js';
 import { documentoRouter } from './routes/documento.routes.js';
 import { operationRouter } from './routes/operation.routes.js';
 import { carrierRouter } from './routes/carrier.routes.js';
+import { terminal49WebhookRouter } from './routes/terminal49Webhook.routes.js';
 import { importadoraRouter } from './routes/importadora.routes.js';
 import { searchRouter } from './routes/search.routes.js';
 
@@ -51,6 +52,7 @@ app.use('/api/operations', operationRouter);
 app.use('/api/importadoras', importadoraRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/carriers', carrierRouter);
+app.use('/api/terminal49', terminal49WebhookRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

@@ -2,12 +2,14 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma.js';
 
+// URL puede contener placeholder {container}; .url() estricto falla con placeholders
 const carrierSchema = z.object({
   name: z.string().min(1, 'Nombre es requerido'),
   trackingUrlTemplate: z
     .string()
     .min(1, 'URL de tracking es requerida')
-    .url('Debe ser una URL válida'),
+    .refine((s) => s.startsWith('http://') || s.startsWith('https://'), 'Debe ser una URL (http o https)'),
+  scac: z.string().max(4).optional().nullable(),
 });
 
 export const CarrierController = {
@@ -25,8 +27,13 @@ export const CarrierController = {
       return;
     }
 
+    const scac = validation.data.scac?.trim();
     const carrier = await prisma.carrier.create({
-      data: validation.data,
+      data: {
+        name: validation.data.name,
+        trackingUrlTemplate: validation.data.trackingUrlTemplate,
+        scac: scac && scac.length > 0 ? scac.toUpperCase().slice(0, 4) : null,
+      },
     });
 
     res.status(201).json(carrier);
