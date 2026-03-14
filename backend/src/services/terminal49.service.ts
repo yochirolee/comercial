@@ -1,5 +1,3 @@
-import fetch from 'node-fetch';
-
 const TERMINAL49_BASE = 'https://api.terminal49.com/v2';
 
 /** Authorization: "Token YOUR_API_KEY". Env puede ser "Token xxx" o solo "xxx". */
