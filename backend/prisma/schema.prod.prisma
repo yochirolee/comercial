@@ -459,6 +459,9 @@ model OperationContainer {
   trackingLastSyncAt  DateTime?
   terminal49RequestId String? // UUID del tracking_request en Terminal49
   terminal49Status   String? // Estado en Terminal49: created, awaiting_manifest, succeeded, failed, tracking_stopped (no sobrescribe status nuestro)
+  itn               String?
+  itnValue          Float?
+  itnWeight         Float?
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

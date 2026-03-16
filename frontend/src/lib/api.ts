@@ -1518,6 +1518,9 @@ export interface OperationContainer {
   trackingLastSyncAt?: string | null;
   trackingLastEventAt?: string | null;
   terminal49Status?: string | null;
+  itn?: string | null;
+  itnValue?: number | null;
+  itnWeight?: number | null;
   createdAt: string;
   updatedAt: string;
   events?: ContainerEvent[];

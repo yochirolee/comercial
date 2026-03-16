@@ -177,7 +177,7 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
       await createContainerEvent(
         container.id,
         'tracking',
-        isEstimatedEvent ? 'Cambio de ETA/ETD (Terminal49)' : 'Evento de transporte (Terminal49)',
+        isEstimatedEvent ? 'Webhook: Cambio de ETA/ETD' : 'Webhook: Evento de transporte',
         logParts.join(' · '),
         eventDate,
         eventLocation ?? undefined

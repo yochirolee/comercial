@@ -558,10 +558,16 @@ export const OperationController = {
     }
     
     if (search) {
-      const searchFilter = createContainsFilter(String(search));
+      const s = createContainsFilter(String(search));
       where.OR = [
-        { operationNo: searchFilter },
-        { currentLocation: searchFilter },
+        { operationNo: s },
+        { currentLocation: s },
+        { originPort: s },
+        { destinationPort: s },
+        { containers: { some: { blNo: s } } },
+        { containers: { some: { bookingNo: s } } },
+        { containers: { some: { containerNo: s } } },
+        { importadora: { nombre: s } },
       ];
     }
     

@@ -31,7 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw } from "lucide-react";
+import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, Anchor } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,21 +45,21 @@ import type { Operation, OperationContainer, OfertaCliente, Importadora } from "
 // Estados considerados como inactivos/completados
 const INACTIVE_STATUSES = ["Delivered", "Closed", "Cancelled"];
 
-// Status colors
+// Status colors — colores más distinguibles por fase
 const statusColors: Record<string, string> = {
-  Draft: "bg-slate-100 text-slate-700",
+  Draft: "bg-slate-100 text-slate-600",
   "Booking Confirmed": "bg-blue-100 text-blue-700",
-  "Container Assigned": "bg-purple-100 text-purple-700",
-  Loaded: "bg-yellow-100 text-yellow-700",
-  "Gate In (Port)": "bg-orange-100 text-orange-700",
-  "BL Final Issued": "bg-indigo-100 text-indigo-700",
-  "Departed US": "bg-cyan-100 text-cyan-700",
-  "Arrived Cuba": "bg-green-100 text-green-700",
-  Customs: "bg-amber-100 text-amber-700",
-  Released: "bg-emerald-100 text-emerald-700",
-  Delivered: "bg-teal-100 text-teal-700",
-  Closed: "bg-gray-100 text-gray-700",
-  Cancelled: "bg-red-100 text-red-700",
+  "Container Assigned": "bg-violet-100 text-violet-700",
+  Loaded: "bg-amber-200 text-amber-800",
+  "Gate In (Port)": "bg-orange-200 text-orange-800",
+  "BL Final Issued": "bg-indigo-200 text-indigo-800",
+  "Departed US": "bg-sky-200 text-sky-800",
+  "Arrived Cuba": "bg-green-200 text-green-800",
+  Customs: "bg-yellow-200 text-yellow-800",
+  Released: "bg-emerald-200 text-emerald-800",
+  Delivered: "bg-green-600 text-white",
+  Closed: "bg-gray-400 text-white",
+  Cancelled: "bg-red-500 text-white",
 };
 
 // Helper para obtener ubicación sugerida basada en estado
@@ -93,50 +93,34 @@ function getDisplayLocation(container: OperationContainer, operation: Operation)
   return getSuggestedLocation(container.status);
 }
 
-function formatDate(dateString?: string): string {
-  // Formato: mm/dd/yyyy
-  if (!dateString) return "Pendiente";
-  const dateOnly = dateString.split("T")[0];
-  const [year, month, day] = dateOnly.split("-");
-  return `${month}/${day}/${year}`;
+function formatDateShort(dateString?: string): string {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" }).replace(".", "");
 }
 
-function formatDateTime(dateString?: string): string {
-  if (!dateString) return "Pendiente";
-  const date = new Date(dateString);
-  return date.toLocaleString("en-US", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+function formatDateFull(dateString?: string): string {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "");
 }
 
 function formatETD(container: OperationContainer): string {
-  const etd = container.etdEstimated || container.etdActual;
-  return formatDate(etd);
+  return formatDateShort(container.etdEstimated || container.etdActual);
 }
 
 function formatETA(container: OperationContainer): string {
-  const eta = container.etaEstimated || container.etaActual;
-  return formatDate(eta);
+  return formatDateFull(container.etaEstimated || container.etaActual);
 }
 
-// Helper: mostrar fecha del último evento de tracking (o cuándo se sincronizó / último evento manual)
-// Priorizamos trackingLastEventAt (fecha del evento en el webhook) para que el día mostrado coincida con el evento.
 function getLastUpdate(container: OperationContainer): string {
-  if (container.trackingLastEventAt) {
-    return formatDateTime(container.trackingLastEventAt);
-  }
-  if (container.trackingLastSyncAt) {
-    return formatDateTime(container.trackingLastSyncAt);
-  }
-  if (container.events && container.events.length > 0) {
-    return formatDateTime(container.events[0].eventDate);
-  }
-  return formatDateTime(container.updatedAt);
+  const raw = container.trackingLastEventAt
+    || container.trackingLastSyncAt
+    || (container.events && container.events.length > 0 ? container.events[0].eventDate : null)
+    || container.updatedAt;
+  return formatDateShort(raw);
 }
 
 export default function OperationsPage(): React.ReactElement {
@@ -410,14 +394,29 @@ export default function OperationsPage(): React.ReactElement {
     }
     
     try {
-      await operationsApi.createFromOffer(selectedOfertaId, selectedImportadoraId);
+      const op = await operationsApi.createFromOffer(selectedOfertaId, selectedImportadoraId);
       toast.success("Operación creada");
       setCreateDialogOpen(false);
       setSelectedOfertaId("");
       loadData();
-    } catch (error) {
-      toast.error("Error al crear operación");
-      console.error(error);
+      router.push(`/operations/${op.id}`);
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      if (message.includes("Ya existe una operación para esta oferta")) {
+        toast.error("Ya existe una operación creada para esta oferta. Te llevo a ella.");
+        // Buscar esa operación en la tabla actual si está cargada
+        const existing = containerRows.find(
+          (row) => row.operation.offerCustomerId === selectedOfertaId
+        );
+        if (existing) {
+          setCreateDialogOpen(false);
+          router.push(`/operations/${existing.operation.id}`);
+        }
+      } else {
+        toast.error(message || "Error al crear operación");
+        console.error(error);
+      }
     }
   }
 
@@ -627,7 +626,7 @@ export default function OperationsPage(): React.ReactElement {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Número de operación, ubicación..."
+              placeholder="Operación, BL, contenedor, importadora..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9 h-10"
@@ -687,71 +686,106 @@ export default function OperationsPage(): React.ReactElement {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead className="w-10"></TableHead>
-                <TableHead className="min-w-[80px]">Tipo</TableHead>
+                <TableHead className="w-8"></TableHead>
+                <TableHead className="min-w-[70px]">Tipo</TableHead>
                 <TableHead
-                  className="min-w-[120px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[110px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("operation")}
                 >
                   <div className="flex items-center gap-1">
                     Operación
-                    {sortColumn === "operation" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                    {sortColumn === "operation" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
                   </div>
                 </TableHead>
+                <TableHead className="w-10 text-center">Seq</TableHead>
                 <TableHead
-                  className="min-w-[140px] cursor-pointer hover:bg-slate-100 select-none"
-                  onClick={() => handleSortClick("importadora")}
-                >
-                  <div className="flex items-center gap-1">
-                    Importadora
-                    {sortColumn === "importadora" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                  </div>
-                </TableHead>
-                <TableHead className="w-12 text-center">Seq</TableHead>
-                <TableHead
-                  className="min-w-[140px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[120px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("container")}
                 >
                   <div className="flex items-center gap-1">
                     Contenedor
-                    {sortColumn === "container" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                    {sortColumn === "container" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[120px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[110px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("bl")}
                 >
                   <div className="flex items-center gap-1">
                     BL
-                    {sortColumn === "bl" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
-                  </div>
-                </TableHead>
-                <TableHead className="min-w-[180px]">Origen → Destino</TableHead>
-                <TableHead
-                  className="min-w-[100px] cursor-pointer hover:bg-slate-100 select-none"
-                  onClick={() => handleSortClick("eta")}
-                >
-                  <div className="flex items-center gap-1">
-                    ETA
-                    {sortColumn === "eta" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                    {sortColumn === "bl" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[130px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[110px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("status")}
                 >
                   <div className="flex items-center gap-1">
                     Estado
-                    {sortColumn === "status" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                    {sortColumn === "status" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[150px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[80px] cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("eta")}
+                >
+                  <div className="flex items-center gap-1">
+                    ETA
+                    {sortColumn === "eta" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead className="min-w-[150px]">Origen / Destino</TableHead>
+                <TableHead
+                  className="min-w-[130px] cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("importadora")}
+                >
+                  <div className="flex items-center gap-1">
+                    Importadora
+                    {sortColumn === "importadora" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="min-w-[120px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("last-update")}
                 >
                   <div className="flex items-center gap-1">
                     Últ. Actualización
-                    {sortColumn === "last-update" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
+                    {sortColumn === "last-update" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
                   </div>
                 </TableHead>
               </TableRow>
@@ -789,12 +823,9 @@ export default function OperationsPage(): React.ReactElement {
                           <Eye className="h-4 w-4 mr-2" />
                           Ver detalle
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => void handleSyncTerminal49(operation.id)}
-                          disabled={syncingTerminal49}
-                        >
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Sincronizar T49
+                        <DropdownMenuItem onClick={() => handleTracking(operation, container)}>
+                          <Ship className="h-4 w-4 mr-2" />
+                          Tracking carrier
                         </DropdownMenuItem>
                         {isFirstContainer && (
                           <>
@@ -839,59 +870,70 @@ export default function OperationsPage(): React.ReactElement {
                     </span>
                   </TableCell>
 
-                  {/* Importadora */}
-                  <TableCell className="py-2">
-                    <span className={`text-sm truncate block max-w-[140px] ${isFirstContainer ? "text-slate-700" : "text-slate-400"}`}>
-                      {operation.importadora?.nombre ?? "-"}
-                    </span>
-                  </TableCell>
-
                   {/* Seq */}
-                  <TableCell className="py-2 text-center">
+                  <TableCell className="py-1.5 text-center">
                     <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
                       {container.sequenceNo}
                     </span>
                   </TableCell>
 
                   {/* Contenedor */}
-                  <TableCell className="py-2">
-                    <span className="font-mono text-xs text-slate-800">{container.containerNo || <span className="text-slate-400">—</span>}</span>
+                  <TableCell className="py-1.5">
+                    <span className="font-mono text-xs text-slate-800">
+                      {container.containerNo || <span className="text-slate-400">—</span>}
+                    </span>
                   </TableCell>
 
                   {/* BL */}
-                  <TableCell className="py-2">
-                    <span className="text-xs text-slate-700">{container.blNo || <span className="text-slate-400">—</span>}</span>
-                  </TableCell>
-
-                  {/* Origen → Destino */}
-                  <TableCell className="py-2">
-                    <div className="flex items-center gap-1 text-xs">
-                      <span className="truncate max-w-[75px] text-slate-700 font-medium">
-                        {container.originPort || operation.originPort || "—"}
-                      </span>
-                      <span className="text-slate-400 flex-shrink-0">→</span>
-                      <span className="truncate max-w-[75px] text-slate-700 font-medium">
-                        {container.destinationPort || operation.destinationPort || "—"}
-                      </span>
-                    </div>
-                  </TableCell>
-
-                  {/* ETA */}
-                  <TableCell className="py-2 text-xs whitespace-nowrap">
-                    <span className={container.etaEstimated || container.etaActual ? "text-slate-900 font-medium" : "text-slate-400"}>
-                      {formatETA(container)}
+                  <TableCell className="py-1.5">
+                    <span className="text-xs text-slate-700">
+                      {container.blNo || <span className="text-slate-400">—</span>}
                     </span>
                   </TableCell>
 
                   {/* Estado */}
-                  <TableCell className="py-2">
+                  <TableCell className="py-1.5">
                     <Badge className={`${statusColors[container.status] || "bg-slate-100 text-slate-700"} text-xs whitespace-nowrap px-2 py-0.5`}>
                       {container.status}
                     </Badge>
                   </TableCell>
 
+                  {/* ETA */}
+                  <TableCell className="py-1.5 text-xs whitespace-nowrap">
+                    {formatETA(container) ? (
+                      <span className="text-slate-900 font-medium">{formatETA(container)}</span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </TableCell>
+
+                  {/* Origen / Destino */}
+                  <TableCell className="py-1.5">
+                    <div className="flex flex-col text-xs leading-tight gap-0.5 max-w-[170px]">
+                      <span className="flex items-center gap-1 truncate max-w-[140px] text-slate-700 font-medium">
+                        <Anchor className="h-3 w-3 text-slate-400" />
+                        <span className="truncate">
+                          {container.originPort || operation.originPort || "—"}
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-1 truncate max-w-[140px] text-slate-700 font-medium">
+                        <Ship className="h-3 w-3 text-slate-400" />
+                        <span className="truncate">
+                          {container.destinationPort || operation.destinationPort || "—"}
+                        </span>
+                      </span>
+                    </div>
+                  </TableCell>
+
+                  {/* Importadora */}
+                  <TableCell className="py-1.5">
+                    <span className={`text-sm truncate block max-w-[140px] ${isFirstContainer ? "text-slate-700" : "text-slate-400"}`}>
+                      {operation.importadora?.nombre ?? "-"}
+                    </span>
+                  </TableCell>
+
                   {/* Últ. Actualización */}
-                  <TableCell className="py-2 text-xs text-slate-500 whitespace-nowrap">
+                  <TableCell className="py-1.5 text-xs text-slate-500 whitespace-nowrap">
                     {getLastUpdate(container)}
                   </TableCell>
                 </TableRow>

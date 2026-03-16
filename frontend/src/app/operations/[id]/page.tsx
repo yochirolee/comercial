@@ -113,6 +113,9 @@ export default function OperationDetailPage(): React.ReactElement {
     etaActual: "",
     status: "",
     currentLocation: "",
+    itn: "",
+    itnValue: "",
+    itnWeight: "",
   });
   
   const [eventForm, setEventForm] = useState({
@@ -188,6 +191,9 @@ export default function OperationDetailPage(): React.ReactElement {
       await operationsApi.addContainer(operationId, {
         ...containerForm,
         status: containerForm.status || "Draft",
+        itnValue: containerForm.itnValue ? parseFloat(containerForm.itnValue) : undefined,
+        itnWeight: containerForm.itnWeight ? parseFloat(containerForm.itnWeight) : undefined,
+        itn: containerForm.itn || undefined,
       });
       toast.success("Contenedor agregado");
       setAddContainerDialogOpen(false);
@@ -203,6 +209,9 @@ export default function OperationDetailPage(): React.ReactElement {
         etaActual: "",
         status: "Draft",
         currentLocation: "",
+        itn: "",
+        itnValue: "",
+        itnWeight: "",
       });
       loadOperation();
     } catch (error) {
@@ -215,7 +224,12 @@ export default function OperationDetailPage(): React.ReactElement {
     if (!selectedContainer) return;
     
     try {
-      await operationsApi.updateContainer(operationId, selectedContainer.id, containerForm);
+      await operationsApi.updateContainer(operationId, selectedContainer.id, {
+        ...containerForm,
+        itnValue: containerForm.itnValue ? parseFloat(containerForm.itnValue) : null,
+        itnWeight: containerForm.itnWeight ? parseFloat(containerForm.itnWeight) : null,
+        itn: containerForm.itn || null,
+      });
       toast.success("Contenedor actualizado");
       setEditContainerDialogOpen(false);
       setSelectedContainer(null);
@@ -259,6 +273,9 @@ export default function OperationDetailPage(): React.ReactElement {
       etaActual: container.etaActual ? container.etaActual.slice(0, 16) : "",
       status: container.status,
       currentLocation: container.currentLocation || "",
+      itn: container.itn || "",
+      itnValue: container.itnValue != null ? String(container.itnValue) : "",
+      itnWeight: container.itnWeight != null ? String(container.itnWeight) : "",
     });
     setEditContainerDialogOpen(true);
   }
@@ -547,6 +564,111 @@ export default function OperationDetailPage(): React.ReactElement {
           </CardContent>
         </Card>
 
+        {/* Container Timelines */}
+        {operation.containers && operation.containers.length > 0 && (
+          <div className="space-y-4">
+            {operation.containers.map((container) => (
+              <Card key={container.id}>
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <Clock className="h-5 w-5" />
+                    Timeline Contenedor #{container.sequenceNo}
+                    {container.containerNo && (
+                      <span className="text-sm font-normal text-slate-500">({container.containerNo})</span>
+                    )}
+                  </CardTitle>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const currentOrder = containerEventOrder[container.id] || 'desc';
+                        const newOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+                        setContainerEventOrder(prev => ({
+                          ...prev,
+                          [container.id]: newOrder,
+                        }));
+                      }}
+                      title={containerEventOrder[container.id] === 'asc' ? 'Ordenar: Más reciente arriba' : 'Ordenar: Más antiguo arriba'}
+                      className="w-full sm:w-auto"
+                    >
+                      <ArrowUpDown className="h-4 w-4 mr-2" />
+                      <span className="hidden sm:inline">{containerEventOrder[container.id] === 'asc' ? 'Más reciente' : 'Más antiguo'}</span>
+                      <span className="sm:hidden">Ordenar</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedContainer(container);
+                        setAddContainerEventDialogOpen(true);
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar Evento
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {container.events && container.events.length > 0 ? (
+                      [...container.events].sort((a, b) => {
+                        const order = containerEventOrder[container.id] || 'desc';
+                        const timeA = new Date(a.eventDate).getTime();
+                        const timeB = new Date(b.eventDate).getTime();
+                        return order === 'desc' ? timeB - timeA : timeA - timeB;
+                      }).map((event) => {
+                        const isWebhook = event.title.startsWith('Webhook:');
+                        const isTracking = event.eventType === 'tracking' && !isWebhook;
+                        const dotColor = isWebhook ? 'bg-orange-500' : isTracking ? 'bg-cyan-500' : 'bg-green-500';
+                        return (
+                        <div key={event.id} className="flex gap-4 pb-3 border-b last:border-0">
+                          <div className="flex-shrink-0">
+                            <div className={`w-2 h-2 rounded-full ${dotColor} mt-2`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium break-words">
+                                  {event.title}
+                                  {isWebhook && (
+                                    <Badge className="ml-2 bg-orange-100 text-orange-700 text-[10px] px-1.5 py-0">Webhook</Badge>
+                                  )}
+                                  {isTracking && !isWebhook && (
+                                    <Badge className="ml-2 bg-cyan-100 text-cyan-700 text-[10px] px-1.5 py-0">Sync</Badge>
+                                  )}
+                                </p>
+                                {event.description && (
+                                  <p className="text-sm text-slate-600 mt-1 break-words whitespace-pre-wrap">{event.description}</p>
+                                )}
+                                {event.location && (
+                                  <p className="text-xs text-slate-500 mt-1 break-words">📍 {event.location}</p>
+                                )}
+                                {event.fromStatus && event.toStatus && (
+                                  <p className="text-xs text-slate-500 mt-1 break-words">
+                                    {event.fromStatus} → {event.toStatus}
+                                  </p>
+                                )}
+                              </div>
+                              <span className="text-xs text-slate-500 whitespace-nowrap flex-shrink-0">
+                                {event.eventType === 'commercial' ? formatDateOnly(event.eventDate) : formatDateTime(event.eventDate)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-slate-500 text-center py-8">No hay eventos registrados</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
         {/* Operation Timeline */}
         <Card>
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -617,95 +739,6 @@ export default function OperationDetailPage(): React.ReactElement {
             </div>
           </CardContent>
         </Card>
-
-        {/* Container Timelines */}
-        {operation.containers && operation.containers.length > 0 && (
-          <div className="space-y-4">
-            {operation.containers.map((container) => (
-              <Card key={container.id}>
-                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Timeline Contenedor #{container.sequenceNo}
-                  </CardTitle>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const currentOrder = containerEventOrder[container.id] || 'desc';
-                        const newOrder = currentOrder === 'desc' ? 'asc' : 'desc';
-                        setContainerEventOrder(prev => ({
-                          ...prev,
-                          [container.id]: newOrder,
-                        }));
-                      }}
-                      title={containerEventOrder[container.id] === 'asc' ? 'Ordenar: Más reciente arriba' : 'Ordenar: Más antiguo arriba'}
-                      className="w-full sm:w-auto"
-                    >
-                      <ArrowUpDown className="h-4 w-4 mr-2" />
-                      <span className="hidden sm:inline">{containerEventOrder[container.id] === 'asc' ? 'Más reciente' : 'Más antiguo'}</span>
-                      <span className="sm:hidden">Ordenar</span>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedContainer(container);
-                        setAddContainerEventDialogOpen(true);
-                      }}
-                      className="w-full sm:w-auto"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Agregar Evento
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {container.events && container.events.length > 0 ? (
-                      [...container.events].sort((a, b) => {
-                        const order = containerEventOrder[container.id] || 'desc';
-                        const timeA = new Date(a.eventDate).getTime();
-                        const timeB = new Date(b.eventDate).getTime();
-                        return order === 'desc' ? timeB - timeA : timeA - timeB;
-                      }).map((event) => (
-                        <div key={event.id} className="flex gap-4 pb-3 border-b last:border-0">
-                          <div className="flex-shrink-0">
-                            <div className="w-2 h-2 rounded-full bg-green-500 mt-2" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium break-words">{event.title}</p>
-                                {event.description && (
-                                  <p className="text-sm text-slate-600 mt-1 break-words whitespace-pre-wrap">{event.description}</p>
-                                )}
-                                {event.location && (
-                                  <p className="text-xs text-slate-500 mt-1 break-words">📍 {event.location}</p>
-                                )}
-                                {event.fromStatus && event.toStatus && (
-                                  <p className="text-xs text-slate-500 mt-1 break-words">
-                                    {event.fromStatus} → {event.toStatus}
-                                  </p>
-                                )}
-                              </div>
-                              <span className="text-xs text-slate-500 whitespace-nowrap flex-shrink-0">
-                                {event.eventType === 'commercial' ? formatDateOnly(event.eventDate) : formatDateTime(event.eventDate)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-slate-500 text-center py-8">No hay eventos registrados</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
         </div>
       </div>
 
@@ -900,6 +933,35 @@ export default function OperationDetailPage(): React.ReactElement {
                 onChange={(e) => setContainerForm((p) => ({ ...p, currentLocation: e.target.value }))}
               />
             </div>
+            <Separator />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <Label>ITN</Label>
+                <Input
+                  placeholder="X20260101234567"
+                  value={containerForm.itn}
+                  onChange={(e) => setContainerForm((p) => ({ ...p, itn: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>ITN Value ($)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={containerForm.itnValue}
+                  onChange={(e) => setContainerForm((p) => ({ ...p, itnValue: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>ITN Weight (kg)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={containerForm.itnWeight}
+                  onChange={(e) => setContainerForm((p) => ({ ...p, itnWeight: e.target.value }))}
+                />
+              </div>
+            </div>
             <Button onClick={handleAddContainer} className="w-full">
               <Save className="h-4 w-4 mr-2" />
               Guardar
@@ -1016,6 +1078,35 @@ export default function OperationDetailPage(): React.ReactElement {
                 value={containerForm.currentLocation}
                 onChange={(e) => setContainerForm((p) => ({ ...p, currentLocation: e.target.value }))}
               />
+            </div>
+            <Separator />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <Label>ITN</Label>
+                <Input
+                  placeholder="X20260101234567"
+                  value={containerForm.itn}
+                  onChange={(e) => setContainerForm((p) => ({ ...p, itn: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>ITN Value ($)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={containerForm.itnValue}
+                  onChange={(e) => setContainerForm((p) => ({ ...p, itnValue: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>ITN Weight (kg)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={containerForm.itnWeight}
+                  onChange={(e) => setContainerForm((p) => ({ ...p, itnWeight: e.target.value }))}
+                />
+              </div>
             </div>
             <Button onClick={handleUpdateContainer} className="w-full">
               <Save className="h-4 w-4 mr-2" />
