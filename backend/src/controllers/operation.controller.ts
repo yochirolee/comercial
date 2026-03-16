@@ -54,7 +54,7 @@ const operationSchema = z.object({
 });
 
 const containerSchema = z.object({
-  sequenceNo: z.number().int().positive().optional(), // Opcional: se calcula automáticamente al agregar
+  sequenceNo: z.number().int().positive().optional(),
   containerNo: z.string().optional(),
   bookingNo: z.string().optional(),
   blNo: z.string().optional(),
@@ -66,6 +66,9 @@ const containerSchema = z.object({
   etaActual: z.string().optional(),
   status: z.string().optional().default('Draft'),
   currentLocation: z.string().optional(),
+  itn: z.string().optional().nullable(),
+  itnValue: z.number().optional().nullable(),
+  itnWeight: z.number().optional().nullable(),
 });
 
 const eventSchema = z.object({
