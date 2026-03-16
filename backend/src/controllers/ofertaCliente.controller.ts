@@ -149,11 +149,13 @@ export const OfertaClienteController = {
         ],
       },
       include: {
-        cliente: true,
+        cliente: {
+          select: { id: true, nombre: true, apellidos: true, nombreCompania: true, email: true, telefono: true, nit: true },
+        },
         items: {
           include: {
             producto: {
-              include: { unidadMedida: true },
+              select: { id: true, nombre: true, codigo: true, precioBase: true, unidadMedidaId: true, unidadMedida: true },
             },
           },
         },

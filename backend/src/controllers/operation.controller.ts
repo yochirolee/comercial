@@ -578,17 +578,16 @@ export const OperationController = {
       where,
       include: {
         offerCustomer: {
-          include: { cliente: true },
+          select: { id: true, numero: true, clienteId: true, cliente: { select: { id: true, nombre: true, apellidos: true, nombreCompania: true } } },
         },
-        importadora: true,
-        invoice: true,
-        carrier: true,
+        importadora: { select: { id: true, nombre: true } },
+        carrier: { select: { id: true, name: true, trackingUrlTemplate: true, scac: true } },
         containers: {
           orderBy: { sequenceNo: 'asc' },
           include: {
             events: {
               orderBy: { eventDate: 'desc' },
-              take: 1, // Solo el último evento para "Última actualización"
+              take: 1,
             },
           },
         },

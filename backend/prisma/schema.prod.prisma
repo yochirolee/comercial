@@ -81,6 +81,10 @@ model Cliente {
   ofertasImportadora    OfertaImportadora[]
   facturas              Factura[]
   importadoras          ClienteImportadora[]
+
+  @@index([nombre])
+  @@index([email])
+  @@index([nit])
 }
 
 model UnidadMedida {
@@ -134,6 +138,10 @@ model Producto {
   itemsOfertaCliente         ItemOfertaCliente[]
   itemsOfertaImportadora     ItemOfertaImportadora[]
   itemsFactura               ItemFactura[]
+
+  @@index([nombre])
+  @@index([activo])
+  @@index([unidadMedidaId])
 }
 
 model OfertaGeneral {
@@ -153,6 +161,8 @@ model OfertaGeneral {
   updatedAt        DateTime @updatedAt
 
   items            ItemOfertaGeneral[]
+
+  @@index([estado])
 }
 
 model ItemOfertaGeneral {
@@ -181,6 +191,9 @@ model ItemOfertaGeneral {
   
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@index([ofertaGeneralId])
+  @@index([productoId])
 }
 
 model OfertaCliente {
@@ -213,6 +226,10 @@ model OfertaCliente {
   items            ItemOfertaCliente[]
   ofertasImportadora OfertaImportadora[]
   operations       Operation[]
+
+  @@index([clienteId])
+  @@index([estado])
+  @@index([fecha])
 }
 
 model ItemOfertaCliente {
@@ -243,6 +260,9 @@ model ItemOfertaCliente {
   
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@index([ofertaClienteId])
+  @@index([productoId])
 }
 
 model OfertaImportadora {
@@ -283,6 +303,12 @@ model OfertaImportadora {
   updatedAt        DateTime @updatedAt
 
   items            ItemOfertaImportadora[]
+
+  @@index([clienteId])
+  @@index([importadoraId])
+  @@index([ofertaClienteId])
+  @@index([estado])
+  @@index([fecha])
 }
 
 model ItemOfertaImportadora {
@@ -313,6 +339,9 @@ model ItemOfertaImportadora {
   
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+
+  @@index([ofertaImportadoraId])
+  @@index([productoId])
 }
 
 model Factura {
@@ -367,6 +396,13 @@ model Factura {
 
   items            ItemFactura[]
   operations       Operation[]
+
+  @@index([clienteId])
+  @@index([importadoraId])
+  @@index([estado])
+  @@index([fecha])
+  @@index([tipoOfertaOrigen])
+  @@index([ofertaOrigenId])
 }
 
 model ItemFactura {
@@ -397,6 +433,9 @@ model ItemFactura {
   
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@index([facturaId])
+  @@index([productoId])
 }
 
 // ==========================================
@@ -425,6 +464,14 @@ model Operation {
   
   containers        OperationContainer[]
   events            OperationEvent[]
+
+  @@index([operationType])
+  @@index([status])
+  @@index([importadoraId])
+  @@index([offerCustomerId])
+  @@index([invoiceId])
+  @@index([carrierId])
+  @@index([createdAt])
 }
 
 model Carrier {
@@ -467,6 +514,12 @@ model OperationContainer {
   updatedAt         DateTime @updatedAt
   
   events            ContainerEvent[]
+
+  @@index([operationId])
+  @@index([blNo])
+  @@index([containerNo])
+  @@index([status])
+  @@index([terminal49RequestId])
 }
 
 model OperationEvent {
@@ -482,6 +535,8 @@ model OperationEvent {
   createdBy         String?
   
   createdAt         DateTime @default(now())
+
+  @@index([operationId])
 }
 
 model ContainerEvent {
@@ -498,6 +553,8 @@ model ContainerEvent {
   createdBy         String?
   
   createdAt         DateTime @default(now())
+
+  @@index([operationContainerId])
 }
 
 // ==========================================

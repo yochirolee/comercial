@@ -169,13 +169,15 @@ export const OfertaImportadoraController = {
         ],
       },
       include: {
-        cliente: true,
-        importadora: true,
-        ofertaCliente: true,
+        cliente: {
+          select: { id: true, nombre: true, apellidos: true, nombreCompania: true, email: true, telefono: true, nit: true },
+        },
+        importadora: { select: { id: true, nombre: true, pais: true } },
+        ofertaCliente: { select: { id: true, numero: true, fecha: true, estado: true, total: true } },
         items: {
           include: {
             producto: {
-              include: { unidadMedida: true },
+              select: { id: true, nombre: true, codigo: true, precioBase: true, unidadMedidaId: true, unidadMedida: true },
             },
           },
         },

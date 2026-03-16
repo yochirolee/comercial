@@ -204,6 +204,20 @@ const includeFactura = {
   },
 };
 
+const includeFacturaList = {
+  cliente: {
+    select: { id: true, nombre: true, apellidos: true, nombreCompania: true, email: true, nit: true },
+  },
+  importadora: { select: { id: true, nombre: true } },
+  items: {
+    include: {
+      producto: {
+        select: { id: true, nombre: true, codigo: true, precioBase: true, unidadMedidaId: true, unidadMedida: true },
+      },
+    },
+  },
+};
+
 export const FacturaController = {
   async getAll(req: Request, res: Response): Promise<void> {
     const { estado, clienteId } = req.query;
@@ -215,7 +229,7 @@ export const FacturaController = {
           clienteId ? { clienteId: String(clienteId) } : {},
         ],
       },
-      include: includeFactura,
+      include: includeFacturaList,
       orderBy: { numero: 'desc' },
     });
     

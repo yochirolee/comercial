@@ -16,8 +16,8 @@ export const prisma = globalForPrisma.prisma ?? new PrismaClient(prismaClientOpt
 // Log queries lentos en producción (> 100ms)
 if (process.env.NODE_ENV === 'production') {
   prisma.$on('query' as never, (e: any) => {
-    if (e.duration > 100) {
-      console.warn(`[SLOW QUERY] ${e.duration}ms: ${e.query.substring(0, 200)}...`);
+    if (e.duration > 200) {
+      console.warn(`[SLOW QUERY] ${e.duration}ms: ${e.query.substring(0, 300)}...`);
     }
   });
 }
