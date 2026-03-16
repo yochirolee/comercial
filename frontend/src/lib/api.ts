@@ -1580,6 +1580,9 @@ export interface OperationContainerInput {
   etaActual?: string;
   status: string;
   currentLocation?: string;
+  itn?: string | null;
+  itnValue?: number | null;
+  itnWeight?: number | null;
 }
 
 export interface OperationEventInput {
