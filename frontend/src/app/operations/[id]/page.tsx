@@ -549,8 +549,17 @@ export default function OperationDetailPage(): React.ReactElement {
                         <span className="text-slate-500">ETA:</span>{" "}
                         <span className="truncate">{formatDateTime(container.etaEstimated || container.etaActual)}</span>
                       </div>
-                      <div className="sm:col-span-2 md:col-span-2 truncate">
+                      <div className="truncate">
                         <span className="text-slate-500">Ubicación:</span> <span className="truncate">{container.currentLocation || "-"}</span>
+                      </div>
+                      <div className="truncate">
+                        <span className="text-slate-500">ITN:</span> <span className="truncate">{container.itn || "-"}</span>
+                      </div>
+                      <div className="truncate">
+                        <span className="text-slate-500">ITN Value:</span> <span className="truncate">{container.itnValue != null ? `$${container.itnValue.toLocaleString()}` : "-"}</span>
+                      </div>
+                      <div className="truncate">
+                        <span className="text-slate-500">ITN Weight:</span> <span className="truncate">{container.itnWeight != null ? `${container.itnWeight} kg` : "-"}</span>
                       </div>
                     </div>
                   </div>
