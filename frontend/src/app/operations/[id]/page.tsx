@@ -556,10 +556,10 @@ export default function OperationDetailPage(): React.ReactElement {
                         <span className="text-slate-500">ITN:</span> <span className="truncate">{container.itn || "-"}</span>
                       </div>
                       <div className="truncate">
-                        <span className="text-slate-500">ITN Value:</span> <span className="truncate">{container.itnValue != null ? `$${container.itnValue.toLocaleString()}` : "-"}</span>
+                        <span className="text-slate-500">Valor:</span> <span className="truncate">{container.itnValue != null ? `$${container.itnValue.toLocaleString()}` : "-"}</span>
                       </div>
                       <div className="truncate">
-                        <span className="text-slate-500">ITN Weight:</span> <span className="truncate">{container.itnWeight != null ? `${container.itnWeight} kg` : "-"}</span>
+                        <span className="text-slate-500">Peso:</span> <span className="truncate">{container.itnWeight != null ? `${container.itnWeight} kg` : "-"}</span>
                       </div>
                     </div>
                   </div>
