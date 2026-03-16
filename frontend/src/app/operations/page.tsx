@@ -31,7 +31,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { operationsApi, ofertasClienteApi, importadorasApi } from "@/lib/api";
 import type { Operation, OperationContainer, OfertaCliente, Importadora } from "@/lib/api";
 
@@ -680,240 +687,212 @@ export default function OperationsPage(): React.ReactElement {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead className="min-w-[100px]">Tipo</TableHead>
-                <TableHead 
+                <TableHead className="w-10"></TableHead>
+                <TableHead className="min-w-[80px]">Tipo</TableHead>
+                <TableHead
                   className="min-w-[120px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("operation")}
                 >
                   <div className="flex items-center gap-1">
                     Operación
-                    {sortColumn === "operation" && (
-                      sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-                    )}
+                    {sortColumn === "operation" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="min-w-[150px] cursor-pointer hover:bg-slate-100 select-none"
+                <TableHead
+                  className="min-w-[140px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("importadora")}
                 >
                   <div className="flex items-center gap-1">
                     Importadora
-                    {sortColumn === "importadora" && (
-                      sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-                    )}
+                    {sortColumn === "importadora" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
                   </div>
                 </TableHead>
-                <TableHead className="min-w-[60px] text-center">Seq</TableHead>
-                <TableHead 
+                <TableHead className="w-12 text-center">Seq</TableHead>
+                <TableHead
                   className="min-w-[140px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("container")}
                 >
                   <div className="flex items-center gap-1">
                     Contenedor
-                    {sortColumn === "container" && (
-                      sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-                    )}
+                    {sortColumn === "container" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="min-w-[120px] cursor-pointer hover:bg-slate-100 select-none"
-                  onClick={() => handleSortClick("booking")}
-                >
-                  <div className="flex items-center gap-1">
-                    Booking
-                    {sortColumn === "booking" && (
-                      sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead 
+                <TableHead
                   className="min-w-[120px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("bl")}
                 >
                   <div className="flex items-center gap-1">
                     BL
-                    {sortColumn === "bl" && (
-                      sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-                    )}
+                    {sortColumn === "bl" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
                   </div>
                 </TableHead>
-                <TableHead className="min-w-[200px]">Origen → Destino</TableHead>
-                <TableHead 
-                  className="min-w-[100px] cursor-pointer hover:bg-slate-100 select-none"
-                  onClick={() => handleSortClick("etd")}
-                >
-                  <div className="flex items-center gap-1">
-                    ETD
-                    {sortColumn === "etd" && (
-                      sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-                    )}
-                  </div>
-                </TableHead>
-                <TableHead 
+                <TableHead className="min-w-[180px]">Origen → Destino</TableHead>
+                <TableHead
                   className="min-w-[100px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("eta")}
                 >
                   <div className="flex items-center gap-1">
                     ETA
-                    {sortColumn === "eta" && (
-                      sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-                    )}
+                    {sortColumn === "eta" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="min-w-[140px] cursor-pointer hover:bg-slate-100 select-none"
+                <TableHead
+                  className="min-w-[130px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("status")}
                 >
                   <div className="flex items-center gap-1">
                     Estado
-                    {sortColumn === "status" && (
-                      sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-                    )}
+                    {sortColumn === "status" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
                   </div>
                 </TableHead>
-                <TableHead className="min-w-[140px]">Ubicación</TableHead>
-                <TableHead 
-                  className="min-w-[160px] cursor-pointer hover:bg-slate-100 select-none"
+                <TableHead
+                  className="min-w-[150px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("last-update")}
                 >
                   <div className="flex items-center gap-1">
-                    Última Actualización
-                    {sortColumn === "last-update" && (
-                      sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
-                    )}
+                    Últ. Actualización
+                    {sortColumn === "last-update" && (sortDirection === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />)}
                   </div>
                 </TableHead>
-                <TableHead className="min-w-[100px] text-center">Acciones</TableHead>
               </TableRow>
             </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={14} className="text-center py-8">
+                <TableCell colSpan={11} className="text-center py-8">
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : sortedContainerRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={14} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={11} className="text-center py-8 text-slate-500">
                   No hay contenedores para mostrar
                 </TableCell>
               </TableRow>
             ) : (
               paginatedRows.map(({ operation, container, isFirstContainer }) => (
-                <TableRow key={container.id} className="hover:bg-slate-50">
-                  <TableCell className="py-3">
+                <TableRow
+                  key={container.id}
+                  className="hover:bg-slate-50 cursor-pointer"
+                  onClick={() => handleViewDetail(operation.id)}
+                >
+                  {/* Acciones — stopPropagation para no navegar al hacer clic en el menú */}
+                  <TableCell className="py-2 w-10" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-500 hover:text-slate-800">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-44">
+                        <DropdownMenuItem onClick={() => handleViewDetail(operation.id)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          Ver detalle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => void handleSyncTerminal49(operation.id)}
+                          disabled={syncingTerminal49}
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Sincronizar T49
+                        </DropdownMenuItem>
+                        {isFirstContainer && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(operation.id)}
+                              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+
+                  {/* Tipo */}
+                  <TableCell className="py-2">
                     <Badge
-                      className={`flex items-center gap-1.5 w-fit text-xs ${
+                      className={`flex items-center gap-1 w-fit text-xs px-1.5 py-0.5 ${
                         operation.operationType === "COMMERCIAL"
-                          ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
-                          : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-blue-100 text-blue-700"
                       }`}
                     >
                       {operation.operationType === "COMMERCIAL" ? (
-                        <Ship className="h-3.5 w-3.5" />
+                        <Ship className="h-3 w-3" />
                       ) : (
-                        <Package className="h-3.5 w-3.5" />
+                        <Package className="h-3 w-3" />
                       )}
-                      <span className="hidden sm:inline">{operation.operationType}</span>
-                      <span className="sm:hidden">{operation.operationType === "COMMERCIAL" ? "COM" : "PKG"}</span>
+                      <span className="hidden sm:inline text-[11px]">
+                        {operation.operationType === "COMMERCIAL" ? "COM" : "PKG"}
+                      </span>
                     </Badge>
                   </TableCell>
-                  <TableCell className="font-medium py-3">
-                    <span className={isFirstContainer ? "font-semibold text-slate-900" : "text-slate-600"}>
+
+                  {/* Operación */}
+                  <TableCell className="py-2 font-medium">
+                    <span className={isFirstContainer ? "font-semibold text-slate-900 text-sm" : "text-slate-500 text-sm"}>
                       {operation.operationNo}
                     </span>
                   </TableCell>
-                  <TableCell className="py-3">
-                    {operation.importadora ? (
-                      <span className={`text-sm ${isFirstContainer ? "text-slate-700 font-medium" : "text-slate-500"}`}>
-                        {operation.importadora.nombre}
-                      </span>
-                    ) : (
-                      <span className="text-slate-400">-</span>
-                    )}
+
+                  {/* Importadora */}
+                  <TableCell className="py-2">
+                    <span className={`text-sm truncate block max-w-[140px] ${isFirstContainer ? "text-slate-700" : "text-slate-400"}`}>
+                      {operation.importadora?.nombre ?? "-"}
+                    </span>
                   </TableCell>
-                  <TableCell className="text-center py-3">
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-700 text-xs font-medium">
+
+                  {/* Seq */}
+                  <TableCell className="py-2 text-center">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
                       {container.sequenceNo}
                     </span>
                   </TableCell>
-                  <TableCell className="py-3">
-                    <span className="font-mono text-sm">{container.containerNo || "Pendiente"}</span>
+
+                  {/* Contenedor */}
+                  <TableCell className="py-2">
+                    <span className="font-mono text-xs text-slate-800">{container.containerNo || <span className="text-slate-400">—</span>}</span>
                   </TableCell>
-                  <TableCell className="py-3">
-                    <span className="text-sm">{container.bookingNo || "Pendiente"}</span>
+
+                  {/* BL */}
+                  <TableCell className="py-2">
+                    <span className="text-xs text-slate-700">{container.blNo || <span className="text-slate-400">—</span>}</span>
                   </TableCell>
-                  <TableCell className="py-3">
-                    <span className="text-sm">{container.blNo || "Pendiente"}</span>
-                  </TableCell>
-                  <TableCell className="py-3">
-                    <div className="flex items-center gap-1.5 text-sm">
-                      <span className="truncate max-w-[85px] text-slate-700 font-medium">
-                        {container.originPort || operation.originPort || "N/A"}
+
+                  {/* Origen → Destino */}
+                  <TableCell className="py-2">
+                    <div className="flex items-center gap-1 text-xs">
+                      <span className="truncate max-w-[75px] text-slate-700 font-medium">
+                        {container.originPort || operation.originPort || "—"}
                       </span>
                       <span className="text-slate-400 flex-shrink-0">→</span>
-                      <span className="truncate max-w-[85px] text-slate-700 font-medium">
-                        {container.destinationPort || operation.destinationPort || "N/A"}
+                      <span className="truncate max-w-[75px] text-slate-700 font-medium">
+                        {container.destinationPort || operation.destinationPort || "—"}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="py-3 text-sm whitespace-nowrap">
-                    <span className={container.etdEstimated || container.etdActual ? "text-slate-900" : "text-slate-400"}>
-                      {formatETD(container)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-3 text-sm whitespace-nowrap">
+
+                  {/* ETA */}
+                  <TableCell className="py-2 text-xs whitespace-nowrap">
                     <span className={container.etaEstimated || container.etaActual ? "text-slate-900 font-medium" : "text-slate-400"}>
                       {formatETA(container)}
                     </span>
                   </TableCell>
-                  <TableCell className="py-3">
+
+                  {/* Estado */}
+                  <TableCell className="py-2">
                     <Badge className={`${statusColors[container.status] || "bg-slate-100 text-slate-700"} text-xs whitespace-nowrap px-2 py-0.5`}>
                       {container.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="py-3">
-                    <span className="text-sm truncate block max-w-[140px]" title={getDisplayLocation(container, operation)}>
-                      {getDisplayLocation(container, operation)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="py-3 text-sm text-slate-600 whitespace-nowrap">
+
+                  {/* Últ. Actualización */}
+                  <TableCell className="py-2 text-xs text-slate-500 whitespace-nowrap">
                     {getLastUpdate(container)}
-                  </TableCell>
-                  <TableCell className="py-3">
-                    <div className="flex items-center justify-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => void handleSyncTerminal49(operation.id)}
-                        title="Sincronizar Terminal49 (GET/POST)"
-                        disabled={syncingTerminal49}
-                        className="h-8 w-8 text-slate-700 hover:text-slate-900"
-                      >
-                        <Ship className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleViewDetail(operation.id)}
-                        title="Ver detalles"
-                        className="h-8 w-8"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {isFirstContainer && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteClick(operation.id)}
-                          title="Eliminar operación"
-                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
                   </TableCell>
                 </TableRow>
               ))
