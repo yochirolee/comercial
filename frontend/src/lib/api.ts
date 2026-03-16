@@ -151,10 +151,33 @@ export const unidadesApi = {
 };
 
 // ==========================================
+// CATEGORÍAS DE PRODUCTO
+// ==========================================
+export const categoriasProductoApi = {
+  getAll: () => fetchApi<CategoriaProducto[]>('/categorias-producto'),
+  create: (data: { nombre: string }) => fetchApi<CategoriaProducto>('/categorias-producto', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: { nombre: string }) => fetchApi<CategoriaProducto>(`/categorias-producto/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<void>(`/categorias-producto/${id}`, { method: 'DELETE' }),
+};
+
+// ==========================================
 // PRODUCTOS
 // ==========================================
 export const productosApi = {
-  getAll: (search?: string) => fetchApi<Producto[]>(`/productos${search ? `?search=${search}` : ''}`),
+  getAll: (params?: { search?: string; activo?: string; categoriaId?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.search) qs.set('search', params.search);
+    if (params?.activo) qs.set('activo', params.activo);
+    if (params?.categoriaId) qs.set('categoriaId', params.categoriaId);
+    const query = qs.toString();
+    return fetchApi<Producto[]>(`/productos${query ? `?${query}` : ''}`);
+  },
   getById: (id: string) => fetchApi<Producto>(`/productos/${id}`),
   getNextCode: () => fetchApi<{ codigo: string }>('/productos/next-code'),
   create: (data: ProductoInput) => fetchApi<Producto>('/productos', {
@@ -949,6 +972,13 @@ export interface UnidadMedidaInput {
   usaCajas?: boolean;
 }
 
+export interface CategoriaProducto {
+  id: string;
+  nombre: string;
+  _count?: { productos: number };
+  createdAt?: string;
+}
+
 export interface Producto {
   id: string;
   codigo?: string;
@@ -957,6 +987,8 @@ export interface Producto {
   precioBase: number;
   unidadMedidaId: string;
   unidadMedida: UnidadMedida;
+  categoriaId?: string | null;
+  categoria?: CategoriaProducto | null;
   codigoArancelario?: string;
   activo: boolean;
   // Campos informativos para precarga en ofertas
@@ -982,7 +1014,9 @@ export interface ProductoInput {
   descripcion?: string;
   precioBase: number;
   unidadMedidaId: string;
+  categoriaId?: string | null;
   codigoArancelario?: string;
+  activo?: boolean;
   // Campos informativos para precarga en ofertas
   cantidad?: number | null;
   cantidadCajas?: number | null;

@@ -31,8 +31,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Search, Download, ChevronLeft, ChevronRight } from "lucide-react";
-import { productosApi, unidadesApi, exportApi } from "@/lib/api";
-import type { Producto, ProductoInput, UnidadMedida } from "@/lib/api";
+import { Checkbox } from "@/components/ui/checkbox";
+import { productosApi, unidadesApi, categoriasProductoApi, exportApi } from "@/lib/api";
+import type { Producto, ProductoInput, UnidadMedida, CategoriaProducto } from "@/lib/api";
 
 const emptyProducto: ProductoInput = {
   codigo: "",
@@ -58,13 +59,16 @@ const PAGE_SIZE = 10;
 export default function ProductosPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [unidades, setUnidades] = useState<UnidadMedida[]>([]);
+  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filterCategoria, setFilterCategoria] = useState("all");
+  const [showOnlyActive, setShowOnlyActive] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<ProductoInput>(emptyProducto);
-  const [precioString, setPrecioString] = useState(""); // Para permitir escribir decimales como "0.69"
+  const [precioString, setPrecioString] = useState("");
   const [saving, setSaving] = useState(false);
 
   const totalPages = Math.max(1, Math.ceil(productos.length / PAGE_SIZE));
@@ -86,12 +90,19 @@ export default function ProductosPage() {
 
   async function loadData(): Promise<void> {
     try {
-      const [productosData, unidadesData] = await Promise.all([
-        productosApi.getAll(search),
+      const params: { search?: string; activo?: string; categoriaId?: string } = {};
+      if (search) params.search = search;
+      if (showOnlyActive) params.activo = "true";
+      if (filterCategoria && filterCategoria !== "all") params.categoriaId = filterCategoria;
+
+      const [productosData, unidadesData, categoriasData] = await Promise.all([
+        productosApi.getAll(params),
         unidadesApi.getAll(),
+        categoriasProductoApi.getAll(),
       ]);
       setProductos(productosData);
       setUnidades(unidadesData);
+      setCategorias(categoriasData);
     } catch (error) {
       toast.error("Error al cargar datos");
       console.error(error);
@@ -103,7 +114,7 @@ export default function ProductosPage() {
   useEffect(() => {
     setCurrentPage(1);
     loadData();
-  }, [search]);
+  }, [search, filterCategoria, showOnlyActive]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>): void {
     const { name, value, type } = e.target;
@@ -152,7 +163,9 @@ export default function ProductosPage() {
       descripcion: producto.descripcion || "",
       precioBase: producto.precioBase,
       unidadMedidaId: producto.unidadMedidaId,
+      categoriaId: producto.categoriaId ?? null,
       codigoArancelario: producto.codigoArancelario || "",
+      activo: producto.activo,
       cantidad: producto.cantidad ?? null,
       cantidadCajas: producto.cantidadCajas ?? null,
       cantidadSacos: producto.cantidadSacos ?? null,
@@ -183,14 +196,15 @@ export default function ProductosPage() {
     e.preventDefault();
     setSaving(true);
 
-    // Convertir precio string a número y campos informativos
     const dataToSend: ProductoInput = {
       codigo: formData.codigo,
       nombre: formData.nombre,
       descripcion: formData.descripcion,
       precioBase: parseFloat(precioString) || 0,
       unidadMedidaId: formData.unidadMedidaId,
+      categoriaId: formData.categoriaId || null,
       codigoArancelario: formData.codigoArancelario,
+      activo: formData.activo,
       cantidad: infoFields.cantidad && infoFields.cantidad.trim() !== "" 
         ? parseFloat(infoFields.cantidad) 
         : null,
@@ -396,6 +410,38 @@ export default function ProductosPage() {
                       placeholder="Opcional"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label>Categoría</Label>
+                    <Select
+                      value={formData.categoriaId || "__none__"}
+                      onValueChange={(value) =>
+                        setFormData((prev) => ({ ...prev, categoriaId: value === "__none__" ? null : value }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sin categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">Sin categoría</SelectItem>
+                        {categorias.map((cat) => (
+                          <SelectItem key={cat.id} value={cat.id}>{cat.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {editingId && (
+                    <div className="space-y-2 flex items-end">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer pb-2">
+                        <Checkbox
+                          checked={formData.activo !== false}
+                          onCheckedChange={(checked) =>
+                            setFormData((prev) => ({ ...prev, activo: checked === true }))
+                          }
+                        />
+                        Producto activo
+                      </label>
+                    </div>
+                  )}
                 </div>
                 
                 {/* Campos informativos para precarga en ofertas */}
@@ -506,7 +552,7 @@ export default function ProductosPage() {
       />
 
       <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-4 sm:mb-6">
+        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:items-center">
           <div className="relative w-full sm:max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
@@ -516,6 +562,24 @@ export default function ProductosPage() {
               className="pl-10"
             />
           </div>
+          <Select value={filterCategoria} onValueChange={setFilterCategoria}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Categoría" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas las categorías</SelectItem>
+              {categorias.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>{cat.nombre}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer whitespace-nowrap">
+            <Checkbox
+              checked={showOnlyActive}
+              onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
+            />
+            Solo activos
+          </label>
         </div>
 
         {/* Vista móvil: Cards */}
@@ -543,6 +607,11 @@ export default function ProductosPage() {
                     )}
                   </div>
                 </div>
+                {producto.categoria && (
+                  <div className="mb-1">
+                    <Badge variant="outline" className="text-xs">{producto.categoria.nombre}</Badge>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-semibold text-green-600">{formatCurrency(producto.precioBase)}</span>
                   <div className="flex items-center gap-2">
@@ -591,6 +660,7 @@ export default function ProductosPage() {
               <TableRow>
                 <TableHead>Código</TableHead>
                 <TableHead>Nombre</TableHead>
+                <TableHead className="hidden md:table-cell">Categoría</TableHead>
                 <TableHead>Precio Base</TableHead>
                 <TableHead className="hidden md:table-cell">Unidad</TableHead>
                 <TableHead className="hidden lg:table-cell">Estado</TableHead>
@@ -600,13 +670,13 @@ export default function ProductosPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : productos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-slate-500">
                     No hay productos
                   </TableCell>
                 </TableRow>
@@ -617,6 +687,13 @@ export default function ProductosPage() {
                       {producto.codigo || "-"}
                     </TableCell>
                     <TableCell className="font-medium">{producto.nombre}</TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {producto.categoria ? (
+                        <Badge variant="outline" className="text-xs">{producto.categoria.nombre}</Badge>
+                      ) : (
+                        <span className="text-slate-400 text-xs">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>{formatCurrency(producto.precioBase)}</TableCell>
                     <TableCell className="hidden md:table-cell">{producto.unidadMedida.abreviatura}</TableCell>
                     <TableCell className="hidden lg:table-cell">

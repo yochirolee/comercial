@@ -9,6 +9,7 @@ const productoSchema = z.object({
   descripcion: z.string().optional(),
   precioBase: z.number().positive('El precio debe ser positivo'),
   unidadMedidaId: z.string().min(1, 'Unidad de medida es requerida'),
+  categoriaId: z.string().nullable().optional(),
   codigoArancelario: z.string().optional(),
   activo: z.boolean().optional(),
   // Campos informativos para precarga en ofertas
@@ -61,7 +62,7 @@ export const ProductoController = {
   },
 
   async getAll(req: Request, res: Response): Promise<void> {
-    const { search, activo } = req.query;
+    const { search, activo, categoriaId } = req.query;
     
     const searchFilter = search ? createContainsFilter(String(search)) : null;
     
@@ -76,10 +77,12 @@ export const ProductoController = {
             ],
           } : {},
           activo !== undefined ? { activo: activo === 'true' } : {},
+          categoriaId ? { categoriaId: String(categoriaId) } : {},
         ],
       },
       include: {
         unidadMedida: true,
+        categoria: true,
       },
       orderBy: { codigo: 'desc' },
     });
@@ -94,6 +97,7 @@ export const ProductoController = {
       where: { id },
       include: {
         unidadMedida: true,
+        categoria: true,
       },
     });
     
@@ -136,6 +140,7 @@ export const ProductoController = {
       },
       include: {
         unidadMedida: true,
+        categoria: true,
       },
     });
     
@@ -171,6 +176,7 @@ export const ProductoController = {
       data: validation.data,
       include: {
         unidadMedida: true,
+        categoria: true,
       },
     });
     

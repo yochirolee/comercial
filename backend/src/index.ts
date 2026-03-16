@@ -19,6 +19,7 @@ import { carrierRouter } from './routes/carrier.routes.js';
 import { terminal49WebhookRouter } from './routes/terminal49Webhook.routes.js';
 import { importadoraRouter } from './routes/importadora.routes.js';
 import { searchRouter } from './routes/search.routes.js';
+import { categoriaProductoRouter } from './routes/categoriaProducto.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -52,6 +53,7 @@ app.use('/api/operations', operationRouter);
 app.use('/api/importadoras', importadoraRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/carriers', carrierRouter);
+app.use('/api/categorias-producto', categoriaProductoRouter);
 app.use('/api/terminal49', terminal49WebhookRouter);
 
 // Health check

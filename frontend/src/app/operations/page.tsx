@@ -685,11 +685,11 @@ export default function OperationsPage(): React.ReactElement {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50">
+              <TableRow className="bg-slate-50 text-[13px]">
                 <TableHead className="w-8"></TableHead>
-                <TableHead className="min-w-[70px]">Tipo</TableHead>
+                <TableHead className="min-w-[60px] text-[13px]">Tipo</TableHead>
                 <TableHead
-                  className="min-w-[110px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[100px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("operation")}
                 >
                   <div className="flex items-center gap-1">
@@ -702,9 +702,9 @@ export default function OperationsPage(): React.ReactElement {
                       ))}
                   </div>
                 </TableHead>
-                <TableHead className="w-10 text-center">Seq</TableHead>
+                <TableHead className="w-10 text-center text-[13px]">Seq</TableHead>
                 <TableHead
-                  className="min-w-[120px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[110px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("container")}
                 >
                   <div className="flex items-center gap-1">
@@ -718,7 +718,7 @@ export default function OperationsPage(): React.ReactElement {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[110px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[100px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("bl")}
                 >
                   <div className="flex items-center gap-1">
@@ -732,7 +732,7 @@ export default function OperationsPage(): React.ReactElement {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[110px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[110px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("status")}
                 >
                   <div className="flex items-center gap-1">
@@ -746,7 +746,7 @@ export default function OperationsPage(): React.ReactElement {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[80px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[80px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("eta")}
                 >
                   <div className="flex items-center gap-1">
@@ -759,9 +759,9 @@ export default function OperationsPage(): React.ReactElement {
                       ))}
                   </div>
                 </TableHead>
-                <TableHead className="min-w-[150px]">Origen / Destino</TableHead>
+                <TableHead className="min-w-[140px] text-[13px]">Origen / Destino</TableHead>
                 <TableHead
-                  className="min-w-[130px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[120px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("importadora")}
                 >
                   <div className="flex items-center gap-1">
@@ -775,11 +775,11 @@ export default function OperationsPage(): React.ReactElement {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[120px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[100px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("last-update")}
                 >
                   <div className="flex items-center gap-1">
-                    Últ. Actualización
+                    Actualización
                     {sortColumn === "last-update" &&
                       (sortDirection === "asc" ? (
                         <ArrowUp className="h-3.5 w-3.5" />
@@ -844,80 +844,80 @@ export default function OperationsPage(): React.ReactElement {
                   </TableCell>
 
                   {/* Tipo */}
-                  <TableCell className="py-2">
+                  <TableCell className="py-1.5">
                     <Badge
-                      className={`flex items-center gap-1 w-fit text-xs px-1.5 py-0.5 ${
+                      className={`flex items-center gap-1 w-fit text-[13px] px-1.5 py-0.5 ${
                         operation.operationType === "COMMERCIAL"
                           ? "bg-yellow-100 text-yellow-700"
                           : "bg-blue-100 text-blue-700"
                       }`}
                     >
                       {operation.operationType === "COMMERCIAL" ? (
-                        <Ship className="h-3 w-3" />
+                        <Ship className="h-3.5 w-3.5" />
                       ) : (
-                        <Package className="h-3 w-3" />
+                        <Package className="h-3.5 w-3.5" />
                       )}
-                      <span className="hidden sm:inline text-[11px]">
+                      <span className="hidden sm:inline">
                         {operation.operationType === "COMMERCIAL" ? "COM" : "PKG"}
                       </span>
                     </Badge>
                   </TableCell>
 
                   {/* Operación */}
-                  <TableCell className="py-2 font-medium">
-                    <span className={isFirstContainer ? "font-semibold text-slate-900 text-sm" : "text-slate-500 text-sm"}>
+                  <TableCell className="py-1.5">
+                    <span className={`text-[13px] ${isFirstContainer ? "font-semibold text-slate-900" : "text-slate-400"}`}>
                       {operation.operationNo}
                     </span>
                   </TableCell>
 
                   {/* Seq */}
                   <TableCell className="py-1.5 text-center">
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[13px] font-medium">
                       {container.sequenceNo}
                     </span>
                   </TableCell>
 
                   {/* Contenedor */}
                   <TableCell className="py-1.5">
-                    <span className="font-mono text-xs text-slate-800">
+                    <span className="font-mono text-[13px] text-slate-800">
                       {container.containerNo || <span className="text-slate-400">—</span>}
                     </span>
                   </TableCell>
 
                   {/* BL */}
                   <TableCell className="py-1.5">
-                    <span className="text-xs text-slate-700">
+                    <span className="text-[13px] text-slate-700">
                       {container.blNo || <span className="text-slate-400">—</span>}
                     </span>
                   </TableCell>
 
                   {/* Estado */}
                   <TableCell className="py-1.5">
-                    <Badge className={`${statusColors[container.status] || "bg-slate-100 text-slate-700"} text-xs whitespace-nowrap px-2 py-0.5`}>
+                    <Badge className={`${statusColors[container.status] || "bg-slate-100 text-slate-700"} text-[13px] whitespace-nowrap px-2 py-0.5`}>
                       {container.status}
                     </Badge>
                   </TableCell>
 
                   {/* ETA */}
-                  <TableCell className="py-1.5 text-xs whitespace-nowrap">
+                  <TableCell className="py-1.5 whitespace-nowrap">
                     {formatETA(container) ? (
-                      <span className="text-slate-900 font-medium">{formatETA(container)}</span>
+                      <span className="text-[13px] text-slate-900 font-medium">{formatETA(container)}</span>
                     ) : (
-                      <span className="text-slate-300">—</span>
+                      <span className="text-[13px] text-slate-300">—</span>
                     )}
                   </TableCell>
 
                   {/* Origen / Destino */}
                   <TableCell className="py-1.5">
-                    <div className="flex flex-col text-xs leading-tight gap-0.5 max-w-[170px]">
-                      <span className="flex items-center gap-1 truncate max-w-[140px] text-slate-700 font-medium">
-                        <Anchor className="h-3 w-3 text-slate-400" />
+                    <div className="flex flex-col leading-tight gap-0.5 max-w-[170px]">
+                      <span className="flex items-center gap-1 truncate max-w-[140px] text-[13px] text-slate-700">
+                        <Anchor className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                         <span className="truncate">
                           {container.originPort || operation.originPort || "—"}
                         </span>
                       </span>
-                      <span className="flex items-center gap-1 truncate max-w-[140px] text-slate-700 font-medium">
-                        <Ship className="h-3 w-3 text-slate-400" />
+                      <span className="flex items-center gap-1 truncate max-w-[140px] text-[13px] text-slate-700">
+                        <Ship className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                         <span className="truncate">
                           {container.destinationPort || operation.destinationPort || "—"}
                         </span>
@@ -927,13 +927,13 @@ export default function OperationsPage(): React.ReactElement {
 
                   {/* Importadora */}
                   <TableCell className="py-1.5">
-                    <span className={`text-sm truncate block max-w-[140px] ${isFirstContainer ? "text-slate-700" : "text-slate-400"}`}>
-                      {operation.importadora?.nombre ?? "-"}
+                    <span className={`text-[13px] truncate block max-w-[140px] ${isFirstContainer ? "text-slate-700" : "text-slate-400"}`}>
+                      {operation.importadora?.nombre ?? "—"}
                     </span>
                   </TableCell>
 
                   {/* Últ. Actualización */}
-                  <TableCell className="py-1.5 text-xs text-slate-500 whitespace-nowrap">
+                  <TableCell className="py-1.5 text-[13px] text-slate-500 whitespace-nowrap">
                     {getLastUpdate(container)}
                   </TableCell>
                 </TableRow>

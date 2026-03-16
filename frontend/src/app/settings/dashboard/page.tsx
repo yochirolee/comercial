@@ -14,7 +14,8 @@ import {
 import { toast } from "sonner";
 import { Save, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { carriersApi, type Carrier } from "@/lib/api";
+import { carriersApi, categoriasProductoApi, type Carrier, type CategoriaProducto } from "@/lib/api";
+import { Pencil } from "lucide-react";
 
 const DASHBOARD_CONFIG_KEY = "zas_dashboard_config";
 
@@ -61,10 +62,15 @@ export default function DashboardConfigPage(): React.ReactElement {
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [carrierScacEdits, setCarrierScacEdits] = useState<Record<string, string | undefined>>({});
   const [newCarrier, setNewCarrier] = useState({ name: "", trackingUrlTemplate: "", scac: "" });
+  const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
+  const [newCategoria, setNewCategoria] = useState("");
+  const [editingCategoriaId, setEditingCategoriaId] = useState<string | null>(null);
+  const [editingCategoriaNombre, setEditingCategoriaNombre] = useState("");
 
   useEffect(() => {
     setConfig(getDashboardConfig());
     void loadCarriers();
+    void loadCategorias();
     setLoaded(true);
   }, []);
 
@@ -125,6 +131,59 @@ export default function DashboardConfigPage(): React.ReactElement {
     } catch (error) {
       console.error(error);
       toast.error("Error al eliminar carrier");
+    }
+  }
+
+  async function loadCategorias(): Promise<void> {
+    try {
+      const data = await categoriasProductoApi.getAll();
+      setCategorias(data);
+    } catch (error) {
+      console.error("Error al cargar categorías", error);
+    }
+  }
+
+  async function handleAddCategoria(): Promise<void> {
+    if (!newCategoria.trim()) {
+      toast.error("El nombre de la categoría es requerido");
+      return;
+    }
+    try {
+      await categoriasProductoApi.create({ nombre: newCategoria.trim() });
+      setNewCategoria("");
+      toast.success("Categoría creada");
+      await loadCategorias();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Error al crear categoría";
+      toast.error(msg);
+    }
+  }
+
+  async function handleUpdateCategoria(id: string): Promise<void> {
+    if (!editingCategoriaNombre.trim()) {
+      toast.error("El nombre no puede estar vacío");
+      return;
+    }
+    try {
+      await categoriasProductoApi.update(id, { nombre: editingCategoriaNombre.trim() });
+      setEditingCategoriaId(null);
+      toast.success("Categoría actualizada");
+      await loadCategorias();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Error al actualizar";
+      toast.error(msg);
+    }
+  }
+
+  async function handleDeleteCategoria(id: string): Promise<void> {
+    if (!window.confirm("¿Eliminar esta categoría?")) return;
+    try {
+      await categoriasProductoApi.delete(id);
+      toast.success("Categoría eliminada");
+      await loadCategorias();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Error al eliminar";
+      toast.error(msg);
     }
   }
 
@@ -268,6 +327,84 @@ export default function DashboardConfigPage(): React.ReactElement {
                     Agregar carrier
                   </Button>
                 </div>
+              </div>
+            </div>
+
+            {/* Categorías de Producto */}
+            <div className="space-y-3 pt-4 border-t">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium">Categorías de Producto</Label>
+                <p className="text-xs text-slate-500">
+                  Configura las categorías para clasificar tus productos (ej: Alimentos, Electrodomésticos, etc.)
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {categorias.length === 0 ? (
+                  <p className="text-xs text-slate-500">Aún no hay categorías configuradas.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {categorias.map((cat) => (
+                      <div key={cat.id} className="flex items-center gap-2 border rounded-md px-3 py-2">
+                        {editingCategoriaId === cat.id ? (
+                          <>
+                            <Input
+                              className="h-8 text-sm flex-1"
+                              value={editingCategoriaNombre}
+                              onChange={(e) => setEditingCategoriaNombre(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") void handleUpdateCategoria(cat.id);
+                                if (e.key === "Escape") setEditingCategoriaId(null);
+                              }}
+                              autoFocus
+                            />
+                            <Button size="sm" className="h-8 text-xs" onClick={() => void handleUpdateCategoria(cat.id)}>
+                              OK
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setEditingCategoriaId(null)}>
+                              ✕
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-sm flex-1">{cat.nombre}</span>
+                            <span className="text-xs text-slate-400">{cat._count?.productos ?? 0} prod.</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => { setEditingCategoriaId(cat.id); setEditingCategoriaNombre(cat.nombre); }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => void handleDeleteCategoria(cat.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Input
+                  placeholder="Nueva categoría (ej: Alimentos)"
+                  value={newCategoria}
+                  onChange={(e) => setNewCategoria(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void handleAddCategoria(); }}
+                  className="flex-1"
+                />
+                <Button variant="default" size="sm" className="gap-1 whitespace-nowrap" onClick={() => void handleAddCategoria()}>
+                  <Plus className="h-4 w-4" />
+                  Agregar
+                </Button>
               </div>
             </div>
 
