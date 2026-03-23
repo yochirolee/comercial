@@ -517,6 +517,43 @@ export const DocumentoController = {
         .filter(u => u !== '')
         .join(', ');
 
+      // ITNs de todos los contenedores de operaciones vinculadas a esta oferta (opcional; separados por ;)
+      const operationsForOffer = await prisma.operation.findMany({
+        where: { offerCustomerId: ofertaClienteId },
+        include: {
+          carrier: {
+            select: { name: true },
+          },
+          containers: {
+            select: { itn: true },
+            orderBy: { sequenceNo: 'asc' },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      const itnParts: string[] = [];
+      for (const op of operationsForOffer) {
+        for (const cont of op.containers) {
+          const t = cont.itn?.trim();
+          if (t) itnParts.push(t);
+        }
+      }
+      const ITN = itnParts.join('; ');
+
+      // Carriers de todas las operaciones vinculadas a esta oferta (opcional; separados por ;)
+      // (Se hace deduplicación manteniendo el orden en que aparecen por createdAt)
+      const carrierParts: string[] = [];
+      const carrierSeen = new Set<string>();
+      for (const op of operationsForOffer) {
+        const carrierName = op.carrier?.name?.trim();
+        if (!carrierName) continue;
+        const key = carrierName.toLowerCase();
+        if (carrierSeen.has(key)) continue;
+        carrierSeen.add(key);
+        carrierParts.push(carrierName);
+      }
+      const CARRIER = carrierParts.join('; ');
+
       const data = {
         fecha: fechaActualES,
         numero_oferta: oferta.numero || '',
@@ -530,6 +567,10 @@ export const DocumentoController = {
         uso_previsto: usosPrevistos,
         // Array de productos para usar en loops del template
         productos: productosArray,
+        /** En plantilla: [[ITN]] — todos los ITN de contenedores de operaciones de esta oferta, separados por ; */
+        ITN,
+        /** En plantilla: [[CARRIER]] — carriers de operaciones de esta oferta, separados por ; */
+        CARRIER,
       };
 
       // Reemplazar variables en la plantilla
