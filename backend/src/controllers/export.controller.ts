@@ -459,11 +459,12 @@ function renderPdfTable(
     xPos += widthsPdf[colIndex++];
     
     // DESCRIPCION
-    doc.text(item.producto.nombre, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6 });
+    const itemNombrePdf = (item as any).producto?.nombre ?? (item as any).nombreProducto ?? '';
+    doc.text(itemNombrePdf, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6 });
     xPos += widthsPdf[colIndex++];
 
     // UNIDAD DE MEDIDA
-    const unidadMedidaAbrev = item.producto.unidadMedida?.abreviatura || '';
+    const unidadMedidaAbrev = (item as any).producto?.unidadMedida?.abreviatura ?? '';
     doc.text(unidadMedidaAbrev, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
     xPos += widthsPdf[colIndex++];
 
@@ -693,8 +694,8 @@ function renderExcelTable(
     totalImporte += importe;
 
     // Construir valores dinámicamente
-    const unidadMedidaAbrev = item.producto.unidadMedida?.abreviatura || '';
-    const values: (string | number)[] = [itemNum, item.producto.nombre, unidadMedidaAbrev];
+    const unidadMedidaAbrev = (item as any).producto?.unidadMedida?.abreviatura ?? '';
+    const values: (string | number)[] = [itemNum, (item as any).producto?.nombre ?? (item as any).nombreProducto ?? '', unidadMedidaAbrev];
     
     // Campos opcionales dinámicos (por label) inmediatamente después de UM
     if (dynamicLabels.length > 0) {
@@ -2165,15 +2166,16 @@ export const ExportController = {
       
       // Calcular altura de fila basada en la descripción
       const descWidth = facturaWidths[0] - 6;
-      const descHeight = doc.heightOfString(item.producto.nombre, { width: descWidth });
+      const itemNombreFactPdf = (item as any).producto?.nombre ?? (item as any).nombreProducto ?? '';
+      const descHeight = doc.heightOfString(itemNombreFactPdf, { width: descWidth });
       const rowHeight = Math.max(16, descHeight + 4);
       
       // PRODUCTO
-      doc.text(item.producto.nombre, xPos + 2, yPos, { width: facturaWidths[0] - 4 });
+      doc.text(itemNombreFactPdf, xPos + 2, yPos, { width: facturaWidths[0] - 4 });
       xPos += facturaWidths[0];
       
       // UM
-      doc.text(item.producto.unidadMedida.abreviatura, xPos + 2, yPos, { width: facturaWidths[1] - 4, align: 'center' });
+      doc.text((item as any).producto?.unidadMedida?.abreviatura ?? '', xPos + 2, yPos, { width: facturaWidths[1] - 4, align: 'center' });
       xPos += facturaWidths[1];
       
       let colIdx = 2;
@@ -2617,7 +2619,10 @@ export const ExportController = {
       totalPesoNeto += pesoNeto;
       totalPesoBruto += pesoBruto;
 
-      const values: (string | number)[] = [item.producto.nombre, item.producto.unidadMedida.abreviatura];
+      const values: (string | number)[] = [
+        (item as any).producto?.nombre ?? (item as any).nombreProducto ?? '',
+        (item as any).producto?.unidadMedida?.abreviatura ?? '',
+      ];
       
       // Campos dinámicos
       if (dynamicLabels.length > 0) {
@@ -2642,7 +2647,7 @@ export const ExportController = {
       dataRow.values = values;
       
       // Calcular altura basada en la longitud de la descripción
-      const descLength = item.producto.nombre.length;
+      const descLength = ((item as any).producto?.nombre ?? (item as any).nombreProducto ?? '').length;
       const avgCharsPerLine = descWidthExcel * 1.2;
       const numLines = Math.ceil(descLength / avgCharsPerLine);
       dataRow.height = Math.max(24, numLines * 16 + 8);

@@ -300,12 +300,13 @@ export const SearchController = {
       include: { producto: { select: { id: true, codigo: true, nombre: true } } },
     }) : [];
     
-    const productosMap = new Map<string, { producto: { id: string; codigo: string | null; nombre: string }; cantidad: number; importe: number }>();
+    const productosMap = new Map<string, { producto: { id: string; codigo: string | null; nombre: string } | null; cantidad: number; importe: number }>();
     for (const item of itemsFactura) {
-      const existing = productosMap.get(item.productoId) || { producto: item.producto, cantidad: 0, importe: 0 };
+      const key = item.productoId ?? `libre-${item.id}`;
+      const existing = productosMap.get(key) || { producto: item.producto, cantidad: 0, importe: 0 };
       existing.cantidad += item.cantidad;
       existing.importe += item.subtotal;
-      productosMap.set(item.productoId, existing);
+      productosMap.set(key, existing);
     }
     const productos = Array.from(productosMap.values()).sort((a, b) => b.importe - a.importe).slice(0, 10);
     
@@ -445,12 +446,13 @@ export const SearchController = {
       include: { producto: { select: { id: true, codigo: true, nombre: true } } },
     }) : [];
     
-    const productosMap = new Map<string, { producto: { id: string; codigo: string | null; nombre: string }; cantidad: number; importe: number }>();
+    const productosMap = new Map<string, { producto: { id: string; codigo: string | null; nombre: string } | null; cantidad: number; importe: number }>();
     for (const item of itemsFactura) {
-      const existing = productosMap.get(item.productoId) || { producto: item.producto, cantidad: 0, importe: 0 };
+      const key = item.productoId ?? `libre-${item.id}`;
+      const existing = productosMap.get(key) || { producto: item.producto, cantidad: 0, importe: 0 };
       existing.cantidad += item.cantidad;
       existing.importe += item.subtotal;
-      productosMap.set(item.productoId, existing);
+      productosMap.set(key, existing);
     }
     const productos = Array.from(productosMap.values()).sort((a, b) => b.importe - a.importe).slice(0, 10);
     

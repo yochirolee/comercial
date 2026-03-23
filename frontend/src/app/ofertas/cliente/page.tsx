@@ -97,8 +97,11 @@ export default function OfertasClientePage(): React.ReactElement {
 
   // Form para agregar item temporal - usando strings para evitar pérdida de foco
   const [showAddItem, setShowAddItem] = useState(false);
+  const [itemModoLibre, setItemModoLibre] = useState(false);
   const [itemFormStrings, setItemFormStrings] = useState({
     productoId: "",
+    nombreProducto: "",
+    codigoProducto: "",
     cantidad: "",
     precioUnitario: "",
     cantidadCajas: "",
@@ -207,8 +210,11 @@ export default function OfertasClientePage(): React.ReactElement {
   }
 
   function resetItemForm(): void {
+    setItemModoLibre(false);
     setItemFormStrings({
       productoId: "",
+      nombreProducto: "",
+      codigoProducto: "",
       cantidad: "",
       precioUnitario: "",
       cantidadCajas: "",
@@ -229,6 +235,8 @@ export default function OfertasClientePage(): React.ReactElement {
     // NO usar Oferta General para evitar confusión con valores de otras ofertas
     setItemFormStrings({
       productoId,
+      nombreProducto: "",
+      codigoProducto: "",
       cantidad: prod?.cantidad?.toString() || "",
       precioUnitario: prod?.precioBase?.toString() || "",
       cantidadSacos: prod?.cantidadSacos?.toString() || "",
@@ -252,7 +260,9 @@ export default function OfertasClientePage(): React.ReactElement {
         .filter((f) => f.label) || [];
 
     return {
-      productoId: itemFormStrings.productoId,
+      productoId: itemModoLibre ? null : (itemFormStrings.productoId || null),
+      nombreProducto: itemModoLibre ? (itemFormStrings.nombreProducto.trim() || null) : null,
+      codigoProducto: itemModoLibre ? (itemFormStrings.codigoProducto.trim() || null) : null,
       cantidad: parseFloat(itemFormStrings.cantidad) || 0,
       precioUnitario: parseFloat(itemFormStrings.precioUnitario) || 0,
       cantidadCajas: itemFormStrings.cantidadCajas ? parseInt(itemFormStrings.cantidadCajas) : undefined,
@@ -268,12 +278,20 @@ export default function OfertasClientePage(): React.ReactElement {
 
   function addItemToList(): void {
     const itemData = getItemFormAsNumbers();
-    if (!itemData.productoId || itemData.cantidad <= 0) {
-      toast.error("Selecciona un producto y cantidad válida");
+    if (itemModoLibre && !itemData.nombreProducto) {
+      toast.error("Escribe el nombre del producto");
+      return;
+    }
+    if (!itemModoLibre && !itemData.productoId) {
+      toast.error("Selecciona un producto");
+      return;
+    }
+    if (itemData.cantidad <= 0) {
+      toast.error("Ingresa una cantidad válida");
       return;
     }
     
-    const prod = productos.find((p) => p.id === itemData.productoId);
+    const prod = itemModoLibre ? undefined : productos.find((p) => p.id === itemData.productoId);
     const newItem: ItemTemp = {
       ...itemData,
       tempId: `temp-${Date.now()}`,
@@ -563,7 +581,7 @@ export default function OfertasClientePage(): React.ReactElement {
   function formatProductos(items: OfertaCliente["items"]): string {
     if (!items || items.length === 0) return "Sin productos";
     const primerosDos = items.slice(0, 2);
-    const nombres = primerosDos.map(item => item.producto.nombre).join(", ");
+    const nombres = primerosDos.map(item => item.producto?.nombre ?? item.nombreProducto ?? "—").join(", ");
     if (items.length > 2) {
       return `${nombres} (+${items.length - 2} más)`;
     }
@@ -805,24 +823,55 @@ export default function OfertasClientePage(): React.ReactElement {
               {/* Form para agregar item */}
               {showAddItem && (
                 <div className="bg-slate-50 rounded-lg p-2 sm:p-3 space-y-2 sm:space-y-3">
+                  {/* Toggle catálogo / libre */}
+                  <div className="flex items-center gap-2 pb-1 border-b">
+                    <button
+                      type="button"
+                      onClick={() => setItemModoLibre(false)}
+                      className={`text-xs px-2 py-1 rounded ${!itemModoLibre ? "bg-blue-600 text-white" : "bg-white border text-slate-600"}`}
+                    >
+                      Del catálogo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setItemModoLibre(true)}
+                      className={`text-xs px-2 py-1 rounded ${itemModoLibre ? "bg-orange-500 text-white" : "bg-white border text-slate-600"}`}
+                    >
+                      Producto libre (uso único)
+                    </button>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs sm:text-sm">Producto *</Label>
-                      <Select
-                        value={itemFormStrings.productoId}
-                        onValueChange={handleSelectProduct}
-                      >
-                        <SelectTrigger className="h-9 sm:h-10 text-sm">
-                          <SelectValue placeholder="Seleccionar" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {productos.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.nombre} ({p.unidadMedida.abreviatura})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {!itemModoLibre ? (
+                        <>
+                          <Label className="text-xs sm:text-sm">Producto *</Label>
+                          <Select
+                            value={itemFormStrings.productoId}
+                            onValueChange={handleSelectProduct}
+                          >
+                            <SelectTrigger className="h-9 sm:h-10 text-sm">
+                              <SelectValue placeholder="Seleccionar" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {productos.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  {p.nombre} ({p.unidadMedida.abreviatura})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </>
+                      ) : (
+                        <>
+                          <Label className="text-xs sm:text-sm">Nombre del producto *</Label>
+                          <Input
+                            placeholder="Ej: Aceite de cocina"
+                            value={itemFormStrings.nombreProducto}
+                            onChange={(e) => setItemFormStrings((prev) => ({ ...prev, nombreProducto: e.target.value }))}
+                            className="h-9 sm:h-10 text-sm"
+                          />
+                        </>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs sm:text-sm">Cantidad *</Label>
@@ -988,8 +1037,11 @@ export default function OfertasClientePage(): React.ReactElement {
                   ) : (
                     itemsTemp.map((item) => (
                       <TableRow key={item.tempId}>
-                        <TableCell>{item.producto?.nombre}</TableCell>
-                        <TableCell>{item.producto?.unidadMedida.abreviatura}</TableCell>
+                        <TableCell>
+                          {item.producto?.nombre ?? item.nombreProducto ?? "—"}
+                          {!item.productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
+                        </TableCell>
+                        <TableCell>{item.producto?.unidadMedida?.abreviatura ?? "—"}</TableCell>
                         <TableCell className="text-right">{item.cantidad}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.precioUnitario)}</TableCell>
                         <TableCell className="text-right font-medium">
@@ -1320,9 +1372,12 @@ export default function OfertasClientePage(): React.ReactElement {
                   ) : (
                     selectedOferta?.items.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{item.producto.nombre}</TableCell>
+                        <TableCell>
+                          {item.producto?.nombre ?? item.nombreProducto ?? "—"}
+                          {!item.productoId && <span className="ml-1 text-[10px] text-orange-500 font-medium">(libre)</span>}
+                        </TableCell>
                         <TableCell className="text-right">{item.cantidad}</TableCell>
-                        <TableCell>{item.producto.unidadMedida.abreviatura}</TableCell>
+                        <TableCell>{item.producto?.unidadMedida?.abreviatura ?? "—"}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.precioUnitario)}</TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(item.subtotal)}

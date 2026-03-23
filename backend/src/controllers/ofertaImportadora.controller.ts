@@ -61,7 +61,9 @@ async function generarNumeroOferta(): Promise<string> {
 }
 
 const itemSchema = z.object({
-  productoId: z.string().min(1, 'Producto es requerido'),
+  productoId: z.string().optional().nullable(),
+  nombreProducto: z.string().optional().nullable(),
+  codigoProducto: z.string().optional().nullable(),
   cantidad: z.number().positive('La cantidad debe ser positiva'),
   cantidadCajas: z.number().nullable().optional(),
   cantidadSacos: z.number().nullable().optional(),
@@ -314,7 +316,9 @@ export const OfertaImportadoraController = {
     
     // Determinar qué items usar: los proporcionados o los de la oferta cliente
     let itemsParaCrear: Array<{
-      productoId: string;
+      productoId?: string | null;
+      nombreProducto?: string | null;
+      codigoProducto?: string | null;
       cantidad: number;
       cantidadCajas?: number | null;
       cantidadSacos?: number | null;
@@ -343,7 +347,9 @@ export const OfertaImportadoraController = {
         const subtotal = precioFinal * cantidadParaCalculo;
         const camposOpcionalesStr = item.camposOpcionales != null ? JSON.stringify(item.camposOpcionales) : null;
         return {
-          productoId: item.productoId,
+          productoId: item.productoId || null,
+          nombreProducto: item.nombreProducto || null,
+          codigoProducto: item.codigoProducto || null,
           cantidad: item.cantidad,
           cantidadCajas: item.cantidadCajas || null,
           cantidadSacos: item.cantidadSacos || null,
@@ -367,7 +373,9 @@ export const OfertaImportadoraController = {
     } else {
       // Copiar items de la oferta cliente (incl. campos dinámicos ya guardados como string)
       itemsParaCrear = ofertaCliente.items.map(item => ({
-        productoId: item.productoId,
+        productoId: item.productoId ?? null,
+        nombreProducto: item.nombreProducto ?? null,
+        codigoProducto: item.codigoProducto ?? null,
         cantidad: item.cantidad,
         cantidadCajas: item.cantidadCajas,
         cantidadSacos: item.cantidadSacos,
@@ -649,7 +657,9 @@ export const OfertaImportadoraController = {
     await prisma.itemOfertaImportadora.create({
       data: {
         ofertaImportadoraId: id,
-        productoId: validation.data.productoId,
+        productoId: validation.data.productoId || null,
+        nombreProducto: validation.data.nombreProducto || null,
+        codigoProducto: validation.data.codigoProducto || null,
         cantidad: validation.data.cantidad,
         cantidadCajas: validation.data.cantidadCajas,
         cantidadSacos: validation.data.cantidadSacos,
@@ -713,7 +723,9 @@ export const OfertaImportadoraController = {
     const updateData: Record<string, unknown> = {};
     
     // Campos que se pueden actualizar directamente
-    if (validation.data.productoId !== undefined) updateData.productoId = validation.data.productoId;
+    if (validation.data.productoId !== undefined) updateData.productoId = validation.data.productoId ?? null;
+    if (validation.data.nombreProducto !== undefined) updateData.nombreProducto = validation.data.nombreProducto ?? null;
+    if (validation.data.codigoProducto !== undefined) updateData.codigoProducto = validation.data.codigoProducto ?? null;
     if (validation.data.cantidadCajas !== undefined) updateData.cantidadCajas = validation.data.cantidadCajas;
     if (validation.data.cantidadSacos !== undefined) updateData.cantidadSacos = validation.data.cantidadSacos;
     if (validation.data.pesoNeto !== undefined) updateData.pesoNeto = validation.data.pesoNeto;

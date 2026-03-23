@@ -3,7 +3,9 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 
 const itemSchema = z.object({
-  productoId: z.string().min(1, 'Producto es requerido'),
+  productoId: z.string().optional().nullable(),
+  nombreProducto: z.string().optional().nullable(),
+  codigoProducto: z.string().optional().nullable(),
   cantidad: z.number().positive('La cantidad debe ser positiva'),
   precioUnitario: z.number().positive('El precio debe ser positivo'),
   // Campos informativos opcionales - aceptan null para limpiar valores
@@ -235,7 +237,9 @@ export const OfertaClienteController = {
         }
         
         return {
-          productoId: item.productoId,
+          productoId: item.productoId || null,
+          nombreProducto: item.nombreProducto || null,
+          codigoProducto: item.codigoProducto || null,
           cantidad: item.cantidad,
           precioUnitario: item.precioUnitario,
           subtotal,
@@ -378,11 +382,14 @@ export const OfertaClienteController = {
     const cantidadParaCalculo = validation.data.pesoNeto || validation.data.cantidad;
     const subtotal = cantidadParaCalculo * validation.data.precioUnitario;
 
-    const { camposOpcionales: camposRaw, ...rest } = validation.data;
+    const { camposOpcionales: camposRaw, productoId, nombreProducto, codigoProducto, ...rest } = validation.data;
     const item = await prisma.itemOfertaCliente.create({
       data: {
         ofertaClienteId: id,
         ...rest,
+        productoId: productoId || null,
+        nombreProducto: nombreProducto || null,
+        codigoProducto: codigoProducto || null,
         codigoArancelario: codigoArancelario ?? null,
         camposOpcionales: camposRaw != null ? JSON.stringify(camposRaw) : null,
         subtotal,
@@ -439,6 +446,9 @@ export const OfertaClienteController = {
     if ('pesoXCaja' in req.body) updateData.pesoXCaja = validation.data.pesoXCaja ?? null;
     if ('precioXCaja' in req.body) updateData.precioXCaja = validation.data.precioXCaja ?? null;
     if ('codigoArancelario' in req.body) updateData.codigoArancelario = validation.data.codigoArancelario ?? null;
+    if ('productoId' in req.body) updateData.productoId = validation.data.productoId ?? null;
+    if ('nombreProducto' in req.body) updateData.nombreProducto = validation.data.nombreProducto ?? null;
+    if ('codigoProducto' in req.body) updateData.codigoProducto = validation.data.codigoProducto ?? null;
     if ('camposOpcionales' in req.body) {
       const co = validation.data.camposOpcionales;
       updateData.camposOpcionales = co != null ? JSON.stringify(co) : null;

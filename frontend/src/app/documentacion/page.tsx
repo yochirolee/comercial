@@ -27,6 +27,13 @@ interface DocumentTemplate {
   borderColor: string;
 }
 
+/** Ordenar ofertas por número descendente (ej. Z26035 antes que Z20034) */
+function sortOfertasByNumeroDesc(ofertas: OfertaCliente[]): OfertaCliente[] {
+  return [...ofertas].sort((a, b) =>
+    b.numero.localeCompare(a.numero, undefined, { numeric: true, sensitivity: "base" })
+  );
+}
+
 const documentTemplates: DocumentTemplate[] = [
   {
     id: "enduser",
@@ -66,9 +73,10 @@ export default function DocumentacionPage(): React.ReactElement {
   async function loadOfertas(): Promise<void> {
     try {
       const data = await ofertasClienteApi.getAll();
-      setOfertas(data);
-      if (data.length > 0) {
-        setSelectedOfertaId(data[0].id);
+      const sorted = sortOfertasByNumeroDesc(data);
+      setOfertas(sorted);
+      if (sorted.length > 0) {
+        setSelectedOfertaId(sorted[0].id);
       }
     } catch (error) {
       toast.error("Error al cargar ofertas");

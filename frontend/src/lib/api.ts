@@ -1142,8 +1142,10 @@ export interface OfertaClienteInputWithItems extends OfertaClienteInput {
 
 export interface ItemOfertaCliente {
   id: string;
-  productoId: string;
-  producto: Producto;
+  productoId?: string | null;
+  producto?: Producto | null;
+  nombreProducto?: string | null;
+  codigoProducto?: string | null;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
@@ -1162,7 +1164,9 @@ export interface ItemOfertaCliente {
 }
 
 export interface ItemOfertaClienteInput {
-  productoId: string;
+  productoId?: string | null;
+  nombreProducto?: string | null;
+  codigoProducto?: string | null;
   cantidad: number;
   precioUnitario: number;
   // Campos informativos opcionales (pueden ser null para limpiar)
@@ -1174,7 +1178,7 @@ export interface ItemOfertaClienteInput {
   precioXSaco?: number | null;
   pesoXCaja?: number | null;
   precioXCaja?: number | null;
-  codigoArancelario?: string | null; // Partida arancelaria
+  codigoArancelario?: string | null;
   camposOpcionales?: { label: string; value?: string | null }[] | null;
 }
 
@@ -1265,7 +1269,9 @@ export interface CrearDesdeOfertaClienteInput {
   metodoPagoDocumentoTexto?: string;
   // Items opcionales: si se proporcionan, se usan; si no, se copian de la oferta cliente
   items?: Array<{
-    productoId: string;
+    productoId?: string | null;
+    nombreProducto?: string | null;
+    codigoProducto?: string | null;
     cantidad: number;
     precioUnitario: number;
     precioAjustado?: number;
@@ -1288,8 +1294,10 @@ export interface CrearDesdeOfertaClienteInput {
 
 export interface ItemOfertaImportadora {
   id: string;
-  productoId: string;
-  producto: Producto;
+  productoId?: string | null;
+  producto?: Producto | null;
+  nombreProducto?: string | null;
+  codigoProducto?: string | null;
   cantidad: number;
   precioOriginal: number;     // Precio original (de oferta cliente)
   precioAjustado: number;     // Precio ajustado para que CIF = precio acordado
@@ -1308,7 +1316,9 @@ export interface ItemOfertaImportadora {
 }
 
 export interface ItemOfertaImportadoraInput {
-  productoId?: string;
+  productoId?: string | null;
+  nombreProducto?: string | null;
+  codigoProducto?: string | null;
   cantidad?: number;
   precioUnitario?: number; // El precio del producto (actualiza original y ajustado)
   precioAjustado?: number; // Solo actualiza el precio ajustado (no el original)
@@ -1452,8 +1462,10 @@ export interface FacturaFromOfertaImportadoraInput {
 
 export interface ItemFactura {
   id: string;
-  productoId: string;
-  producto: Producto;
+  productoId?: string | null;
+  producto?: Producto | null;
+  nombreProducto?: string | null;
+  codigoProducto?: string | null;
   descripcion?: string;
   cantidad: number;
   cantidadCajas?: number;
@@ -1471,7 +1483,9 @@ export interface ItemFactura {
 }
 
 export interface ItemFacturaInput {
-  productoId: string;
+  productoId?: string | null;
+  nombreProducto?: string | null;
+  codigoProducto?: string | null;
   descripcion?: string;
   cantidad: number;
   cantidadCajas?: number | null;

@@ -200,9 +200,9 @@ export const ImportadoraController = {
     
     // Sumar desde facturas
     for (const item of itemsFactura) {
-      const key = item.productoId;
+      const key = item.productoId ?? `libre-${item.id}`;
       const existing = productosMap.get(key) || {
-        producto: item.producto,
+        producto: item.producto as any,
         cantidad: 0,
         importe: 0,
       };
@@ -213,9 +213,9 @@ export const ImportadoraController = {
     
     // Sumar desde ofertas (solo si no hay factura)
     for (const item of itemsOferta) {
-      const key = item.productoId;
+      const key = item.productoId ?? `libre-${item.id}`;
       const existing = productosMap.get(key) || {
-        producto: item.producto,
+        producto: item.producto as any,
         cantidad: 0,
         importe: 0,
       };

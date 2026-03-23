@@ -172,9 +172,9 @@ export const DocumentoController = {
         // Items de la oferta (español)
         items: oferta.items.map((item, index) => ({
           item_numero: index + 1,
-          producto_nombre: item.producto.nombre || '',
+          producto_nombre: item.producto?.nombre ?? (item as any).nombreProducto ?? '',
           cantidad: (item.pesoNeto || item.cantidad)?.toLocaleString('es-ES') || '0',
-          unidad_medida: item.producto.unidadMedida.abreviatura || '',
+          unidad_medida: item.producto?.unidadMedida?.abreviatura ?? '',
           precio_unitario: item.precioUnitario?.toLocaleString('es-ES', { style: 'currency', currency: 'USD' }) || '0.00',
           subtotal: item.subtotal?.toLocaleString('es-ES', { style: 'currency', currency: 'USD' }) || '0.00',
           codigo_arancelario: item.codigoArancelario || '',
@@ -187,9 +187,9 @@ export const DocumentoController = {
         // Items de la oferta (inglés)
         items_en: oferta.items.map((item, index) => ({
           item_number: index + 1,
-          product_name: item.producto.nombre || '',
+          product_name: item.producto?.nombre ?? (item as any).nombreProducto ?? '',
           quantity: (item.pesoNeto || item.cantidad)?.toLocaleString('en-US') || '0',
-          unit_of_measure: item.producto.unidadMedida.abreviatura || '',
+          unit_of_measure: item.producto?.unidadMedida?.abreviatura ?? '',
           unit_price: item.precioUnitario?.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) || '0.00',
           subtotal_amount: item.subtotal?.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) || '0.00',
           tariff_code: item.codigoArancelario || '',
@@ -490,7 +490,7 @@ export const DocumentoController = {
 
       // Obtener información de todos los productos
       const productos = oferta.items && oferta.items.length > 0 
-        ? oferta.items.map(item => item.producto).filter(p => p !== null)
+        ? oferta.items.map(item => item.producto ?? { nombre: (item as any).nombreProducto ?? '', descripcion: null, usoPrevisto: null }).filter(p => p !== null)
         : [];
       
       // Crear array de productos con toda su información para usar en loops del template
@@ -719,6 +719,7 @@ export const DocumentoController = {
       // Agrupar items por producto y sumar cantidades y pesos netos
       const itemsAgrupados = new Map<string, {
         producto: any;
+        nombreProducto?: string | null;
         cantidadTotal: number;
         pesoNetoTotal: number;
         precioUnitario: number;
@@ -728,21 +729,20 @@ export const DocumentoController = {
       // Procesar todas las facturas
       for (const factura of facturas) {
         for (const item of factura.items) {
-          const productoId = item.productoId;
+          const key = item.productoId ?? `libre-${(item as any).nombreProducto ?? item.descripcion ?? item.id}`;
           
-          if (itemsAgrupados.has(productoId)) {
-            const existente = itemsAgrupados.get(productoId)!;
+          if (itemsAgrupados.has(key)) {
+            const existente = itemsAgrupados.get(key)!;
             existente.cantidadTotal += item.cantidad || 0;
             existente.pesoNetoTotal += item.pesoNeto || 0;
-            // Precio se mantiene igual (ya que será el mismo en todas las facturas)
-            // Uso previsto se mantiene del primero encontrado
           } else {
-            itemsAgrupados.set(productoId, {
-              producto: item.producto,
+            itemsAgrupados.set(key, {
+              producto: item.producto as any,
+              nombreProducto: (item as any).nombreProducto ?? null,
               cantidadTotal: item.cantidad || 0,
               pesoNetoTotal: item.pesoNeto || 0,
               precioUnitario: item.precioUnitario || 0,
-              usoPrevisto: item.producto.usoPrevisto || null,
+              usoPrevisto: item.producto?.usoPrevisto ?? null,
             });
           }
         }
@@ -842,7 +842,7 @@ export const DocumentoController = {
 
       // Variables de productos - usar items agrupados
       const nombresProductos = itemsFinales
-        .map(item => item.producto.nombre || '')
+        .map(item => item.producto?.nombre ?? (item as any).nombreProducto ?? '')
         .filter(n => n !== '')
         .join(', ');
       

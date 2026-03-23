@@ -248,8 +248,10 @@ model ItemOfertaCliente {
   id               String   @id @default(cuid())
   ofertaClienteId  String
   ofertaCliente    OfertaCliente @relation(fields: [ofertaClienteId], references: [id], onDelete: Cascade)
-  productoId       String
-  producto         Producto @relation(fields: [productoId], references: [id])
+  productoId       String?
+  producto         Producto? @relation(fields: [productoId], references: [id])
+  nombreProducto   String?
+  codigoProducto   String?
   descripcion      String?
   cantidad         Float
   precioUnitario   Float
@@ -327,8 +329,10 @@ model ItemOfertaImportadora {
   id                   String   @id @default(cuid())
   ofertaImportadoraId  String
   ofertaImportadora    OfertaImportadora @relation(fields: [ofertaImportadoraId], references: [id], onDelete: Cascade)
-  productoId           String
-  producto             Producto @relation(fields: [productoId], references: [id])
+  productoId           String?
+  producto             Producto? @relation(fields: [productoId], references: [id])
+  nombreProducto       String?
+  codigoProducto       String?
   descripcion          String?
   cantidad             Float
   cantidadCajas        Float?
@@ -421,8 +425,10 @@ model ItemFactura {
   id               String   @id @default(cuid())
   facturaId        String
   factura          Factura  @relation(fields: [facturaId], references: [id], onDelete: Cascade)
-  productoId       String
-  producto         Producto @relation(fields: [productoId], references: [id])
+  productoId       String?
+  producto         Producto? @relation(fields: [productoId], references: [id])
+  nombreProducto   String?
+  codigoProducto   String?
   descripcion      String?
   cantidad         Float
   cantidadCajas    Float?

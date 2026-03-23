@@ -138,9 +138,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
   // Estado para items editables en creación
   const [itemsEditables, setItemsEditables] = useState<Array<{
-    id: string; // id temporal para React keys
-    productoId: string;
-    producto: Producto;
+    id: string;
+    productoId?: string | null;
+    producto?: Producto | null;
+    nombreProducto?: string | null;
+    codigoProducto?: string | null;
     cantidad: number;
     precioUnitario: number;
     precioAjustado: number;
@@ -271,8 +273,10 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     if (oferta && oferta.items) {
       const itemsCargados = oferta.items.map((item, index) => ({
         id: `temp-${index}-${Date.now()}`,
-        productoId: item.productoId,
-        producto: item.producto,
+        productoId: item.productoId ?? null,
+        producto: item.producto ?? undefined,
+        nombreProducto: (item as any).nombreProducto ?? null,
+        codigoProducto: (item as any).codigoProducto ?? null,
         cantidad: item.cantidad,
         precioUnitario: item.precioUnitario,
         precioAjustado: item.precioUnitario, // Inicialmente igual al precio original
@@ -320,20 +324,22 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       const itemsParaEnviar = itemsEditables.map(item => {
         // Validar que cantidad y precios sean válidos
         if (item.cantidad <= 0) {
-          throw new Error(`La cantidad del producto ${item.producto.nombre} debe ser mayor a 0`);
+          throw new Error(`La cantidad del producto ${item.producto?.nombre ?? item.nombreProducto ?? ''} debe ser mayor a 0`);
         }
         if (item.precioUnitario <= 0) {
-          throw new Error(`El precio unitario del producto ${item.producto.nombre} debe ser mayor a 0`);
+          throw new Error(`El precio unitario del producto ${item.producto?.nombre ?? item.nombreProducto ?? ''} debe ser mayor a 0`);
         }
         if (item.precioAjustado <= 0) {
-          throw new Error(`El precio ajustado del producto ${item.producto.nombre} debe ser mayor a 0`);
+          throw new Error(`El precio ajustado del producto ${item.producto?.nombre ?? item.nombreProducto ?? ''} debe ser mayor a 0`);
         }
         
         return {
-          productoId: item.productoId,
+          productoId: item.productoId ?? null,
+          nombreProducto: item.nombreProducto ?? null,
+          codigoProducto: item.codigoProducto ?? null,
           cantidad: item.cantidad,
-          precioUnitario: item.precioUnitario, // Precio original
-          precioAjustado: item.precioAjustado, // Precio ajustado (puede ser diferente)
+          precioUnitario: item.precioUnitario,
+          precioAjustado: item.precioAjustado,
           cantidadCajas: item.cantidadCajas ?? null,
           cantidadSacos: item.cantidadSacos ?? null,
           pesoNeto: item.pesoNeto ?? null,
@@ -477,10 +483,10 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   // Abrir diálogo de edición de item
   function openEditItemDialog(item: OfertaImportadora["items"][0]): void {
     setEditingItemId(item.id);
-    setEditingItemIndex(null); // Asegurar que no estamos en modo creación
+    setEditingItemIndex(null);
     setIsAddingNewItem(false);
     setEditItemForm({
-      productoId: item.productoId,
+      productoId: item.productoId ?? "",
       cantidad: (item.pesoNeto || item.cantidad)?.toString() || "",
       precioUnitario: item.precioAjustado?.toString() || "", // Mostrar precio ajustado actual
       cantidadCajas: item.cantidadCajas?.toString() || "",
@@ -653,7 +659,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   function formatProductos(items: OfertaImportadora["items"]): string {
     if (!items || items.length === 0) return "Sin productos";
     const primerosDos = items.slice(0, 2);
-    const nombres = primerosDos.map(item => item.producto.nombre).join(", ");
+    const nombres = primerosDos.map(item => item.producto?.nombre ?? (item as any).nombreProducto ?? "—").join(", ");
     if (items.length > 2) {
       return `${nombres} (+${items.length - 2} más)`;
     }
@@ -667,7 +673,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setIsAddingNewItem(false);
     const item = itemsEditables[index];
     setEditItemForm({
-      productoId: item.productoId,
+      productoId: item.productoId ?? "",
       cantidad: (item.pesoNeto || item.cantidad)?.toString() || "",
       precioUnitario: item.precioAjustado.toString(), // Mostrar precio ajustado actual
       cantidadCajas: item.cantidadCajas?.toString() || "",
@@ -934,7 +940,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                                 <TableRow key={item.id}>
                                   <TableCell className="font-medium py-2 sm:py-3">
                                     <div className="text-xs sm:text-sm md:text-base">
-                                      {item.producto.nombre}
+                                      {item.producto?.nombre ?? (item as any).nombreProducto ?? "—"}
+                                      {!(item as any).productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
                                     </div>
                                     {item.codigoArancelario && (
                                       <div className="text-xs text-slate-500 mt-0.5 sm:mt-1">
@@ -947,7 +954,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-right whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3">
-                                    {cantidadParaCalculo.toLocaleString()} {item.producto.unidadMedida.abreviatura}
+                                    {cantidadParaCalculo.toLocaleString()} {item.producto?.unidadMedida?.abreviatura ?? ""}
                                   </TableCell>
                                   <TableCell className="text-right whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3 hidden sm:table-cell">
                                     {formatCurrencyUnitPrice(item.precioAjustado)}
@@ -1502,9 +1509,9 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                     <TableBody>
                       {items.map((item) => (
                         <TableRow key={item.id}>
-                          <TableCell>{item.producto.nombre}</TableCell>
+                          <TableCell>{item.producto?.nombre ?? (item as any).nombreProducto ?? "—"}</TableCell>
                           <TableCell className="text-right">{item.pesoNeto || item.cantidad}</TableCell>
-                          <TableCell>{item.producto.unidadMedida.abreviatura}</TableCell>
+                          <TableCell>{item.producto?.unidadMedida?.abreviatura ?? "—"}</TableCell>
                           {hasCantidadCajas && <TableCell className="text-right">{item.cantidadCajas || '-'}</TableCell>}
                           {hasCantidadSacos && <TableCell className="text-right">{item.cantidadSacos || '-'}</TableCell>}
                           {hasPesoXSaco && <TableCell className="text-right">{item.pesoXSaco || '-'}</TableCell>}

@@ -250,7 +250,7 @@ export default function FacturasPage(): React.ReactElement {
   function formatProductos(items: Factura["items"]): string {
     if (!items || items.length === 0) return "Sin productos";
     const primerosDos = items.slice(0, 2);
-    const nombres = primerosDos.map(item => item.producto.nombre).join(", ");
+    const nombres = primerosDos.map(item => item.producto?.nombre ?? item.nombreProducto ?? "—").join(", ");
     if (items.length > 2) {
       return `${nombres} (+${items.length - 2} más)`;
     }
@@ -1295,11 +1295,12 @@ export default function FacturasPage(): React.ReactElement {
                     {selectedFactura.items.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell className="min-w-[150px] max-w-[200px]">
-                          <div className="truncate" title={item.producto.nombre}>
-                            {item.producto.nombre}
+                          <div className="truncate" title={item.producto?.nombre ?? item.nombreProducto ?? ""}>
+                            {item.producto?.nombre ?? item.nombreProducto ?? "—"}
+                            {!item.productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
                           </div>
                         </TableCell>
-                        <TableCell className="w-16">{item.producto.unidadMedida.abreviatura}</TableCell>
+                        <TableCell className="w-16">{item.producto?.unidadMedida?.abreviatura ?? "—"}</TableCell>
                         {hasOptionalFields(selectedFactura.items).cantidadSacos && (
                           <TableCell className="text-right w-20">{item.cantidadSacos || "-"}</TableCell>
                         )}

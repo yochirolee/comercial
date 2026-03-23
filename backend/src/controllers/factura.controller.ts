@@ -395,12 +395,14 @@ export const FacturaController = {
       
       const campos = (item as any).camposOpcionales;
       return {
-        productoId: item.productoId,
-        descripcion: item.producto.nombre,
+        productoId: item.productoId ?? null,
+        nombreProducto: item.nombreProducto ?? null,
+        codigoProducto: item.codigoProducto ?? null,
+        descripcion: item.producto?.nombre ?? item.nombreProducto ?? '',
         cantidad: item.cantidad,
         cantidadCajas: item.cantidadCajas,
         cantidadSacos: item.cantidadSacos,
-        pesoNeto: item.pesoNeto || item.cantidad, // Por defecto igual a cantidad
+        pesoNeto: item.pesoNeto || item.cantidad,
         pesoBruto: item.pesoBruto,
         precioUnitario: precioAjustado,
         subtotal,
@@ -615,8 +617,10 @@ export const FacturaController = {
       
       const campos = item.camposOpcionales;
       return {
-        productoId: item.productoId,
-        descripcion: item.producto.nombre,
+        productoId: item.productoId ?? null,
+        nombreProducto: item.nombreProducto ?? null,
+        codigoProducto: item.codigoProducto ?? null,
+        descripcion: item.producto?.nombre ?? item.nombreProducto ?? '',
         cantidad: item.cantidad,
         cantidadCajas: item.cantidadCajas,
         cantidadSacos: item.cantidadSacos,
