@@ -37,7 +37,8 @@ import {
   clientesApi, 
   productosApi, 
   exportApi,
-  importadorasApi
+  importadorasApi,
+  unidadesApi
 } from "@/lib/api";
 import type {
   OfertaImportadora,
@@ -45,9 +46,24 @@ import type {
   Cliente,
   Producto,
   Importadora,
+  UnidadMedida,
+  ItemOfertaImportadora,
 } from "@/lib/api";
 
 const PAGE_SIZE = 10;
+
+/** UM en tabla: catálogo (producto.unidadMedida) o producto libre (item.unidadMedida / unidadMedidaId) */
+function umAbbrImportadoraItem(
+  item: Pick<ItemOfertaImportadora, "producto" | "unidadMedida" | "unidadMedidaId">,
+  unidades: UnidadMedida[],
+): string {
+  return (
+    item.unidadMedida?.abreviatura
+    ?? item.producto?.unidadMedida?.abreviatura
+    ?? (item.unidadMedidaId ? unidades.find((u) => u.id === item.unidadMedidaId)?.abreviatura : undefined)
+    ?? "—"
+  );
+}
 
 interface ExtraFieldForm {
   id: string;
@@ -84,6 +100,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [importadoras, setImportadoras] = useState<Importadora[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [unidades, setUnidades] = useState<UnidadMedida[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -116,14 +133,19 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   const [fechaHasta, setFechaHasta] = useState("");
 
   // Estado para ajustar precios en edición
+  const [showAdjustPricesEdit, setShowAdjustPricesEdit] = useState(false);
   const [totalDeseadoEdit, setTotalDeseadoEdit] = useState("");
 
   // Estado para editar item existente
   const [editItemDialogOpen, setEditItemDialogOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [isAddingNewItem, setIsAddingNewItem] = useState(false);
+  const [editItemModoLibre, setEditItemModoLibre] = useState(false);
   const [editItemForm, setEditItemForm] = useState({
     productoId: "",
+    nombreProducto: "",
+    codigoProducto: "",
+    unidadMedidaId: "",
     cantidad: "",
     precioUnitario: "",
     cantidadCajas: "",
@@ -143,6 +165,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     producto?: Producto | null;
     nombreProducto?: string | null;
     codigoProducto?: string | null;
+    unidadMedidaId?: string | null;
     cantidad: number;
     precioUnitario: number;
     precioAjustado: number;
@@ -184,19 +207,24 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   async function loadData(): Promise<void> {
     try {
       setCurrentPage(1);
-      const [ofertasData, ofertasClienteData, clientesData, importadorasData, productosData] = await Promise.all([
+      const [ofertasData, ofertasClienteData, clientesData, importadorasData, productosData, unidadesData] = await Promise.all([
         ofertasImportadoraApi.getAll(),
         ofertasClienteApi.getAll(),
         clientesApi.getAll(),
         importadorasApi.getAll(),
         productosApi.getAll(),
+        unidadesApi.getAll(),
       ]);
       setOfertas(ofertasData);
-      // Filtrar ofertas cliente que no estén rechazadas ni vencidas
-      setOfertasCliente(ofertasClienteData.filter(o => o.estado !== 'rechazada' && o.estado !== 'vencida'));
+      setOfertasCliente(
+        ofertasClienteData
+          .filter((o) => o.estado !== "rechazada" && o.estado !== "vencida")
+          .sort((a, b) => (b.numero ?? "").localeCompare(a.numero ?? ""))
+      );
       setClientes(clientesData);
       setImportadoras(importadorasData);
       setProductos(productosData.filter((p) => p.activo));
+      setUnidades(unidadesData);
     } catch (error) {
       toast.error("Error al cargar datos");
       console.error(error);
@@ -275,8 +303,9 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         id: `temp-${index}-${Date.now()}`,
         productoId: item.productoId ?? null,
         producto: item.producto ?? undefined,
-        nombreProducto: (item as any).nombreProducto ?? null,
-        codigoProducto: (item as any).codigoProducto ?? null,
+        nombreProducto: item.nombreProducto ?? null,
+        codigoProducto: item.codigoProducto ?? null,
+        unidadMedidaId: item.unidadMedidaId ?? null,
         cantidad: item.cantidad,
         precioUnitario: item.precioUnitario,
         precioAjustado: item.precioUnitario, // Inicialmente igual al precio original
@@ -337,6 +366,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
           productoId: item.productoId ?? null,
           nombreProducto: item.nombreProducto ?? null,
           codigoProducto: item.codigoProducto ?? null,
+          unidadMedidaId: item.unidadMedidaId ?? null,
           cantidad: item.cantidad,
           precioUnitario: item.precioUnitario,
           precioAjustado: item.precioAjustado,
@@ -411,6 +441,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
   function openDetailDialog(oferta: OfertaImportadora): void {
     setSelectedOferta(oferta);
+    setShowAdjustPricesEdit(false);
     setTotalDeseadoEdit("");
     setDetailDialogOpen(true);
   }
@@ -485,8 +516,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setEditingItemId(item.id);
     setEditingItemIndex(null);
     setIsAddingNewItem(false);
+    setEditItemModoLibre(!item.productoId);
     setEditItemForm({
       productoId: item.productoId ?? "",
+      nombreProducto: (item as any).nombreProducto ?? "",
+      codigoProducto: (item as any).codigoProducto ?? "",
+      unidadMedidaId: (item as any).unidadMedidaId ?? "",
       cantidad: (item.pesoNeto || item.cantidad)?.toString() || "",
       precioUnitario: item.precioAjustado?.toString() || "", // Mostrar precio ajustado actual
       cantidadCajas: item.cantidadCajas?.toString() || "",
@@ -511,8 +546,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setEditingItemId(null);
     setEditingItemIndex(null);
     setIsAddingNewItem(true);
+    setEditItemModoLibre(false);
     setEditItemForm({
       productoId: "",
+      nombreProducto: "",
+      codigoProducto: "",
+      unidadMedidaId: "",
       cantidad: "",
       precioUnitario: "",
       cantidadCajas: "",
@@ -551,7 +590,6 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         .filter((f) => f.label);
       const itemData = {
         cantidad: editItemForm.cantidad ? parseFloat(editItemForm.cantidad) : undefined,
-        // Enviar precio ajustado si fue modificado
         precioAjustado: editItemForm.precioUnitario ? parseFloat(editItemForm.precioUnitario) : undefined,
         cantidadCajas: editItemForm.cantidadCajas ? parseInt(editItemForm.cantidadCajas) : undefined,
         cantidadSacos: editItemForm.cantidadSacos ? parseInt(editItemForm.cantidadSacos) : undefined,
@@ -561,6 +599,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         precioXCaja: editItemForm.precioXCaja ? parseFloat(editItemForm.precioXCaja) : undefined,
         codigoArancelario: editItemForm.codigoArancelario || undefined,
         camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
+        ...(editItemModoLibre ? {
+          nombreProducto: editItemForm.nombreProducto.trim() || null,
+          codigoProducto: editItemForm.codigoProducto.trim() || null,
+          unidadMedidaId: editItemForm.unidadMedidaId || null,
+        } : {}),
       };
 
       const updated = await ofertasImportadoraApi.updateItem(selectedOferta.id, editingItemId, itemData);
@@ -593,23 +636,42 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   // Agregar nuevo item
   async function handleAddItem(e: React.FormEvent): Promise<void> {
     e.preventDefault();
-    if (!selectedOferta || !editItemForm.productoId || !editItemForm.cantidad || !editItemForm.precioUnitario) {
-      toast.error("Completa los campos requeridos: Producto, Cantidad y Precio");
+    if (!selectedOferta) return;
+
+    const cantidadStr = String(editItemForm.cantidad ?? "").trim();
+    const precioStr = String(editItemForm.precioUnitario ?? "").trim();
+    if (!cantidadStr || !precioStr) {
+      toast.error("Completa cantidad y precio");
+      return;
+    }
+
+    if (!editItemModoLibre && !editItemForm.productoId) {
+      toast.error("Selecciona un producto del catálogo o elige «Producto libre» e indica el nombre");
+      return;
+    }
+    if (editItemModoLibre && !editItemForm.nombreProducto.trim()) {
+      toast.error("Escribe el nombre del producto libre");
       return;
     }
 
     try {
-      const productoSeleccionado = productos.find(p => p.id === editItemForm.productoId);
-      if (!productoSeleccionado) {
-        toast.error("Producto no encontrado");
-        return;
+      if (!editItemModoLibre) {
+        const productoSeleccionado = productos.find(p => p.id === editItemForm.productoId);
+        if (!productoSeleccionado) {
+          toast.error("Producto no encontrado");
+          return;
+        }
       }
 
+      const productoSeleccionado = editItemModoLibre ? null : productos.find(p => p.id === editItemForm.productoId);
       const cleanedExtra = editExtraFields
         .map((f) => ({ label: f.label.trim(), value: f.value.trim() || null }))
         .filter((f) => f.label);
       const itemData = {
-        productoId: editItemForm.productoId,
+        productoId: editItemModoLibre ? null : (editItemForm.productoId || null),
+        nombreProducto: editItemModoLibre ? (editItemForm.nombreProducto.trim() || null) : null,
+        codigoProducto: editItemModoLibre ? (editItemForm.codigoProducto.trim() || null) : null,
+        unidadMedidaId: editItemModoLibre ? (editItemForm.unidadMedidaId || null) : null,
         cantidad: parseFloat(editItemForm.cantidad),
         precioUnitario: parseFloat(editItemForm.precioUnitario),
         cantidadCajas: editItemForm.cantidadCajas && editItemForm.cantidadCajas.trim() !== '' ? parseInt(editItemForm.cantidadCajas) : undefined,
@@ -618,7 +680,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
         precioXSaco: editItemForm.precioXSaco && editItemForm.precioXSaco.trim() !== '' ? parseFloat(editItemForm.precioXSaco) : undefined,
         pesoXCaja: editItemForm.pesoXCaja && editItemForm.pesoXCaja.trim() !== '' ? parseFloat(editItemForm.pesoXCaja) : undefined,
         precioXCaja: editItemForm.precioXCaja && editItemForm.precioXCaja.trim() !== '' ? parseFloat(editItemForm.precioXCaja) : undefined,
-        codigoArancelario: editItemForm.codigoArancelario && editItemForm.codigoArancelario.trim() !== '' ? editItemForm.codigoArancelario : (productoSeleccionado.codigoArancelario || undefined),
+        codigoArancelario: editItemForm.codigoArancelario && editItemForm.codigoArancelario.trim() !== '' ? editItemForm.codigoArancelario : (productoSeleccionado?.codigoArancelario || undefined),
         camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : undefined,
       };
 
@@ -672,8 +734,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setEditingItemId(null); // Asegurar que no estamos en modo edición de item existente
     setIsAddingNewItem(false);
     const item = itemsEditables[index];
+    setEditItemModoLibre(!item.productoId);
     setEditItemForm({
       productoId: item.productoId ?? "",
+      nombreProducto: item.nombreProducto ?? "",
+      codigoProducto: item.codigoProducto ?? "",
+      unidadMedidaId: item.unidadMedidaId ?? "",
       cantidad: (item.pesoNeto || item.cantidad)?.toString() || "",
       precioUnitario: item.precioAjustado.toString(), // Mostrar precio ajustado actual
       cantidadCajas: item.cantidadCajas?.toString() || "",
@@ -710,7 +776,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     updatedItems[editingItemIndex] = {
       ...item,
       cantidad,
-      precioAjustado, // Precio ajustado puede ser diferente al original
+      precioAjustado,
+      ...(editItemModoLibre ? {
+        nombreProducto: editItemForm.nombreProducto.trim() || null,
+        codigoProducto: editItemForm.codigoProducto.trim() || null,
+        unidadMedidaId: editItemForm.unidadMedidaId || null,
+      } : {}),
       cantidadCajas: editItemForm.cantidadCajas && editItemForm.cantidadCajas.trim() !== '' ? parseInt(editItemForm.cantidadCajas) : null,
       cantidadSacos: editItemForm.cantidadSacos && editItemForm.cantidadSacos.trim() !== '' ? parseInt(editItemForm.cantidadSacos) : null,
       pesoNeto: cantidad !== item.cantidad ? cantidad : item.pesoNeto,
@@ -726,8 +797,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setEditItemDialogOpen(false);
     setEditingItemIndex(null);
     setEditExtraFields([]);
+    setEditItemModoLibre(false);
     setEditItemForm({
       productoId: "",
+      nombreProducto: "",
+      codigoProducto: "",
+      unidadMedidaId: "",
       cantidad: "",
       precioUnitario: "",
       cantidadCajas: "",
@@ -793,7 +868,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                       <SelectContent>
                         {ofertasCliente.map((o) => (
                           <SelectItem key={o.id} value={o.id} className="text-sm">
-                            {o.numero} - {o.cliente?.nombre ?? ""} ({formatCurrency(o.total)})
+                            {o.numero} - {(o.cliente?.nombreCompania || `${o.cliente?.nombre ?? ""} ${o.cliente?.apellidos ?? ""}`.trim())} ({formatCurrency(o.total)})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -826,7 +901,9 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                       <h4 className="font-medium mb-1.5 sm:mb-2 text-xs sm:text-sm">📋 Datos de la Oferta Cliente</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-xs sm:text-sm">
                         <div className="text-slate-600">Cliente:</div>
-                        <div className="font-medium">{selectedOfertaCliente?.cliente?.nombre ?? ""}</div>
+                        <div className="font-medium">
+                          {selectedOfertaCliente?.cliente?.nombreCompania || `${selectedOfertaCliente?.cliente?.nombre ?? ""} ${selectedOfertaCliente?.cliente?.apellidos ?? ""}`.trim()}
+                        </div>
                         <div className="text-slate-600">Productos:</div>
                         <div className="font-medium">{selectedOfertaCliente.items.length} items</div>
                         <div className="text-slate-600">Total acordado:</div>
@@ -954,7 +1031,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                                     </div>
                                   </TableCell>
                                   <TableCell className="text-right whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3">
-                                    {cantidadParaCalculo.toLocaleString()} {item.producto?.unidadMedida?.abreviatura ?? ""}
+                                    {cantidadParaCalculo.toLocaleString()} {umAbbrImportadoraItem(item, unidades)}
                                   </TableCell>
                                   <TableCell className="text-right whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3 hidden sm:table-cell">
                                     {formatCurrencyUnitPrice(item.precioAjustado)}
@@ -1108,7 +1185,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </TableRow>
               ) : (
                 paginatedOfertas.map((oferta) => (
-                  <TableRow key={oferta.id}>
+                  <TableRow
+                    key={oferta.id}
+                    className="cursor-pointer hover:bg-muted/60"
+                    onClick={() => openDetailDialog(oferta)}
+                  >
                     <TableCell className="font-medium">{oferta.numero}</TableCell>
                     <TableCell>
                       {oferta.ofertaCliente ? (
@@ -1140,7 +1221,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                         {oferta.estado}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openDetailDialog(oferta)}>
                           <Eye className="h-4 w-4" />
@@ -1207,8 +1288,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
       {/* Diálogo de detalle/edición */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="w-[90vw] max-w-[1200px] max-h-[90vh] flex flex-col overflow-hidden">
-          <DialogHeader className="flex-shrink-0 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[min(92vh,900px)] flex-col overflow-hidden p-3 sm:p-6 lg:pr-14">
+          <DialogHeader className="flex-shrink-0 flex flex-col gap-3">
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               <Ship className="h-5 w-5" />
               Oferta: {selectedOferta?.numero}
@@ -1218,28 +1299,29 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </Badge>
               )}
             </DialogTitle>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-wrap justify-end gap-2 md:flex-nowrap md:gap-1.5 md:shrink-0">
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => selectedOferta && exportApi.downloadPdf("ofertas-importadora", selectedOferta.id)}
-                className="flex-1 sm:flex-initial"
+                className="flex-1 sm:flex-initial whitespace-nowrap md:h-8 md:px-2.5 md:text-xs"
               >
-                <FileDown className="h-4 w-4 mr-1" />
+                <FileDown className="h-4 w-4 mr-1 md:h-3.5 md:w-3.5 md:mr-0.5" />
                 PDF
               </Button>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => selectedOferta && exportApi.downloadExcel("ofertas-importadora", selectedOferta.id)}
-                className="flex-1 sm:flex-initial"
+                className="flex-1 sm:flex-initial whitespace-nowrap md:h-8 md:px-2.5 md:text-xs"
               >
-                <FileSpreadsheet className="h-4 w-4 mr-1" />
+                <FileSpreadsheet className="h-4 w-4 mr-1 md:h-3.5 md:w-3.5 md:mr-0.5" />
                 Excel
               </Button>
-              <Button onClick={handleSaveChanges} size="sm" className="gap-2 flex-1 sm:flex-initial">
-                <Save className="h-4 w-4" />
-                Guardar y Cerrar
+              <Button onClick={handleSaveChanges} size="sm" className="gap-2 flex-1 sm:flex-initial whitespace-nowrap md:h-8 md:px-2.5 md:text-xs md:gap-1">
+                <Save className="h-4 w-4 md:h-3.5 md:w-3.5" />
+                <span className="md:hidden lg:inline">Guardar y Cerrar</span>
+                <span className="hidden md:inline lg:hidden">Guardar</span>
               </Button>
             </div>
           </DialogHeader>
@@ -1251,7 +1333,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 <div>
                   <Label className="text-slate-500 text-xs sm:text-sm">Cliente</Label>
                   <p className="font-medium text-xs sm:text-sm mt-1">
-                    {`${selectedOferta?.cliente.nombre || ""} ${selectedOferta?.cliente.apellidos || ""}`.trim()}
+                    {selectedOferta?.cliente?.nombreCompania || `${selectedOferta?.cliente?.nombre || ""} ${selectedOferta?.cliente?.apellidos || ""}`.trim()}
                   </p>
                 </div>
                 <div className="min-w-0">
@@ -1311,10 +1393,102 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </div>
               </div>
 
-              {/* Flete, Seguro y Ajuste */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+              {/* Tabla de productos */}
+              <div>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2 sm:mb-3">
+                  <h4 className="font-medium text-sm sm:text-base">Productos</h4>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={openAddItemDialog}
+                    className="flex items-center gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm"
+                  >
+                    <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    Agregar Producto
+                  </Button>
+                </div>
+                {(() => {
+                  const items = selectedOferta?.items || [];
+                  const hasCantidadCajas = items.some(i => i.cantidadCajas);
+                  const hasCantidadSacos = items.some(i => i.cantidadSacos);
+                  const hasPesoXSaco = items.some(i => i.pesoXSaco);
+                  const hasPrecioXSaco = items.some(i => i.precioXSaco);
+                  const hasPesoXCaja = items.some(i => i.pesoXCaja);
+                  const hasPrecioXCaja = items.some(i => i.precioXCaja);
+                  
+                  return (
+                    <div className="overflow-x-auto">
+                    <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Producto</TableHead>
+                        <TableHead className="text-right">Cantidad</TableHead>
+                        <TableHead>Unidad</TableHead>
+                        {hasCantidadCajas && <TableHead className="text-right">Cajas</TableHead>}
+                        {hasCantidadSacos && <TableHead className="text-right">Sacos</TableHead>}
+                        {hasPesoXSaco && <TableHead className="text-right">Peso/Saco</TableHead>}
+                        {hasPrecioXSaco && <TableHead className="text-right">$/Saco</TableHead>}
+                        {hasPesoXCaja && <TableHead className="text-right">Peso/Caja</TableHead>}
+                        {hasPrecioXCaja && <TableHead className="text-right">$/Caja</TableHead>}
+                        <TableHead className="text-right">P.Original</TableHead>
+                        <TableHead className="text-center">→</TableHead>
+                        <TableHead className="text-right">P.Ajustado</TableHead>
+                        <TableHead className="text-right">Subtotal</TableHead>
+                        <TableHead className="w-16"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.producto?.nombre ?? (item as any).nombreProducto ?? "—"}</TableCell>
+                          <TableCell className="text-right">{item.pesoNeto || item.cantidad}</TableCell>
+                          <TableCell>{umAbbrImportadoraItem(item, unidades)}</TableCell>
+                          {hasCantidadCajas && <TableCell className="text-right">{item.cantidadCajas || '-'}</TableCell>}
+                          {hasCantidadSacos && <TableCell className="text-right">{item.cantidadSacos || '-'}</TableCell>}
+                          {hasPesoXSaco && <TableCell className="text-right">{item.pesoXSaco || '-'}</TableCell>}
+                          {hasPrecioXSaco && <TableCell className="text-right">{item.precioXSaco ? formatCurrency(item.precioXSaco) : '-'}</TableCell>}
+                          {hasPesoXCaja && <TableCell className="text-right">{item.pesoXCaja || '-'}</TableCell>}
+                          {hasPrecioXCaja && <TableCell className="text-right">{item.precioXCaja ? formatCurrency(item.precioXCaja) : '-'}</TableCell>}
+                          <TableCell className="text-right text-slate-500">
+                            {formatCurrency(item.precioOriginal)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <ArrowRight className="h-4 w-4 text-slate-400 mx-auto" />
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-emerald-600">
+                            {formatCurrencyUnitPrice(item.precioAjustado)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {(() => {
+                              const cantidad = item.pesoNeto || item.cantidad;
+                              const precioRedondeado = Math.round(item.precioAjustado * 1000) / 1000;
+                              const cantidadRedondeada = Math.round(cantidad * 100) / 100;
+                              return formatCurrency(precioRedondeado * cantidadRedondeada);
+                            })()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Costos y Subtotal */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 items-stretch">
                 {/* Costos de envío */}
-                <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-2 sm:space-y-3">
+                <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-2 sm:space-y-3 h-full">
                   <h4 className="font-medium text-slate-700 text-sm sm:text-base">Costos de Envío</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     <div>
@@ -1354,27 +1528,85 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   </div>
                 </div>
 
-                {/* Ajustar al total */}
-                <div className="p-3 sm:p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-2 sm:space-y-3">
-                  <h4 className="font-medium text-emerald-800 text-sm sm:text-base">Ajustar al Total CIF</h4>
-                  <p className="text-xs text-slate-600">
-                    Si quieres que el CIF sea un valor específico, escríbelo aquí. Los precios de los productos se ajustarán.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Input
-                      className="flex-1 h-9 sm:h-10 text-sm"
-                      placeholder={`Actual: ${formatCurrency(selectedOferta?.precioCIF || 0)}`}
-                      value={totalDeseadoEdit}
-                      onChange={(e) => setTotalDeseadoEdit(e.target.value)}
-                    />
-                    <Button 
-                      onClick={handleAdjustPrices}
-                      disabled={!totalDeseadoEdit || parseFloat(totalDeseadoEdit) <= 0}
-                      className="w-full sm:w-auto h-9 sm:h-10 text-sm"
+                {/* Resumen total */}
+                <div className="w-full space-y-2 text-xs p-3 sm:p-4 bg-emerald-50 border border-emerald-200 rounded-lg h-full">
+                  <div className="flex justify-between">
+                    <span>FOB (productos):</span>
+                    <span className="font-medium">
+                      {formatCurrency(
+                        (selectedOferta?.items || []).reduce((sum, item) => {
+                          const cantidad = item.pesoNeto || item.cantidad;
+                          const precioRedondeado = Math.round(item.precioAjustado * 1000) / 1000;
+                          const cantidadRedondeada = Math.round(cantidad * 100) / 100;
+                          return sum + (precioRedondeado * cantidadRedondeada);
+                        }, 0)
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>+ Flete:</span>
+                    <span>{formatCurrency(selectedOferta?.flete || 0)}</span>
+                  </div>
+                  {selectedOferta?.tieneSeguro && (
+                    <div className="flex justify-between">
+                      <span>+ Seguro:</span>
+                      <span>{formatCurrency(selectedOferta?.seguro || 0)}</span>
+                    </div>
+                  )}
+                  <Separator />
+                  <div className="flex justify-between text-sm sm:text-base font-bold text-emerald-700">
+                    <span>= CIF Total:</span>
+                    <span>
+                      {formatCurrency(
+                        (selectedOferta?.items || []).reduce((sum, item) => {
+                          const cantidad = item.pesoNeto || item.cantidad;
+                          const precioRedondeado = Math.round(item.precioAjustado * 1000) / 1000;
+                          const cantidadRedondeada = Math.round(cantidad * 100) / 100;
+                          return sum + (precioRedondeado * cantidadRedondeada);
+                        }, 0) + (selectedOferta?.flete || 0) + (selectedOferta?.tieneSeguro ? (selectedOferta?.seguro || 0) : 0)
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ajustar a total (solo debajo de subtotal) */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mt-3">
+                <div className="hidden lg:block" />
+                <div className="space-y-2 sm:space-y-3">
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAdjustPricesEdit((prev) => !prev)}
                     >
-                      Ajustar
+                      {showAdjustPricesEdit ? "Cancelar" : "Ajustar a Total"}
                     </Button>
                   </div>
+
+                  {showAdjustPricesEdit && (
+                    <div className="rounded-lg border border-slate-200 bg-white p-3 sm:p-4 space-y-2">
+                      <p className="text-xs sm:text-sm text-slate-600">
+                        Ingresa el total deseado y los precios de los productos se ajustaran proporcionalmente.
+                      </p>
+                      <Label className="text-xs sm:text-sm font-medium">Total Deseado ($)</Label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <Input
+                          className="flex-1 h-9 sm:h-10 text-sm bg-white"
+                          placeholder="Ej: 5000"
+                          value={totalDeseadoEdit}
+                          onChange={(e) => setTotalDeseadoEdit(e.target.value)}
+                        />
+                        <Button
+                          onClick={handleAdjustPrices}
+                          disabled={!totalDeseadoEdit || parseFloat(totalDeseadoEdit) <= 0}
+                          className="w-full sm:w-auto h-9 sm:h-10 text-sm"
+                        >
+                          Aplicar Ajuste
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1460,142 +1692,6 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 </div>
               </div>
 
-            <Separator />
-
-              {/* Tabla de productos */}
-              <div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2 sm:mb-3">
-                  <h4 className="font-medium text-sm sm:text-base">Productos</h4>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={openAddItemDialog}
-                    className="flex items-center gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm"
-                  >
-                    <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                    Agregar Producto
-                  </Button>
-                </div>
-                {(() => {
-                  const items = selectedOferta?.items || [];
-                  const hasCantidadCajas = items.some(i => i.cantidadCajas);
-                  const hasCantidadSacos = items.some(i => i.cantidadSacos);
-                  const hasPesoXSaco = items.some(i => i.pesoXSaco);
-                  const hasPrecioXSaco = items.some(i => i.precioXSaco);
-                  const hasPesoXCaja = items.some(i => i.pesoXCaja);
-                  const hasPrecioXCaja = items.some(i => i.precioXCaja);
-                  
-                  return (
-                    <div className="overflow-x-auto">
-                    <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Producto</TableHead>
-                        <TableHead className="text-right">Cantidad</TableHead>
-                        <TableHead>Unidad</TableHead>
-                        {hasCantidadCajas && <TableHead className="text-right">Cajas</TableHead>}
-                        {hasCantidadSacos && <TableHead className="text-right">Sacos</TableHead>}
-                        {hasPesoXSaco && <TableHead className="text-right">Peso/Saco</TableHead>}
-                        {hasPrecioXSaco && <TableHead className="text-right">$/Saco</TableHead>}
-                        {hasPesoXCaja && <TableHead className="text-right">Peso/Caja</TableHead>}
-                        {hasPrecioXCaja && <TableHead className="text-right">$/Caja</TableHead>}
-                        <TableHead className="text-right">P.Original</TableHead>
-                        <TableHead className="text-center">→</TableHead>
-                        <TableHead className="text-right">P.Ajustado</TableHead>
-                        <TableHead className="text-right">Subtotal</TableHead>
-                        <TableHead className="w-16"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.producto?.nombre ?? (item as any).nombreProducto ?? "—"}</TableCell>
-                          <TableCell className="text-right">{item.pesoNeto || item.cantidad}</TableCell>
-                          <TableCell>{item.producto?.unidadMedida?.abreviatura ?? "—"}</TableCell>
-                          {hasCantidadCajas && <TableCell className="text-right">{item.cantidadCajas || '-'}</TableCell>}
-                          {hasCantidadSacos && <TableCell className="text-right">{item.cantidadSacos || '-'}</TableCell>}
-                          {hasPesoXSaco && <TableCell className="text-right">{item.pesoXSaco || '-'}</TableCell>}
-                          {hasPrecioXSaco && <TableCell className="text-right">{item.precioXSaco ? formatCurrency(item.precioXSaco) : '-'}</TableCell>}
-                          {hasPesoXCaja && <TableCell className="text-right">{item.pesoXCaja || '-'}</TableCell>}
-                          {hasPrecioXCaja && <TableCell className="text-right">{item.precioXCaja ? formatCurrency(item.precioXCaja) : '-'}</TableCell>}
-                          <TableCell className="text-right text-slate-500">
-                            {formatCurrency(item.precioOriginal)}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <ArrowRight className="h-4 w-4 text-slate-400 mx-auto" />
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-emerald-600">
-                            {formatCurrencyUnitPrice(item.precioAjustado)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {(() => {
-                              const cantidad = item.pesoNeto || item.cantidad;
-                              const precioRedondeado = Math.round(item.precioAjustado * 1000) / 1000;
-                              const cantidadRedondeada = Math.round(cantidad * 100) / 100;
-                              return formatCurrency(precioRedondeado * cantidadRedondeada);
-                            })()}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Resumen totales */}
-              <div className="flex justify-end">
-                <div className="w-full sm:w-80 space-y-2 text-xs sm:text-sm p-3 sm:p-4 bg-emerald-50 rounded-lg">
-                <div className="flex justify-between">
-                  <span>FOB (productos):</span>
-                  <span className="font-medium">
-                    {formatCurrency(
-                      (selectedOferta?.items || []).reduce((sum, item) => {
-                        const cantidad = item.pesoNeto || item.cantidad;
-                        const precioRedondeado = Math.round(item.precioAjustado * 1000) / 1000;
-                        const cantidadRedondeada = Math.round(cantidad * 100) / 100;
-                        return sum + (precioRedondeado * cantidadRedondeada);
-                      }, 0)
-                    )}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>+ Flete:</span>
-                  <span>{formatCurrency(selectedOferta?.flete || 0)}</span>
-                </div>
-                {selectedOferta?.tieneSeguro && (
-                  <div className="flex justify-between">
-                    <span>+ Seguro:</span>
-                    <span>{formatCurrency(selectedOferta?.seguro || 0)}</span>
-                  </div>
-                )}
-                <Separator />
-                <div className="flex justify-between text-base sm:text-lg font-bold text-emerald-700">
-                  <span>= CIF Total:</span>
-                  <span>
-                    {formatCurrency(
-                      (selectedOferta?.items || []).reduce((sum, item) => {
-                        const cantidad = item.pesoNeto || item.cantidad;
-                        const precioRedondeado = Math.round(item.precioAjustado * 1000) / 1000;
-                        const cantidadRedondeada = Math.round(cantidad * 100) / 100;
-                        return sum + (precioRedondeado * cantidadRedondeada);
-                      }, 0) + (selectedOferta?.flete || 0) + (selectedOferta?.tieneSeguro ? (selectedOferta?.seguro || 0) : 0)
-                    )}
-                  </span>
-                </div>
-              </div>
-            </div>
             </div>
           </div>
         </DialogContent>
@@ -1609,13 +1705,24 @@ export default function OfertasImportadoraPage(): React.ReactElement {
           setEditingItemIndex(null);
         }
       }}>
-        <DialogContent className="w-full max-w-md overflow-hidden">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[min(90vh,800px)] w-[95vw] max-w-lg flex-col gap-4 overflow-y-auto overscroll-contain pr-2">
+          <DialogHeader className="shrink-0 pr-6">
             <DialogTitle>{isAddingNewItem ? "Agregar Producto" : "Editar Producto"}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={isAddingNewItem ? handleAddItem : (editingItemIndex !== null ? handleUpdateItemCreate : handleUpdateItem)} className="space-y-4 w-full overflow-hidden">
-            {/* Selector de Producto (solo al agregar) */}
-            {isAddingNewItem && (
+          <form onSubmit={isAddingNewItem ? handleAddItem : (editingItemIndex !== null ? handleUpdateItemCreate : handleUpdateItem)} className="space-y-4 w-full min-h-0 pb-1">
+            {/* Toggle catálogo / libre */}
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <button type="button" onClick={() => setEditItemModoLibre(false)}
+                className={`text-xs px-3 py-1.5 rounded border font-medium transition-colors ${!editItemModoLibre ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"}`}>
+                Del catálogo
+              </button>
+              <button type="button" onClick={() => setEditItemModoLibre(true)}
+                className={`text-xs px-3 py-1.5 rounded border font-medium transition-colors ${editItemModoLibre ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"}`}>
+                Producto libre
+              </button>
+            </div>
+            {/* Selector de Producto o campos libres */}
+            {!editItemModoLibre ? (
               <div className="space-y-2 w-full">
                 <Label>Producto *</Label>
                 <Select
@@ -1631,23 +1738,34 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   }}
                 >
                   <SelectTrigger className="w-full max-w-full overflow-hidden text-left">
-                    <SelectValue 
-                      placeholder="Selecciona un producto" 
-                      className="truncate block"
-                    />
+                    <SelectValue placeholder="Selecciona un producto" className="truncate block" />
                   </SelectTrigger>
                   <SelectContent className="max-w-[calc(100vw-2rem)]">
                     {productos.filter(p => p.activo).map((producto) => (
-                      <SelectItem 
-                        key={producto.id} 
-                        value={producto.id}
-                        className="truncate max-w-full"
-                      >
+                      <SelectItem key={producto.id} value={producto.id} className="truncate max-w-full">
                         <span className="truncate block">{producto.nombre}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Nombre del producto *</Label>
+                  <Input placeholder="Ej: Aceite de cocina"
+                    value={editItemForm.nombreProducto}
+                    onChange={(e) => setEditItemForm(prev => ({ ...prev, nombreProducto: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unidad de medida</Label>
+                  <Select value={editItemForm.unidadMedidaId} onValueChange={(v) => setEditItemForm(prev => ({ ...prev, unidadMedidaId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar UM" /></SelectTrigger>
+                    <SelectContent>
+                      {unidades.map((u) => <SelectItem key={u.id} value={u.id}>{u.nombre} ({u.abreviatura})</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
             {/* Cantidad y Precio */}

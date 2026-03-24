@@ -174,7 +174,7 @@ export const DocumentoController = {
           item_numero: index + 1,
           producto_nombre: item.producto?.nombre ?? (item as any).nombreProducto ?? '',
           cantidad: (item.pesoNeto || item.cantidad)?.toLocaleString('es-ES') || '0',
-          unidad_medida: item.producto?.unidadMedida?.abreviatura ?? '',
+          unidad_medida: item.producto?.unidadMedida?.abreviatura ?? (item as any).unidadMedida?.abreviatura ?? '',
           precio_unitario: item.precioUnitario?.toLocaleString('es-ES', { style: 'currency', currency: 'USD' }) || '0.00',
           subtotal: item.subtotal?.toLocaleString('es-ES', { style: 'currency', currency: 'USD' }) || '0.00',
           codigo_arancelario: item.codigoArancelario || '',
@@ -189,7 +189,7 @@ export const DocumentoController = {
           item_number: index + 1,
           product_name: item.producto?.nombre ?? (item as any).nombreProducto ?? '',
           quantity: (item.pesoNeto || item.cantidad)?.toLocaleString('en-US') || '0',
-          unit_of_measure: item.producto?.unidadMedida?.abreviatura ?? '',
+          unit_of_measure: item.producto?.unidadMedida?.abreviatura ?? (item as any).unidadMedida?.abreviatura ?? '',
           unit_price: item.precioUnitario?.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) || '0.00',
           subtotal_amount: item.subtotal?.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) || '0.00',
           tariff_code: item.codigoArancelario || '',
@@ -488,32 +488,30 @@ export const DocumentoController = {
         ? `${oferta.cliente.nombre || ''} ${oferta.cliente.apellidos}`.trim()
         : (oferta.cliente.nombre || '');
 
-      // Obtener información de todos los productos
-      const productos = oferta.items && oferta.items.length > 0 
-        ? oferta.items.map(item => item.producto ?? { nombre: (item as any).nombreProducto ?? '', descripcion: null, usoPrevisto: null }).filter(p => p !== null)
+      // Obtener información de todos los productos (incluye libres).
+      // Para productos libres se usa nombreProducto y se dejan descripcion/uso_previsto en blanco.
+      const productosArray = oferta.items && oferta.items.length > 0
+        ? oferta.items.map((item, index) => ({
+            numero: index + 1,
+            nombre: item.producto?.nombre || (item as any).nombreProducto || 'PRODUCTO LIBRE',
+            descripcion: item.producto?.descripcion || '',
+            uso_previsto: item.producto?.usoPrevisto || '',
+          }))
         : [];
       
-      // Crear array de productos con toda su información para usar en loops del template
-      const productosArray = productos.map((p, index) => ({
-        numero: index + 1,
-        nombre: p.nombre || '',
-        descripcion: p.descripcion || '',
-        uso_previsto: p.usoPrevisto || '',
-      }));
-      
       // También mantener las versiones concatenadas para compatibilidad con templates antiguos
-      const nombresProductos = productos
+      const nombresProductos = productosArray
         .map(p => p.nombre || '')
         .filter(n => n !== '')
         .join(', ');
       
-      const descripcionesProductos = productos
+      const descripcionesProductos = productosArray
         .map(p => p.descripcion || '')
         .filter(d => d !== '')
         .join(', ');
       
-      const usosPrevistos = productos
-        .map(p => p.usoPrevisto || '')
+      const usosPrevistos = productosArray
+        .map(p => p.uso_previsto || '')
         .filter(u => u !== '')
         .join(', ');
 

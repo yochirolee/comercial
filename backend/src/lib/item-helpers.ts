@@ -7,6 +7,7 @@ interface ItemLike {
   producto?: { nombre: string; codigo?: string | null; unidadMedida?: { abreviatura: string } | null } | null;
   nombreProducto?: string | null;
   codigoProducto?: string | null;
+  unidadMedida?: { abreviatura: string } | null;
 }
 
 export function getItemNombre(item: ItemLike): string {
@@ -18,5 +19,5 @@ export function getItemCodigo(item: ItemLike): string {
 }
 
 export function getItemUnidadMedida(item: ItemLike): string {
-  return item.producto?.unidadMedida?.abreviatura ?? '';
+  return item.producto?.unidadMedida?.abreviatura ?? item.unidadMedida?.abreviatura ?? '';
 }

@@ -6,6 +6,7 @@ const itemSchema = z.object({
   productoId: z.string().optional().nullable(),
   nombreProducto: z.string().optional().nullable(),
   codigoProducto: z.string().optional().nullable(),
+  unidadMedidaId: z.string().optional().nullable(),
   cantidad: z.number().positive('La cantidad debe ser positiva'),
   precioUnitario: z.number().positive('El precio debe ser positivo'),
   // Campos informativos opcionales - aceptan null para limpiar valores
@@ -159,6 +160,7 @@ export const OfertaClienteController = {
             producto: {
               select: { id: true, nombre: true, codigo: true, precioBase: true, unidadMedidaId: true, unidadMedida: true },
             },
+            unidadMedida: true,
           },
         },
       },
@@ -177,9 +179,8 @@ export const OfertaClienteController = {
         cliente: true,
         items: {
           include: {
-            producto: {
-              include: { unidadMedida: true },
-            },
+            producto: { include: { unidadMedida: true } },
+            unidadMedida: true,
           },
         },
       },
@@ -240,6 +241,7 @@ export const OfertaClienteController = {
           productoId: item.productoId || null,
           nombreProducto: item.nombreProducto || null,
           codigoProducto: item.codigoProducto || null,
+          unidadMedidaId: item.unidadMedidaId || null,
           cantidad: item.cantidad,
           precioUnitario: item.precioUnitario,
           subtotal,
@@ -284,9 +286,8 @@ export const OfertaClienteController = {
         cliente: true,
         items: {
           include: {
-            producto: {
-              include: { unidadMedida: true },
-            },
+            producto: { include: { unidadMedida: true } },
+            unidadMedida: true,
           },
         },
       },
@@ -382,7 +383,7 @@ export const OfertaClienteController = {
     const cantidadParaCalculo = validation.data.pesoNeto || validation.data.cantidad;
     const subtotal = cantidadParaCalculo * validation.data.precioUnitario;
 
-    const { camposOpcionales: camposRaw, productoId, nombreProducto, codigoProducto, ...rest } = validation.data;
+    const { camposOpcionales: camposRaw, productoId, nombreProducto, codigoProducto, unidadMedidaId, ...rest } = validation.data;
     const item = await prisma.itemOfertaCliente.create({
       data: {
         ofertaClienteId: id,
@@ -390,14 +391,14 @@ export const OfertaClienteController = {
         productoId: productoId || null,
         nombreProducto: nombreProducto || null,
         codigoProducto: codigoProducto || null,
+        unidadMedidaId: unidadMedidaId || null,
         codigoArancelario: codigoArancelario ?? null,
         camposOpcionales: camposRaw != null ? JSON.stringify(camposRaw) : null,
         subtotal,
       },
       include: {
-        producto: {
-          include: { unidadMedida: true },
-        },
+        producto: { include: { unidadMedida: true } },
+        unidadMedida: true,
       },
     });
     
@@ -449,6 +450,7 @@ export const OfertaClienteController = {
     if ('productoId' in req.body) updateData.productoId = validation.data.productoId ?? null;
     if ('nombreProducto' in req.body) updateData.nombreProducto = validation.data.nombreProducto ?? null;
     if ('codigoProducto' in req.body) updateData.codigoProducto = validation.data.codigoProducto ?? null;
+    if ('unidadMedidaId' in req.body) updateData.unidadMedidaId = validation.data.unidadMedidaId ?? null;
     if ('camposOpcionales' in req.body) {
       const co = validation.data.camposOpcionales;
       updateData.camposOpcionales = co != null ? JSON.stringify(co) : null;
@@ -458,9 +460,8 @@ export const OfertaClienteController = {
       where: { id: itemId },
       data: updateData,
       include: {
-        producto: {
-          include: { unidadMedida: true },
-        },
+        producto: { include: { unidadMedida: true } },
+        unidadMedida: true,
       },
     });
     

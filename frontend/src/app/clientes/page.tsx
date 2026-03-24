@@ -366,7 +366,11 @@ export default function ClientesPage() {
                 </TableRow>
               ) : (
                 paginatedClientes.map((cliente) => (
-                  <TableRow key={cliente.id}>
+                  <TableRow
+                    key={cliente.id}
+                    className="cursor-pointer"
+                    onClick={() => openEditDialog(cliente)}
+                  >
                     <TableCell className="font-medium">
                       {cliente.nombre} {cliente.apellidos}
                     </TableCell>
@@ -379,14 +383,20 @@ export default function ClientesPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openEditDialog(cliente)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditDialog(cliente);
+                          }}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(cliente.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(cliente.id);
+                          }}
                         >
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>

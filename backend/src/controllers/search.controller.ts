@@ -302,7 +302,9 @@ export const SearchController = {
     
     const productosMap = new Map<string, { producto: { id: string; codigo: string | null; nombre: string } | null; cantidad: number; importe: number }>();
     for (const item of itemsFactura) {
-      const key = item.productoId ?? `libre-${item.id}`;
+      // Excluir productos libres del buscador universal (estadísticas/top productos)
+      if (!item.productoId || !item.producto) continue;
+      const key = item.productoId;
       const existing = productosMap.get(key) || { producto: item.producto, cantidad: 0, importe: 0 };
       existing.cantidad += item.cantidad;
       existing.importe += item.subtotal;
@@ -448,7 +450,9 @@ export const SearchController = {
     
     const productosMap = new Map<string, { producto: { id: string; codigo: string | null; nombre: string } | null; cantidad: number; importe: number }>();
     for (const item of itemsFactura) {
-      const key = item.productoId ?? `libre-${item.id}`;
+      // Excluir productos libres del buscador universal (estadísticas/top productos)
+      if (!item.productoId || !item.producto) continue;
+      const key = item.productoId;
       const existing = productosMap.get(key) || { producto: item.producto, cantidad: 0, importe: 0 };
       existing.cantidad += item.cantidad;
       existing.importe += item.subtotal;

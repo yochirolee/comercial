@@ -28,9 +28,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save, Download, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { ofertasClienteApi, ofertasGeneralesApi, clientesApi, productosApi, exportApi } from "@/lib/api";
-import type { OfertaCliente, OfertaGeneral, Cliente, Producto, ItemOfertaClienteInput } from "@/lib/api";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save, Download, ChevronLeft, ChevronRight, Search, Users } from "lucide-react";
+import { ofertasClienteApi, ofertasGeneralesApi, clientesApi, productosApi, exportApi, unidadesApi } from "@/lib/api";
+import type { OfertaCliente, OfertaGeneral, Cliente, Producto, ItemOfertaClienteInput, UnidadMedida } from "@/lib/api";
 
 const PAGE_SIZE = 10;
 
@@ -50,6 +50,7 @@ export default function OfertasClientePage(): React.ReactElement {
   const [ofertasGenerales, setOfertasGenerales] = useState<OfertaGeneral[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [unidades, setUnidades] = useState<UnidadMedida[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -98,10 +99,12 @@ export default function OfertasClientePage(): React.ReactElement {
   // Form para agregar item temporal - usando strings para evitar pérdida de foco
   const [showAddItem, setShowAddItem] = useState(false);
   const [itemModoLibre, setItemModoLibre] = useState(false);
+  const [editItemModoLibre, setEditItemModoLibre] = useState(false);
   const [itemFormStrings, setItemFormStrings] = useState({
     productoId: "",
     nombreProducto: "",
     codigoProducto: "",
+    unidadMedidaId: "",
     cantidad: "",
     precioUnitario: "",
     cantidadCajas: "",
@@ -113,6 +116,8 @@ export default function OfertasClientePage(): React.ReactElement {
     codigoArancelario: "",
   });
   const [extraFields, setExtraFields] = useState<ExtraFieldForm[]>([]);
+  /** Al crear oferta: edición de un ítem temporal antes de guardar la oferta */
+  const [editingTempId, setEditingTempId] = useState<string | null>(null);
 
   // Estado para agregar items a oferta existente
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
@@ -130,6 +135,9 @@ export default function OfertasClientePage(): React.ReactElement {
     pesoXCaja: "",
     precioXCaja: "",
     codigoArancelario: "",
+    nombreProducto: "",
+    codigoProducto: "",
+    unidadMedidaId: "",
   });
   const [editExtraFields, setEditExtraFields] = useState<ExtraFieldForm[]>([]);
 
@@ -165,16 +173,18 @@ export default function OfertasClientePage(): React.ReactElement {
   async function loadData(): Promise<void> {
     try {
       setCurrentPage(1);
-      const [ofertasData, ofertasGeneralesData, clientesData, productosData] = await Promise.all([
+      const [ofertasData, ofertasGeneralesData, clientesData, productosData, unidadesData] = await Promise.all([
         ofertasClienteApi.getAll(),
         ofertasGeneralesApi.getAll(),
         clientesApi.getAll(),
         productosApi.getAll(),
+        unidadesApi.getAll(),
       ]);
       setOfertas(ofertasData);
       setOfertasGenerales(ofertasGeneralesData);
       setClientes(clientesData);
       setProductos(productosData.filter((p) => p.activo));
+      setUnidades(unidadesData);
     } catch (error) {
       toast.error("Error al cargar datos");
       console.error(error);
@@ -210,11 +220,14 @@ export default function OfertasClientePage(): React.ReactElement {
   }
 
   function resetItemForm(): void {
+    setEditingTempId(null);
     setItemModoLibre(false);
+    setExtraFields([]);
     setItemFormStrings({
       productoId: "",
       nombreProducto: "",
       codigoProducto: "",
+      unidadMedidaId: "",
       cantidad: "",
       precioUnitario: "",
       cantidadCajas: "",
@@ -227,6 +240,43 @@ export default function OfertasClientePage(): React.ReactElement {
     });
   }
 
+  function umAbbrForTempItem(item: ItemTemp): string {
+    if (item.producto?.unidadMedida?.abreviatura) return item.producto.unidadMedida.abreviatura;
+    if (item.unidadMedidaId) {
+      const u = unidades.find((x) => x.id === item.unidadMedidaId);
+      return u?.abreviatura ?? "—";
+    }
+    return "—";
+  }
+
+  function openEditTempItem(item: ItemTemp): void {
+    setEditingTempId(item.tempId);
+    setItemModoLibre(!item.productoId);
+    setItemFormStrings({
+      productoId: item.productoId || "",
+      nombreProducto: item.nombreProducto || "",
+      codigoProducto: item.codigoProducto || "",
+      unidadMedidaId: item.unidadMedidaId || "",
+      cantidad: item.cantidad != null ? String(item.cantidad) : "",
+      precioUnitario: item.precioUnitario != null ? String(item.precioUnitario) : "",
+      cantidadCajas: item.cantidadCajas != null ? String(item.cantidadCajas) : "",
+      cantidadSacos: item.cantidadSacos != null ? String(item.cantidadSacos) : "",
+      pesoXSaco: item.pesoXSaco != null ? String(item.pesoXSaco) : "",
+      precioXSaco: item.precioXSaco != null ? String(item.precioXSaco) : "",
+      pesoXCaja: item.pesoXCaja != null ? String(item.pesoXCaja) : "",
+      precioXCaja: item.precioXCaja != null ? String(item.precioXCaja) : "",
+      codigoArancelario: item.codigoArancelario || "",
+    });
+    setExtraFields(
+      (item.camposOpcionales || []).map((c, idx) => ({
+        id: `extra-edit-${item.tempId}-${idx}`,
+        label: c.label,
+        value: (c.value ?? "").toString(),
+      })),
+    );
+    setShowAddItem(true);
+  }
+
   function handleSelectProduct(productoId: string): void {
     const prod = productos.find((p) => p.id === productoId);
     
@@ -237,6 +287,7 @@ export default function OfertasClientePage(): React.ReactElement {
       productoId,
       nombreProducto: "",
       codigoProducto: "",
+      unidadMedidaId: "",
       cantidad: prod?.cantidad?.toString() || "",
       precioUnitario: prod?.precioBase?.toString() || "",
       cantidadSacos: prod?.cantidadSacos?.toString() || "",
@@ -263,6 +314,7 @@ export default function OfertasClientePage(): React.ReactElement {
       productoId: itemModoLibre ? null : (itemFormStrings.productoId || null),
       nombreProducto: itemModoLibre ? (itemFormStrings.nombreProducto.trim() || null) : null,
       codigoProducto: itemModoLibre ? (itemFormStrings.codigoProducto.trim() || null) : null,
+      unidadMedidaId: itemModoLibre ? (itemFormStrings.unidadMedidaId || null) : null,
       cantidad: parseFloat(itemFormStrings.cantidad) || 0,
       precioUnitario: parseFloat(itemFormStrings.precioUnitario) || 0,
       cantidadCajas: itemFormStrings.cantidadCajas ? parseInt(itemFormStrings.cantidadCajas) : undefined,
@@ -292,13 +344,26 @@ export default function OfertasClientePage(): React.ReactElement {
     }
     
     const prod = itemModoLibre ? undefined : productos.find((p) => p.id === itemData.productoId);
-    const newItem: ItemTemp = {
-      ...itemData,
-      tempId: `temp-${Date.now()}`,
-      producto: prod,
-    };
-    
-    setItemsTemp((prev) => [...prev, newItem]);
+
+    if (editingTempId) {
+      setItemsTemp((prev) =>
+        prev.map((it) =>
+          it.tempId === editingTempId
+            ? { ...itemData, tempId: editingTempId, producto: prod }
+            : it,
+        ),
+      );
+      toast.success("Ítem actualizado");
+    } else {
+      const newItem: ItemTemp = {
+        ...itemData,
+        tempId: `temp-${Date.now()}`,
+        producto: prod,
+      };
+      setItemsTemp((prev) => [...prev, newItem]);
+      toast.success("Producto agregado");
+    }
+
     resetItemForm();
     setShowAddItem(false);
   }
@@ -401,6 +466,8 @@ export default function OfertasClientePage(): React.ReactElement {
   async function openDetailDialog(oferta: OfertaCliente): Promise<void> {
     const updated = await ofertasClienteApi.getById(oferta.id);
     setSelectedOferta(updated);
+    setShowAdjustPrices(false);
+    setTotalDeseado("");
     setEditFormData({
       numero: updated.numero || "",
       fecha: updated.fecha ? updated.fecha.split("T")[0] : "",
@@ -468,6 +535,8 @@ export default function OfertasClientePage(): React.ReactElement {
 
   function openEditItemDialog(item: OfertaCliente["items"][0]): void {
     setEditingItemId(item.id);
+    const esLibre = !item.productoId;
+    setEditItemModoLibre(esLibre);
     setEditItemFormStrings({
       cantidad: item.cantidad?.toString() || "",
       precioUnitario: item.precioUnitario?.toString() || "",
@@ -478,6 +547,9 @@ export default function OfertasClientePage(): React.ReactElement {
       pesoXCaja: item.pesoXCaja?.toString() || "",
       precioXCaja: item.precioXCaja?.toString() || "",
       codigoArancelario: item.codigoArancelario || "",
+      nombreProducto: item.nombreProducto || "",
+      codigoProducto: item.codigoProducto || "",
+      unidadMedidaId: item.unidadMedidaId || "",
     });
     setEditExtraFields(
       (item.camposOpcionales || []).map((c, idx) => ({
@@ -528,6 +600,11 @@ export default function OfertasClientePage(): React.ReactElement {
           ? editItemFormStrings.codigoArancelario 
           : null,
         camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
+        ...(editItemModoLibre ? {
+          nombreProducto: editItemFormStrings.nombreProducto.trim() || null,
+          codigoProducto: editItemFormStrings.codigoProducto.trim() || null,
+          unidadMedidaId: editItemFormStrings.unidadMedidaId || null,
+        } : {}),
       };
       
       await ofertasClienteApi.updateItem(selectedOferta.id, editingItemId, updateData);
@@ -556,7 +633,6 @@ export default function OfertasClientePage(): React.ReactElement {
       const updated = await ofertasClienteApi.adjustPrices(selectedOferta.id, total);
       toast.success("Precios ajustados correctamente");
       setSelectedOferta(updated);
-      setShowAdjustPrices(false);
       setTotalDeseado("");
       loadData();
     } catch (error) {
@@ -667,7 +743,11 @@ export default function OfertasClientePage(): React.ReactElement {
                 </TableRow>
               ) : (
                 paginatedOfertas.map((oferta) => (
-                  <TableRow key={oferta.id}>
+                  <TableRow
+                    key={oferta.id}
+                    className="cursor-pointer hover:bg-muted/60"
+                    onClick={() => void openDetailDialog(oferta)}
+                  >
                     <TableCell className="font-medium">{oferta.numero}</TableCell>
                     <TableCell>{oferta.cliente?.nombre ?? ""} {oferta.cliente?.apellidos ?? ""}</TableCell>
                     <TableCell className="max-w-[200px]">
@@ -682,9 +762,9 @@ export default function OfertasClientePage(): React.ReactElement {
                     <TableCell>
                       <Badge variant={estadoColors[oferta.estado]}>{oferta.estado}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openDetailDialog(oferta)}>
+                        <Button variant="ghost" size="icon" onClick={() => void openDetailDialog(oferta)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button
@@ -749,71 +829,79 @@ export default function OfertasClientePage(): React.ReactElement {
 
       {/* Create Dialog - Todo en un paso */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[92vw] sm:w-[90vw] max-w-[900px] max-h-[85vh] overflow-y-auto overflow-x-hidden p-3 sm:p-6">
+        <DialogContent className="w-[92vw] sm:w-[90vw] max-w-[900px] max-h-[85vh] overflow-y-auto overflow-x-hidden p-3 pr-12 sm:p-6 sm:pr-14">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Nueva Oferta a Cliente</DialogTitle>
           </DialogHeader>
           
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
             {/* Información básica */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm">Número *</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
+              <div>
+                <Label className="text-slate-500 text-xs sm:text-sm">Número *</Label>
                 <Input
                   value={formData.numero}
                   onChange={(e) => setFormData((p) => ({ ...p, numero: e.target.value }))}
                   placeholder="Ej: Z26001"
                   required
-                  className="h-9 sm:h-10"
+                  className="mt-1 h-9 sm:h-10 text-sm"
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm">Cliente *</Label>
+              <div className="min-w-0">
+                <Label className="text-slate-500 text-xs sm:text-sm">Cliente *</Label>
                 <Select
                   value={formData.clienteId}
                   onValueChange={(value) => setFormData((p) => ({ ...p, clienteId: value }))}
                 >
-                  <SelectTrigger className="h-9 sm:h-10 text-sm">
+                  <SelectTrigger className="mt-1 h-9 sm:h-10 text-sm max-w-full">
                     <SelectValue placeholder="Seleccionar" />
                   </SelectTrigger>
                   <SelectContent>
                     {clientes.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.nombre} {c.apellidos}
+                        {c.nombreCompania || `${c.nombre ?? ""} ${c.apellidos ?? ""}`.trim()}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm">Fecha</Label>
+              <div>
+                <Label className="text-slate-500 text-xs sm:text-sm">Fecha</Label>
                 <Input
                   type="date"
                   value={formData.fecha}
                   onChange={(e) => setFormData((p) => ({ ...p, fecha: e.target.value }))}
-                  className="h-9 sm:h-10"
+                  className="mt-1 h-9 sm:h-10 text-sm"
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs sm:text-sm">Observaciones</Label>
+              <div className="sm:col-span-2 lg:col-span-4">
+                <Label className="text-slate-500 text-xs sm:text-sm">Observaciones</Label>
                 <Input
                   value={formData.observaciones}
                   onChange={(e) => setFormData((p) => ({ ...p, observaciones: e.target.value }))}
-                  className="h-9 sm:h-10"
+                  className="mt-1 h-9 sm:h-10 text-sm"
                 />
               </div>
             </div>
 
             {/* Sección de productos */}
-            <div className="border rounded-lg p-2 sm:p-4 space-y-2 sm:space-y-4">
-              <div className="flex justify-between items-center gap-2">
-                <h3 className="font-semibold text-xs sm:text-base">Productos</h3>
+            <div className="min-w-0 space-y-2 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <h4 className="font-medium text-sm sm:text-base">Productos</h4>
                 <Button
                   type="button"
                   size="sm"
                   variant={showAddItem ? "secondary" : "default"}
-                  onClick={() => setShowAddItem(!showAddItem)}
-                  className="text-xs sm:text-sm"
+                  onClick={() => {
+                    if (showAddItem) {
+                      resetItemForm();
+                      setShowAddItem(false);
+                    } else {
+                      resetItemForm();
+                      setShowAddItem(true);
+                    }
+                  }}
+                  className="flex items-center gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm"
                 >
                   {showAddItem ? <X className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> : <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />}
                   {showAddItem ? "Cancelar" : "Agregar"}
@@ -822,82 +910,109 @@ export default function OfertasClientePage(): React.ReactElement {
 
               {/* Form para agregar item */}
               {showAddItem && (
-                <div className="bg-slate-50 rounded-lg p-2 sm:p-3 space-y-2 sm:space-y-3">
+                <div className="bg-slate-50 rounded-lg border border-slate-200/80 p-3 sm:p-4 space-y-4">
+                  {editingTempId && (
+                    <p className="text-xs font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                      Editando un producto de la lista — guarda los cambios o cancela.
+                    </p>
+                  )}
                   {/* Toggle catálogo / libre */}
-                  <div className="flex items-center gap-2 pb-1 border-b">
-                    <button
-                      type="button"
-                      onClick={() => setItemModoLibre(false)}
-                      className={`text-xs px-2 py-1 rounded ${!itemModoLibre ? "bg-blue-600 text-white" : "bg-white border text-slate-600"}`}
-                    >
+                  <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-slate-200">
+                    <span className="text-xs text-slate-500 w-full sm:w-auto sm:mr-1">Origen:</span>
+                    <button type="button" onClick={() => setItemModoLibre(false)}
+                      className={`text-xs px-3 py-1.5 rounded-md border font-medium transition-colors ${!itemModoLibre ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300"}`}>
                       Del catálogo
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setItemModoLibre(true)}
-                      className={`text-xs px-2 py-1 rounded ${itemModoLibre ? "bg-orange-500 text-white" : "bg-white border text-slate-600"}`}
-                    >
-                      Producto libre (uso único)
+                    <button type="button" onClick={() => setItemModoLibre(true)}
+                      className={`text-xs px-3 py-1.5 rounded-md border font-medium transition-colors ${itemModoLibre ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300"}`}>
+                      Producto libre
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                    <div className="space-y-1">
-                      {!itemModoLibre ? (
-                        <>
-                          <Label className="text-xs sm:text-sm">Producto *</Label>
-                          <Select
-                            value={itemFormStrings.productoId}
-                            onValueChange={handleSelectProduct}
-                          >
-                            <SelectTrigger className="h-9 sm:h-10 text-sm">
-                              <SelectValue placeholder="Seleccionar" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {productos.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.nombre} ({p.unidadMedida.abreviatura})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </>
-                      ) : (
-                        <>
+
+                  {!itemModoLibre ? (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs sm:text-sm">Producto *</Label>
+                      <Select value={itemFormStrings.productoId} onValueChange={handleSelectProduct}>
+                        <SelectTrigger className="h-10 w-full text-sm">
+                          <SelectValue placeholder="Seleccionar producto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {productos.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.nombre} ({p.unidadMedida.abreviatura})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="space-y-1.5">
                           <Label className="text-xs sm:text-sm">Nombre del producto *</Label>
                           <Input
                             placeholder="Ej: Aceite de cocina"
                             value={itemFormStrings.nombreProducto}
                             onChange={(e) => setItemFormStrings((prev) => ({ ...prev, nombreProducto: e.target.value }))}
-                            className="h-9 sm:h-10 text-sm"
+                            className="h-10 text-sm"
                           />
-                        </>
-                      )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs sm:text-sm">Código (opcional)</Label>
+                            <Input
+                              placeholder="Código interno"
+                              value={itemFormStrings.codigoProducto}
+                              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, codigoProducto: e.target.value }))}
+                              className="h-10 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs sm:text-sm">Unidad de medida</Label>
+                            <Select value={itemFormStrings.unidadMedidaId} onValueChange={(v) => setItemFormStrings((prev) => ({ ...prev, unidadMedidaId: v }))}>
+                              <SelectTrigger className="h-10 text-sm w-full">
+                                <SelectValue placeholder="Seleccionar UM" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {unidades.map((u) => (
+                                  <SelectItem key={u.id} value={u.id}>
+                                    {u.nombre} ({u.abreviatura})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1">
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
                       <Label className="text-xs sm:text-sm">Cantidad *</Label>
                       <Input
                         placeholder="0"
                         value={itemFormStrings.cantidad}
                         onChange={(e) => setItemFormStrings((prev) => ({ ...prev, cantidad: e.target.value }))}
-                        className="h-9 sm:h-10"
+                        className="h-10"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs sm:text-sm">Precio *</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs sm:text-sm">Precio unitario *</Label>
                       <Input
                         placeholder="0.00"
                         value={itemFormStrings.precioUnitario}
                         onChange={(e) => setItemFormStrings((prev) => ({ ...prev, precioUnitario: e.target.value }))}
-                        className="h-9 sm:h-10"
+                        className="h-10"
                       />
                     </div>
                   </div>
 
                   {/* Campos informativos opcionales fijos */}
-                  <div className="border-t pt-2 sm:pt-3 space-y-3">
+                  <div className="border-t border-slate-200 pt-3 space-y-3">
                     <div>
-                      <p className="text-xs text-slate-500 mb-2">Opcionales</p>
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
+                      <p className="text-xs font-medium text-slate-600 mb-2">Campos opcionales (fijos)</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                       <div className="space-y-0.5">
                         <Label className="text-[10px] sm:text-xs">Sacos</Label>
                         <Input
@@ -974,29 +1089,29 @@ export default function OfertasClientePage(): React.ReactElement {
                         </Button>
                       </div>
                       {extraFields.length > 0 && (
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           {extraFields.map((field) => (
-                            <div key={field.id} className="grid grid-cols-7 gap-1 items-center">
+                            <div key={field.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
                               <Input
-                                placeholder="Label (ej: Cant. x Contenedor)"
+                                placeholder="Etiqueta (ej: Cant. x contenedor)"
                                 value={field.label}
                                 onChange={(e) => updateExtraField(field.id, "label", e.target.value)}
-                                className="col-span-3 h-8 text-[11px] px-2"
+                                className="h-9 text-xs sm:text-sm"
                               />
                               <Input
                                 placeholder="Valor"
                                 value={field.value}
                                 onChange={(e) => updateExtraField(field.id, "value", e.target.value)}
-                                className="col-span-3 h-8 text-[11px] px-2"
+                                className="h-9 text-xs sm:text-sm"
                               />
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => removeExtraField(field.id)}
-                                className="h-8 w-8"
+                                className="h-9 w-9 shrink-0 justify-self-end sm:justify-self-center"
                               >
-                                <X className="h-3 w-3 text-red-500" />
+                                <X className="h-4 w-4 text-red-500" />
                               </Button>
                             </div>
                           ))}
@@ -1005,10 +1120,10 @@ export default function OfertasClientePage(): React.ReactElement {
                     </div>
                   </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-1">
                     <Button type="button" onClick={addItemToList} className="w-full sm:w-auto">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Agregar
+                      {editingTempId ? <Save className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                      {editingTempId ? "Guardar cambios" : "Agregar a la lista"}
                     </Button>
                   </div>
                 </div>
@@ -1024,13 +1139,13 @@ export default function OfertasClientePage(): React.ReactElement {
                     <TableHead className="text-right">Cantidad</TableHead>
                     <TableHead className="text-right">Precio</TableHead>
                     <TableHead className="text-right">Importe</TableHead>
-                    <TableHead className="w-16"></TableHead>
+                    <TableHead className="w-24 text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {itemsTemp.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-4 text-slate-500">
+                      <TableCell colSpan={7} className="text-center py-4 text-slate-500">
                         No hay productos agregados
                       </TableCell>
                     </TableRow>
@@ -1041,21 +1156,35 @@ export default function OfertasClientePage(): React.ReactElement {
                           {item.producto?.nombre ?? item.nombreProducto ?? "—"}
                           {!item.productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
                         </TableCell>
-                        <TableCell>{item.producto?.unidadMedida?.abreviatura ?? "—"}</TableCell>
+                        <TableCell>{umAbbrForTempItem(item)}</TableCell>
                         <TableCell className="text-right">{item.cantidad}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.precioUnitario)}</TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(item.cantidad * item.precioUnitario)}
                         </TableCell>
-                        <TableCell>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeItemFromList(item.tempId)}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-0.5">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => openEditTempItem(item)}
+                              title="Editar"
+                            >
+                              <Pencil className="h-4 w-4 text-slate-600" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => removeItemFromList(item.tempId)}
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -1066,7 +1195,7 @@ export default function OfertasClientePage(): React.ReactElement {
 
               {itemsTemp.length > 0 && (
                 <div className="flex justify-end">
-                  <div className="text-base sm:text-lg font-bold">
+                  <div className="text-sm sm:text-base font-semibold text-slate-800">
                     Total: {formatCurrency(totalTemp)}
                   </div>
                 </div>
@@ -1075,7 +1204,7 @@ export default function OfertasClientePage(): React.ReactElement {
 
             {/* Términos y método de pago para el documento */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              <div className="border rounded-lg p-3 space-y-2">
+              <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-2">
                 <Label className="text-xs sm:text-sm">
                   Términos y condiciones (documento)
                 </Label>
@@ -1087,7 +1216,7 @@ export default function OfertasClientePage(): React.ReactElement {
                   }
                 />
               </div>
-              <div className="border rounded-lg p-3 space-y-2">
+              <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-2">
                 <Label className="text-xs sm:text-sm">
                   Método de pago (documento)
                 </Label>
@@ -1115,15 +1244,18 @@ export default function OfertasClientePage(): React.ReactElement {
 
       {/* Detail/Edit Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="w-[95vw] max-w-[1000px] max-h-[90vh] flex flex-col overflow-hidden">
-          <DialogHeader className="flex-shrink-0">
-            <DialogTitle className="text-base sm:text-lg">Editar Oferta: {selectedOferta?.numero}</DialogTitle>
-            <div className="flex flex-wrap gap-2 pt-2">
+        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[min(92vh,900px)] flex-col overflow-hidden p-3 sm:p-6 lg:pr-14">
+          <DialogHeader className="flex-shrink-0 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <DialogTitle className="flex items-center gap-2 flex-wrap text-left">
+              <Users className="h-5 w-5 shrink-0" />
+              Oferta: {selectedOferta?.numero}
+            </DialogTitle>
+            <div className="flex flex-wrap justify-end self-end gap-2">
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => selectedOferta && exportApi.downloadPdf("ofertas-cliente", selectedOferta.id)}
-                className="flex-1 sm:flex-none"
+                className="flex-1 sm:flex-initial"
               >
                 <FileDown className="h-4 w-4 mr-1" />
                 PDF
@@ -1132,141 +1264,151 @@ export default function OfertasClientePage(): React.ReactElement {
                 variant="outline" 
                 size="sm"
                 onClick={() => selectedOferta && exportApi.downloadExcel("ofertas-cliente", selectedOferta.id)}
-                className="flex-1 sm:flex-none"
+                className="flex-1 sm:flex-initial"
               >
                 <FileSpreadsheet className="h-4 w-4 mr-1" />
                 Excel
               </Button>
-              <Button onClick={() => handleUpdateOferta(true)} size="sm" className="gap-2 w-full sm:w-auto">
+              <Button onClick={() => handleUpdateOferta(true)} size="sm" className="gap-2 flex-1 sm:flex-initial">
                 <Save className="h-4 w-4" />
-                Guardar
+                Guardar y Cerrar
               </Button>
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <div className="space-y-3 sm:space-y-4 md:space-y-6 pr-2">
-              {/* Información básica editable */}
-              <div className="border rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3 md:space-y-4">
-                <h3 className="font-semibold text-sm sm:text-base">Información de la Oferta</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label className="text-xs sm:text-sm">Número de Oferta</Label>
-                    <Input
-                      value={editFormData.numero}
-                      onChange={(e) => setEditFormData((p) => ({ ...p, numero: e.target.value }))}
-                      className="h-9 sm:h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label className="text-xs sm:text-sm">Cliente</Label>
-                    <Input
-                      value={`${selectedOferta?.cliente.nombre || ""} ${selectedOferta?.cliente.apellidos || ""}`}
-                      disabled
-                      className="bg-slate-100 h-9 sm:h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label className="text-xs sm:text-sm">Fecha</Label>
-                    <Input
-                      type="date"
-                      value={editFormData.fecha}
-                      onChange={(e) => setEditFormData((p) => ({ ...p, fecha: e.target.value }))}
-                      className="h-9 sm:h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label className="text-xs sm:text-sm">Observaciones</Label>
-                    <Input
-                      value={editFormData.observaciones}
-                      onChange={(e) => setEditFormData((p) => ({ ...p, observaciones: e.target.value }))}
-                      className="h-9 sm:h-10 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label className="text-xs sm:text-sm">Estado</Label>
-                    <Select
-                      value={editFormData.estado}
-                      onValueChange={(value) => setEditFormData((p) => ({ ...p, estado: value }))}
-                    >
-                      <SelectTrigger className="h-9 sm:h-10 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pendiente">Pendiente</SelectItem>
-                        <SelectItem value="aceptada">Aceptada</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+          <div className="flex-1 overflow-y-auto min-h-0 overflow-x-hidden">
+            <div className="space-y-3 sm:space-y-4 pr-2 min-w-0">
+              {/* Info básica */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
+                <div>
+                  <Label className="text-slate-500 text-xs sm:text-sm">Cliente</Label>
+                  <p className="font-medium text-xs sm:text-sm mt-1">
+                    {selectedOferta?.cliente?.nombreCompania || `${selectedOferta?.cliente?.nombre || ""} ${selectedOferta?.cliente?.apellidos || ""}`.trim()}
+                  </p>
                 </div>
-              </div>
-
-              {/* Términos y método de pago para el documento */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                <div className="border rounded-lg p-3 sm:p-4 space-y-1 sm:space-y-2">
-                  <Label className="text-xs sm:text-sm">
-                    Términos y condiciones (documento)
-                  </Label>
-                  <textarea
-                    className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
-                    value={editFormData.terminosDocumentoTexto}
-                    onChange={(e) =>
-                      setEditFormData((p) => ({
-                        ...p,
-                        terminosDocumentoTexto: e.target.value,
-                      }))
-                    }
+                <div>
+                  <Label className="text-slate-500 text-xs sm:text-sm">Número</Label>
+                  <Input
+                    value={editFormData.numero}
+                    onChange={(e) => setEditFormData((p) => ({ ...p, numero: e.target.value }))}
+                    className="mt-1 h-9 sm:h-10 text-sm"
                   />
                 </div>
-                <div className="border rounded-lg p-3 sm:p-4 space-y-1 sm:space-y-2">
-                  <Label className="text-xs sm:text-sm">
-                    Método de pago (documento)
-                  </Label>
-                  <textarea
-                    className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
-                    value={editFormData.metodoPagoDocumentoTexto}
-                    onChange={(e) =>
-                      setEditFormData((p) => ({
-                        ...p,
-                        metodoPagoDocumentoTexto: e.target.value,
-                      }))
-                    }
+                <div>
+                  <Label className="text-slate-500 text-xs sm:text-sm">Fecha</Label>
+                  <Input
+                    type="date"
+                    value={editFormData.fecha}
+                    onChange={(e) => setEditFormData((p) => ({ ...p, fecha: e.target.value }))}
+                    className="mt-1 h-9 sm:h-10 text-sm"
+                  />
+                </div>
+                <div>
+                  <Label className="text-slate-500 text-xs sm:text-sm">Estado</Label>
+                  <Select
+                    value={editFormData.estado}
+                    onValueChange={(value) => setEditFormData((p) => ({ ...p, estado: value }))}
+                  >
+                    <SelectTrigger className="mt-1 h-9 sm:h-10 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendiente">Pendiente</SelectItem>
+                      <SelectItem value="aceptada">Aceptada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="sm:col-span-2 lg:col-span-4">
+                  <Label className="text-slate-500 text-xs sm:text-sm">Observaciones</Label>
+                  <Input
+                    value={editFormData.observaciones}
+                    onChange={(e) => setEditFormData((p) => ({ ...p, observaciones: e.target.value }))}
+                    className="mt-1 h-9 sm:h-10 text-sm"
                   />
                 </div>
               </div>
 
               {/* Productos */}
-              <div className="border rounded-lg p-3 sm:p-4 space-y-3 sm:space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-semibold text-sm sm:text-base">Productos</h3>
-                  <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
-                    <Button size="sm" onClick={() => setItemDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
+              <div className="min-w-0">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-2 sm:mb-3">
+                  <h4 className="font-medium text-sm sm:text-base">Productos</h4>
+                  <Dialog
+                    open={itemDialogOpen}
+                    onOpenChange={(open) => {
+                      setItemDialogOpen(open);
+                      if (open) {
+                        resetItemForm();
+                      }
+                    }}
+                  >
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => setItemDialogOpen(true)}
+                      className="flex items-center gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm"
+                    >
+                      <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       Agregar Producto
                     </Button>
-                    <DialogContent className="w-full max-w-lg">
+                    <DialogContent className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>Agregar Producto</DialogTitle>
                       </DialogHeader>
                       <form onSubmit={handleAddItem} className="space-y-4">
-                        <div className="space-y-2">
-                          <Label>Producto *</Label>
-                          <Select
-                            value={itemFormStrings.productoId}
-                            onValueChange={handleSelectProduct}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Seleccionar producto" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {productos.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.nombre} ({p.unidadMedida.abreviatura})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        {/* Toggle catálogo / libre */}
+                        <div className="flex items-center gap-2 pb-2 border-b">
+                          <button type="button" onClick={() => setItemModoLibre(false)}
+                            className={`text-xs px-3 py-1.5 rounded border font-medium transition-colors ${!itemModoLibre ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"}`}>
+                            Del catálogo
+                          </button>
+                          <button type="button" onClick={() => setItemModoLibre(true)}
+                            className={`text-xs px-3 py-1.5 rounded border font-medium transition-colors ${itemModoLibre ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"}`}>
+                            Producto libre
+                          </button>
                         </div>
+                        {!itemModoLibre ? (
+                          <div className="space-y-2">
+                            <Label>Producto *</Label>
+                            <Select value={itemFormStrings.productoId} onValueChange={handleSelectProduct}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Seleccionar producto" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {productos.map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {p.nombre} ({p.unidadMedida.abreviatura})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label>Nombre del producto *</Label>
+                              <Input placeholder="Ej: Aceite de cocina"
+                                value={itemFormStrings.nombreProducto}
+                                onChange={(e) => setItemFormStrings((prev) => ({ ...prev, nombreProducto: e.target.value }))} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Código (opcional)</Label>
+                              <Input placeholder="Código"
+                                value={itemFormStrings.codigoProducto}
+                                onChange={(e) => setItemFormStrings((prev) => ({ ...prev, codigoProducto: e.target.value }))} />
+                            </div>
+                            <div className="space-y-2 sm:col-span-2">
+                              <Label>Unidad de medida</Label>
+                              <Select value={itemFormStrings.unidadMedidaId} onValueChange={(v) => setItemFormStrings((prev) => ({ ...prev, unidadMedidaId: v }))}>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar UM" /></SelectTrigger>
+                                <SelectContent>
+                                  {unidades.map((u) => (
+                                    <SelectItem key={u.id} value={u.id}>{u.nombre} ({u.abreviatura})</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                           <div className="space-y-2">
                             <Label>Cantidad *</Label>
@@ -1339,7 +1481,46 @@ export default function OfertasClientePage(): React.ReactElement {
                             </div>
                           </div>
                         </div>
-                        <div className="flex justify-end gap-2">
+                        {/* Campos opcionales dinámicos (misma experiencia que al crear oferta) */}
+                        <div className="border-t pt-4 space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <p className="text-sm font-medium text-slate-600">Campos extra (label / valor)</p>
+                            <Button type="button" variant="outline" size="sm" onClick={addExtraField} className="shrink-0 w-full sm:w-auto">
+                              <Plus className="h-4 w-4 mr-1" />
+                              Agregar campo
+                            </Button>
+                          </div>
+                          {extraFields.length > 0 && (
+                            <div className="space-y-2">
+                              {extraFields.map((field) => (
+                                <div key={field.id} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                                  <Input
+                                    placeholder="Etiqueta"
+                                    value={field.label}
+                                    onChange={(e) => updateExtraField(field.id, "label", e.target.value)}
+                                    className="h-9 text-sm"
+                                  />
+                                  <Input
+                                    placeholder="Valor"
+                                    value={field.value}
+                                    onChange={(e) => updateExtraField(field.id, "value", e.target.value)}
+                                    className="h-9 text-sm"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9 shrink-0"
+                                    onClick={() => removeExtraField(field.id)}
+                                  >
+                                    <X className="h-4 w-4 text-red-500" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
                           <Button type="button" variant="outline" onClick={() => setItemDialogOpen(false)}>
                             Cancelar
                           </Button>
@@ -1377,7 +1558,14 @@ export default function OfertasClientePage(): React.ReactElement {
                           {!item.productoId && <span className="ml-1 text-[10px] text-orange-500 font-medium">(libre)</span>}
                         </TableCell>
                         <TableCell className="text-right">{item.cantidad}</TableCell>
-                        <TableCell>{item.producto?.unidadMedida?.abreviatura ?? "—"}</TableCell>
+                        <TableCell>
+                          {item.unidadMedida?.abreviatura
+                            ?? item.producto?.unidadMedida?.abreviatura
+                            ?? (item.unidadMedidaId
+                              ? unidades.find((u) => u.id === item.unidadMedidaId)?.abreviatura
+                              : undefined)
+                            ?? "—"}
+                        </TableCell>
                         <TableCell className="text-right">{formatCurrency(item.precioUnitario)}</TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(item.subtotal)}
@@ -1385,7 +1573,7 @@ export default function OfertasClientePage(): React.ReactElement {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
-                              <Pencil className="h-4 w-4 text-blue-500" />
+                              <Pencil className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
                               <Trash2 className="h-4 w-4 text-red-500" />
@@ -1398,45 +1586,81 @@ export default function OfertasClientePage(): React.ReactElement {
                 </TableBody>
               </Table>
               </div>
+            </div>
 
-              <div className="space-y-3 sm:space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                  <div className="text-base sm:text-lg font-bold">
+              {/* Ajuste por total (estilo original) */}
+              <div className="space-y-2 sm:space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-lg sm:text-2xl font-bold">
                     Total Actual: {formatCurrency(selectedOferta?.total || 0)}
-                  </div>
+                  </p>
                   <Button
+                    variant="outline"
                     size="sm"
-                    variant={showAdjustPrices ? "secondary" : "outline"}
-                    onClick={() => setShowAdjustPrices(!showAdjustPrices)}
-                    className="w-full sm:w-auto"
+                    onClick={() => setShowAdjustPrices((prev) => !prev)}
                   >
                     {showAdjustPrices ? "Cancelar" : "Ajustar a Total"}
                   </Button>
                 </div>
 
                 {showAdjustPrices && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3">
-                    <p className="text-xs sm:text-sm text-amber-800">
-                      Ingresa el total deseado y los precios de los productos se ajustarán proporcionalmente.
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 sm:p-4 space-y-2">
+                    <p className="text-xs sm:text-sm text-amber-900">
+                      Ingresa el total deseado y los precios de los productos se ajustaran proporcionalmente.
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-end">
-                      <div className="flex-1 space-y-1 w-full">
-                        <Label className="text-xs sm:text-sm">Total Deseado ($)</Label>
-                        <Input
-                          placeholder="Ej: 5000"
-                          value={totalDeseado}
-                          onChange={(e) => setTotalDeseado(e.target.value)}
-                          className="h-9 sm:h-10 text-sm"
-                        />
-                      </div>
-                      <Button onClick={handleAdjustPrices} className="w-full sm:w-auto">
+                    <Label className="text-xs sm:text-sm font-medium">Total Deseado ($)</Label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        className="flex-1 h-9 sm:h-10 text-sm bg-white"
+                        placeholder="Ej: 5000"
+                        value={totalDeseado}
+                        onChange={(e) => setTotalDeseado(e.target.value)}
+                      />
+                      <Button
+                        onClick={() => void handleAdjustPrices()}
+                        disabled={!totalDeseado || parseFloat(totalDeseado) <= 0}
+                        className="w-full sm:w-auto h-9 sm:h-10 text-sm bg-amber-400 hover:bg-amber-500 text-slate-900"
+                      >
                         Aplicar Ajuste
                       </Button>
                     </div>
                   </div>
                 )}
               </div>
-            </div>
+
+              {/* Términos y método de pago para el documento */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-2">
+                  <Label className="text-xs sm:text-sm">
+                    Términos y condiciones (documento)
+                  </Label>
+                  <textarea
+                    className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                    value={editFormData.terminosDocumentoTexto}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({
+                        ...p,
+                        terminosDocumentoTexto: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-2">
+                  <Label className="text-xs sm:text-sm">
+                    Método de pago (documento)
+                  </Label>
+                  <textarea
+                    className="w-full border rounded-md p-2 text-xs sm:text-sm min-h-[140px] resize-y"
+                    value={editFormData.metodoPagoDocumentoTexto}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({
+                        ...p,
+                        metodoPagoDocumentoTexto: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </DialogContent>
@@ -1449,6 +1673,25 @@ export default function OfertasClientePage(): React.ReactElement {
             <DialogTitle>Editar Producto</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleUpdateItem} className="space-y-4">
+            {editItemModoLibre && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-b pb-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Nombre del producto</Label>
+                  <Input placeholder="Nombre"
+                    value={editItemFormStrings.nombreProducto}
+                    onChange={(e) => setEditItemFormStrings((prev) => ({ ...prev, nombreProducto: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Unidad de medida</Label>
+                  <Select value={editItemFormStrings.unidadMedidaId} onValueChange={(v) => setEditItemFormStrings((prev) => ({ ...prev, unidadMedidaId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar UM" /></SelectTrigger>
+                    <SelectContent>
+                      {unidades.map((u) => <SelectItem key={u.id} value={u.id}>{u.nombre} ({u.abreviatura})</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label>Cantidad *</Label>

@@ -100,7 +100,10 @@ model UnidadMedida {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  productos        Producto[]
+  productos              Producto[]
+  itemsOfertaCliente     ItemOfertaCliente[]
+  itemsOfertaImportadora ItemOfertaImportadora[]
+  itemsFactura           ItemFactura[]
 }
 
 model CategoriaProducto {
@@ -252,6 +255,8 @@ model ItemOfertaCliente {
   producto         Producto? @relation(fields: [productoId], references: [id])
   nombreProducto   String?
   codigoProducto   String?
+  unidadMedidaId   String?
+  unidadMedida     UnidadMedida? @relation(fields: [unidadMedidaId], references: [id])
   descripcion      String?
   cantidad         Float
   precioUnitario   Float
@@ -333,6 +338,8 @@ model ItemOfertaImportadora {
   producto             Producto? @relation(fields: [productoId], references: [id])
   nombreProducto       String?
   codigoProducto       String?
+  unidadMedidaId       String?
+  unidadMedida         UnidadMedida? @relation(fields: [unidadMedidaId], references: [id])
   descripcion          String?
   cantidad             Float
   cantidadCajas        Float?
@@ -429,6 +436,8 @@ model ItemFactura {
   producto         Producto? @relation(fields: [productoId], references: [id])
   nombreProducto   String?
   codigoProducto   String?
+  unidadMedidaId   String?
+  unidadMedida     UnidadMedida? @relation(fields: [unidadMedidaId], references: [id])
   descripcion      String?
   cantidad         Float
   cantidadCajas    Float?

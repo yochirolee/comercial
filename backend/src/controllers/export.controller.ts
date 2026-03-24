@@ -107,6 +107,32 @@ function formatCurrencyUnitPrice(value: number): string {
   }).format(value);
 }
 
+async function buildUnidadAbrevMapFromItems(items: any[]): Promise<Map<string, string>> {
+  const ids = Array.from(
+    new Set(
+      items
+        .map((item) => (item as any)?.unidadMedidaId)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    )
+  );
+  if (ids.length === 0) return new Map();
+
+  const unidades = await prisma.unidadMedida.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, abreviatura: true },
+  });
+  return new Map(unidades.map((u) => [u.id, u.abreviatura]));
+}
+
+function getItemUnidadAbrev(item: any, unidadAbrevMap?: Map<string, string>): string {
+  return (
+    item?.producto?.unidadMedida?.abreviatura ??
+    item?.unidadMedida?.abreviatura ??
+    ((item?.unidadMedidaId && unidadAbrevMap?.get(item.unidadMedidaId)) || '') ??
+    ''
+  );
+}
+
 async function getImageForPdf(imagePath: string): Promise<Buffer | string | null> {
   if (!imagePath) return null;
   
@@ -225,6 +251,7 @@ async function addImageToPdf(
 
 // Campos opcionales que se pueden mostrar
 interface OptionalFields {
+  codigoArancelario: boolean;
   cantidadSacos: boolean;
   pesoXSaco: boolean;
   precioXSaco: boolean;
@@ -236,6 +263,7 @@ interface OptionalFields {
 // Detectar qué campos opcionales tienen valores en los items
 function detectOptionalFields(items: any[]): OptionalFields {
   const fields: OptionalFields = {
+    codigoArancelario: false,
     cantidadSacos: false,
     pesoXSaco: false,
     precioXSaco: false,
@@ -245,6 +273,7 @@ function detectOptionalFields(items: any[]): OptionalFields {
   };
 
   for (const item of items) {
+    if (item.codigoArancelario !== null && item.codigoArancelario !== undefined && String(item.codigoArancelario).trim() !== '') fields.codigoArancelario = true;
     if (item.cantidadSacos !== null && item.cantidadSacos !== undefined) fields.cantidadSacos = true;
     if (item.pesoXSaco !== null && item.pesoXSaco !== undefined) fields.pesoXSaco = true;
     if (item.precioXSaco !== null && item.precioXSaco !== undefined) fields.precioXSaco = true;
@@ -320,6 +349,11 @@ function buildDynamicColumns(items: any[]): DynamicColumns {
   }
 
   // Agregar campos opcionales fijos en orden lógico
+  if (optionalFields.codigoArancelario) {
+    headers.push('PARTIDA\nARANCEL');
+    widthsPdf.push(70);
+    widthsExcel.push(18);
+  }
   if (optionalFields.cantidadSacos) {
     headers.push('CANT.\nSACOS');
     widthsPdf.push(50);
@@ -409,7 +443,8 @@ function renderPdfTable(
   margin: number,
   usePrecioAjustado: boolean = false,
   includeTotal: boolean = false,
-  totalLabel: string = 'TOTAL CIF'
+  totalLabel: string = 'TOTAL CIF',
+  unidadAbrevMap?: Map<string, string>
 ): { yPos: number; totalImporte: number; tableLeft: number; tableWidth: number; lastColWidth: number } {
   const { headers, widthsPdf, optionalFields, dynamicLabels } = buildDynamicColumns(items);
   
@@ -464,7 +499,7 @@ function renderPdfTable(
     xPos += widthsPdf[colIndex++];
 
     // UNIDAD DE MEDIDA
-    const unidadMedidaAbrev = (item as any).producto?.unidadMedida?.abreviatura ?? '';
+    const unidadMedidaAbrev = getItemUnidadAbrev(item, unidadAbrevMap);
     doc.text(unidadMedidaAbrev, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
     xPos += widthsPdf[colIndex++];
 
@@ -480,6 +515,11 @@ function renderPdfTable(
     }
     
     // Campos opcionales
+    if (optionalFields.codigoArancelario) {
+      const val = (item as any).codigoArancelario ? String((item as any).codigoArancelario) : '-';
+      doc.text(val, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
+      xPos += widthsPdf[colIndex++];
+    }
     if (optionalFields.cantidadSacos) {
       const val = item.cantidadSacos ?? '-';
       doc.text(String(val), xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
@@ -538,16 +578,15 @@ function renderPdfTable(
   if (includeTotal) {
     yPos += 4;
     doc.font('Helvetica-Bold').fontSize(9);
-    
-    // Calcular posición para "TOTAL CIF:" (penúltima columna) y valor (última columna)
-    const totalLabelX = tableLeft + tableWidth - widthsPdf[widthsPdf.length - 1] - widthsPdf[widthsPdf.length - 2];
-    const totalValueX = tableLeft + tableWidth - widthsPdf[widthsPdf.length - 1];
-    
-    const totalLabelWidth = Math.max(widthsPdf[widthsPdf.length - 2] - 6, 58);
-    doc.text(totalLabel + ':', totalLabelX + 3, yPos, { width: totalLabelWidth, align: 'right', lineBreak: false });
-    doc.text(`$${formatCurrency(totalImporte)}`, totalValueX + 3, yPos, { 
-      width: widthsPdf[widthsPdf.length - 1] - 6, 
-      align: 'right' 
+
+    // Evitar solapamiento cuando hay muchas columnas opcionales:
+    // renderizamos "TOTAL + valor" en un solo bloque derecho.
+    const totalBlockWidth = Math.max(widthsPdf[widthsPdf.length - 1] + widthsPdf[widthsPdf.length - 2] - 6, 120);
+    const totalBlockX = tableLeft + tableWidth - totalBlockWidth;
+    doc.text(`${totalLabel}: $${formatCurrency(totalImporte)}`, totalBlockX, yPos, {
+      width: totalBlockWidth,
+      align: 'right',
+      lineBreak: false,
     });
     
     yPos += 16;
@@ -656,7 +695,8 @@ function renderExcelTable(
   worksheet: ExcelJS.Worksheet, 
   items: any[], 
   startRow: number,
-  usePrecioAjustado: boolean = false
+  usePrecioAjustado: boolean = false,
+  unidadAbrevMap?: Map<string, string>
 ): { endRow: number; totalImporte: number; lastCol: string; numCols: number } {
   const { headers, widthsExcel, optionalFields, dynamicLabels } = buildDynamicColumns(items);
   
@@ -694,7 +734,7 @@ function renderExcelTable(
     totalImporte += importe;
 
     // Construir valores dinámicamente
-    const unidadMedidaAbrev = (item as any).producto?.unidadMedida?.abreviatura ?? '';
+    const unidadMedidaAbrev = getItemUnidadAbrev(item, unidadAbrevMap);
     const values: (string | number)[] = [itemNum, (item as any).producto?.nombre ?? (item as any).nombreProducto ?? '', unidadMedidaAbrev];
     
     // Campos opcionales dinámicos (por label) inmediatamente después de UM
@@ -707,6 +747,7 @@ function renderExcelTable(
       }
     }
     
+    if (optionalFields.codigoArancelario) values.push((item as any).codigoArancelario ?? '-');
     if (optionalFields.cantidadSacos) values.push(item.cantidadSacos ?? '-');
     if (optionalFields.pesoXSaco) values.push(item.pesoXSaco ?? '-');
     if (optionalFields.precioXSaco) values.push(item.precioXSaco ?? '-');
@@ -732,6 +773,10 @@ function renderExcelTable(
     
     // Formatear campos opcionales de precio con $
     let colIdx = 4 + dynamicLabels.length;
+    if (optionalFields.codigoArancelario) {
+      dataRow.getCell(colIdx).alignment = { horizontal: 'center' };
+      colIdx++;
+    }
     if (optionalFields.cantidadSacos) {
       dataRow.getCell(colIdx).alignment = { horizontal: 'center' };
       colIdx++;
@@ -946,7 +991,8 @@ export const ExportController = {
     doc.y = afterHeaderY;
 
     // TABLA DE ITEMS (centrada, con total incluido)
-    const { yPos, totalImporte } = renderPdfTable(doc, oferta.items, margin, false, true, 'TOTAL CIF');
+    const unidadAbrevMap = await buildUnidadAbrevMapFromItems(oferta.items);
+    const { yPos, totalImporte } = renderPdfTable(doc, oferta.items, margin, false, true, 'TOTAL CIF', unidadAbrevMap);
     doc.y = yPos + 15;
 
     // TÉRMINOS
@@ -992,7 +1038,8 @@ export const ExportController = {
     let row = await renderExcelHeader(worksheet, workbook, empresa, lastCol);
 
     // TABLA DE ITEMS
-    const { endRow, totalImporte, numCols } = renderExcelTable(worksheet, oferta.items, row, false);
+    const unidadAbrevMap = await buildUnidadAbrevMapFromItems(oferta.items);
+    const { endRow, totalImporte, numCols } = renderExcelTable(worksheet, oferta.items, row, false, unidadAbrevMap);
 
     // TOTAL CIF como fila de la tabla
     row = renderExcelTotalRow(worksheet, endRow, totalImporte, numCols, lastCol);
@@ -1069,7 +1116,8 @@ export const ExportController = {
     doc.moveDown(0.5);
 
     // TABLA DE ITEMS (centrada, con total incluido)
-    const { yPos, totalImporte } = renderPdfTable(doc, oferta.items, margin, false, true, 'TOTAL CIF');
+    const unidadAbrevMap = await buildUnidadAbrevMapFromItems(oferta.items);
+    const { yPos, totalImporte } = renderPdfTable(doc, oferta.items, margin, false, true, 'TOTAL CIF', unidadAbrevMap);
     doc.y = yPos + 15;
 
     // Bloque en DOS COLUMNAS: Términos (izquierda 60%) y Método de pago (derecha 40%)
@@ -1310,7 +1358,8 @@ export const ExportController = {
     row++; // Espacio antes de la tabla
 
     // TABLA DE ITEMS
-    const { endRow, totalImporte, numCols } = renderExcelTable(worksheet, oferta.items, row, false);
+    const unidadAbrevMap = await buildUnidadAbrevMapFromItems(oferta.items);
+    const { endRow, totalImporte, numCols } = renderExcelTable(worksheet, oferta.items, row, false, unidadAbrevMap);
 
     // TOTAL CIF como fila de la tabla
     row = renderExcelTotalRow(worksheet, endRow, totalImporte, numCols, lastCol);
@@ -1393,18 +1442,6 @@ export const ExportController = {
     // FIRMAS Y CUÑO - Empresa a la izquierda, Cliente a la derecha (en la misma fila)
     row += 2; // Espacio para separar del bloque de términos
     const firmaStartRow = row + 2;
-
-    // FIRMA EMPRESA - Imagen
-    const firmaPath = getImagePath(empresa.firmaPresidente);
-    if (firmaPath) {
-      await addImageToExcel(workbook, worksheet, firmaPath, { col: 0.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
-    }
-
-    // CUÑO
-    const cunoPath = getImagePath(empresa.cunoEmpresa);
-    if (cunoPath) {
-      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
-    }
 
     row = firmaStartRow + 3;
 
@@ -1522,7 +1559,8 @@ export const ExportController = {
     doc.moveDown(0.5);
 
     // TABLA DE ITEMS (centrada, usa precioAjustado)
-    const { yPos, totalImporte, tableLeft, tableWidth, lastColWidth } = renderPdfTable(doc, oferta.items, margin, true, false);
+    const unidadAbrevMap = await buildUnidadAbrevMapFromItems(oferta.items);
+    const { yPos, totalImporte, tableLeft, tableWidth, lastColWidth } = renderPdfTable(doc, oferta.items, margin, true, false, 'TOTAL CIF', unidadAbrevMap);
     doc.y = yPos + 5;
 
     // TOTALES: FOB, FLETE, (SEGURO si aplica), CIF (alineados con la tabla)
@@ -1707,7 +1745,8 @@ export const ExportController = {
 
     // Primero renderizar tabla para obtener lastCol dinámico
     const tableStartRow = 14;
-    const { endRow, totalImporte, lastCol } = renderExcelTable(worksheet, oferta.items, tableStartRow, true);
+    const unidadAbrevMap = await buildUnidadAbrevMapFromItems(oferta.items);
+    const { endRow, totalImporte, lastCol } = renderExcelTable(worksheet, oferta.items, tableStartRow, true, unidadAbrevMap);
 
     // Llenar header con lastCol correcto
     let row = 1;
@@ -1896,16 +1935,6 @@ export const ExportController = {
     const firmaStartRow = row + 2;
     const incluyeFirmaCliente = oferta.incluyeFirmaCliente !== false;
 
-    const firmaPath = getImagePath(empresa.firmaPresidente);
-    if (firmaPath) {
-      await addImageToExcel(workbook, worksheet, firmaPath, { col: 0.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
-    }
-
-    const cunoPath = getImagePath(empresa.cunoEmpresa);
-    if (cunoPath) {
-      await addImageToExcel(workbook, worksheet, cunoPath, { col: 2.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
-    }
-
     row = firmaStartRow + 3;
 
     worksheet.getCell(`A${row}`).value = '________________________________';
@@ -1991,6 +2020,8 @@ export const ExportController = {
       return;
     }
 
+    const facturaUnidadAbrevMap = await buildUnidadAbrevMapFromItems(factura.items);
+
     // Obtener número de oferta cliente si existe
     let numeroOfertaCliente = factura.numero;
     if (factura.tipoOfertaOrigen === 'cliente' && factura.ofertaOrigenId) {
@@ -2064,7 +2095,7 @@ export const ExportController = {
 
     // TABLA DE ITEMS
     const tableTop = doc.y;
-    const unidadMedida = factura.items[0]?.producto?.unidadMedida?.abreviatura || 'KG';
+    const unidadMedida = getItemUnidadAbrev(factura.items[0], facturaUnidadAbrevMap) || 'KG';
     
     // Headers de tabla para factura (con PESO NETO y PESO BRUTO)
     const facturaHeaders = ['PRODUCTO', 'UM'];
@@ -2075,6 +2106,7 @@ export const ExportController = {
     
     // Contar columnas opcionales (fijas + dinámicas) para ajustar ancho de descripción
     let numOptionalCols = 0;
+    if (optionalFields.codigoArancelario) numOptionalCols++;
     if (optionalFields.cantidadSacos) numOptionalCols++;
     if (optionalFields.pesoXSaco) numOptionalCols++;
     if (optionalFields.precioXSaco) numOptionalCols++;
@@ -2096,6 +2128,11 @@ export const ExportController = {
       }
       facturaHeaders.push(headerLabel.toUpperCase());
       facturaWidths.push(45);
+    }
+
+    if (optionalFields.codigoArancelario) {
+      facturaHeaders.push('PARTIDA\nARANCEL');
+      facturaWidths.push(55);
     }
 
     if (optionalFields.cantidadSacos) {
@@ -2175,7 +2212,7 @@ export const ExportController = {
       xPos += facturaWidths[0];
       
       // UM
-      doc.text((item as any).producto?.unidadMedida?.abreviatura ?? '', xPos + 2, yPos, { width: facturaWidths[1] - 4, align: 'center' });
+      doc.text(getItemUnidadAbrev(item, facturaUnidadAbrevMap), xPos + 2, yPos, { width: facturaWidths[1] - 4, align: 'center' });
       xPos += facturaWidths[1];
       
       let colIdx = 2;
@@ -2192,6 +2229,10 @@ export const ExportController = {
       }
       
       // Campos opcionales fijos
+      if (optionalFields.codigoArancelario) {
+        doc.text(String((item as any).codigoArancelario ?? '-'), xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'center' });
+        xPos += facturaWidths[colIdx++];
+      }
       if (optionalFields.cantidadSacos) {
         doc.text(String((item as any).cantidadSacos ?? '-'), xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'center' });
         xPos += facturaWidths[colIdx++];
@@ -2426,6 +2467,8 @@ export const ExportController = {
       return;
     }
 
+    const facturaUnidadAbrevMap = await buildUnidadAbrevMapFromItems(factura.items);
+
     // Obtener número de oferta cliente si existe
     let numeroOfertaCliente = factura.numero;
     if (factura.tipoOfertaOrigen === 'cliente' && factura.ofertaOrigenId) {
@@ -2442,12 +2485,13 @@ export const ExportController = {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Factura');
 
-    const unidadMedida = factura.items[0]?.producto?.unidadMedida?.abreviatura || 'KG';
+    const unidadMedida = getItemUnidadAbrev(factura.items[0], facturaUnidadAbrevMap) || 'KG';
     const optionalFields = detectOptionalFields(factura.items);
     const dynamicLabels = getDynamicOptionalLabels(factura.items);
     
     // Calcular número de columnas
     let numCols = 7; // PRODUCTO, UM, CANT, PESO NETO, PESO BRUTO, PRECIO, IMPORTE
+    if (optionalFields.codigoArancelario) numCols++;
     if (optionalFields.cantidadSacos) numCols++;
     if (optionalFields.pesoXSaco) numCols++;
     if (optionalFields.precioXSaco) numCols++;
@@ -2537,6 +2581,7 @@ export const ExportController = {
     
     // Contar columnas opcionales (fijas + dinámicas) para ajustar ancho de descripción
     let numOptionalCols = 0;
+    if (optionalFields.codigoArancelario) numOptionalCols++;
     if (optionalFields.cantidadSacos) numOptionalCols++;
     if (optionalFields.pesoXSaco) numOptionalCols++;
     if (optionalFields.precioXSaco) numOptionalCols++;
@@ -2560,6 +2605,11 @@ export const ExportController = {
       widths.push(10);
     }
     
+    if (optionalFields.codigoArancelario) {
+      headers.push('PARTIDA ARANCEL');
+      widths.push(16);
+    }
+
     if (optionalFields.cantidadSacos) {
       headers.push('CANT SACOS');
       widths.push(10);
@@ -2621,7 +2671,7 @@ export const ExportController = {
 
       const values: (string | number)[] = [
         (item as any).producto?.nombre ?? (item as any).nombreProducto ?? '',
-        (item as any).producto?.unidadMedida?.abreviatura ?? '',
+        getItemUnidadAbrev(item, facturaUnidadAbrevMap),
       ];
       
       // Campos dinámicos
@@ -2634,6 +2684,7 @@ export const ExportController = {
         }
       }
       
+      if (optionalFields.codigoArancelario) values.push((item as any).codigoArancelario ?? '-');
       if (optionalFields.cantidadSacos) values.push((item as any).cantidadSacos ?? '-');
       if (optionalFields.pesoXSaco) values.push((item as any).pesoXSaco ?? '-');
       if (optionalFields.precioXSaco) values.push((item as any).precioXSaco ?? '-');
@@ -2795,16 +2846,6 @@ export const ExportController = {
 
     // FIRMAS
     const firmaStartRow = row + 2;
-
-    const firmaPath = getImagePath(empresa.firmaPresidente);
-    if (firmaPath) {
-      await addImageToExcel(workbook, worksheet, firmaPath, { col: 0.8, row: firmaStartRow - 1 }, { width: 100, height: 50 });
-    }
-
-    const cunoPath = getImagePath(empresa.cunoEmpresa);
-    if (cunoPath) {
-      await addImageToExcel(workbook, worksheet, cunoPath, { col: 1.5, row: firmaStartRow - 1 }, { width: 70, height: 70 });
-    }
 
     row = firmaStartRow + 3;
 

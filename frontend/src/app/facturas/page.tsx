@@ -56,6 +56,7 @@ import {
   ofertasImportadoraApi,
   exportApi,
   importadorasApi,
+  unidadesApi,
 } from "@/lib/api";
 import type {
   Factura,
@@ -64,9 +65,23 @@ import type {
   FacturaFromOfertaClienteInput,
   FacturaFromOfertaImportadoraInput,
   Importadora,
+  UnidadMedida,
+  ItemFactura,
 } from "@/lib/api";
 
 const PAGE_SIZE = 10;
+
+function umAbbrFacturaItem(
+  item: Pick<ItemFactura, "producto" | "unidadMedida" | "unidadMedidaId">,
+  unidades: UnidadMedida[],
+): string {
+  return (
+    item.unidadMedida?.abreviatura
+    ?? item.producto?.unidadMedida?.abreviatura
+    ?? (item.unidadMedidaId ? unidades.find((u) => u.id === item.unidadMedidaId)?.abreviatura : undefined)
+    ?? "—"
+  );
+}
 
 interface ExtraFieldForm {
   id: string;
@@ -102,6 +117,8 @@ export default function FacturasPage(): React.ReactElement {
   const [ofertasCliente, setOfertasCliente] = useState<OfertaCliente[]>([]);
   const [ofertasImportadora, setOfertasImportadora] = useState<OfertaImportadora[]>([]);
   const [importadoras, setImportadoras] = useState<Importadora[]>([]);
+  const [unidades, setUnidades] = useState<UnidadMedida[]>([]);
+  const [editItemModoLibre, setEditItemModoLibre] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -110,6 +127,7 @@ export default function FacturasPage(): React.ReactElement {
   const [newDialogOpen, setNewDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [editItemDialogOpen, setEditItemDialogOpen] = useState(false);
+  const [showAdjustPrices, setShowAdjustPrices] = useState(false);
   const [adjustTotal, setAdjustTotal] = useState("");
 
   // Selected data
@@ -180,6 +198,9 @@ export default function FacturasPage(): React.ReactElement {
     pesoXCaja: "",
     precioXCaja: "",
     codigoArancelario: "",
+    nombreProducto: "",
+    codigoProducto: "",
+    unidadMedidaId: "",
   });
   const [editExtraFields, setEditExtraFields] = useState<ExtraFieldForm[]>([]);
 
@@ -203,16 +224,22 @@ export default function FacturasPage(): React.ReactElement {
   async function loadData(): Promise<void> {
     try {
       setCurrentPage(1);
-      const [facturasData, ocData, oiData, importadorasData] = await Promise.all([
+      const [facturasData, ocData, oiData, importadorasData, unidadesData] = await Promise.all([
         facturasApi.getAll(),
         ofertasClienteApi.getAll(),
         ofertasImportadoraApi.getAll(),
         importadorasApi.getAll(),
+        unidadesApi.getAll(),
       ]);
       setFacturas(facturasData);
       setOfertasCliente(ocData.filter((o) => o.estado === "aceptada" || o.estado === "pendiente"));
-      setOfertasImportadora(oiData.filter((o) => o.estado === "aceptada" || o.estado === "pendiente"));
+      setOfertasImportadora(
+        oiData
+          .filter((o) => o.estado === "aceptada" || o.estado === "pendiente")
+          .sort((a, b) => (b.numero ?? "").localeCompare(a.numero ?? ""))
+      );
       setImportadoras(importadorasData);
+      setUnidades(unidadesData);
     } catch (error) {
       toast.error("Error al cargar datos");
       console.error(error);
@@ -397,6 +424,8 @@ export default function FacturasPage(): React.ReactElement {
   // Open detail dialog
   function openDetailDialog(factura: Factura): void {
     setSelectedFactura(factura);
+    setShowAdjustPrices(false);
+    setAdjustTotal("");
     setEditFormData({
       numeroFactura: factura.numero || "",
       fecha: factura.fecha ? factura.fecha.split("T")[0] : "",
@@ -502,6 +531,7 @@ export default function FacturasPage(): React.ReactElement {
       ? String(item.pesoBruto) 
       : (item.producto?.pesoBruto ? String(item.producto.pesoBruto) : "");
     
+    setEditItemModoLibre(!item.productoId);
     setEditItemForm({
       cantidad: String(item.cantidad),
       pesoNeto: pesoNetoValue,
@@ -514,6 +544,9 @@ export default function FacturasPage(): React.ReactElement {
       pesoXCaja: String(item.pesoXCaja || ""),
       precioXCaja: String(item.precioXCaja || ""),
       codigoArancelario: item.codigoArancelario || "",
+      nombreProducto: item.nombreProducto || "",
+      codigoProducto: item.codigoProducto || "",
+      unidadMedidaId: item.unidadMedidaId || "",
     });
     setEditExtraFields(
       (item.camposOpcionales || []).map((c, idx) => ({
@@ -581,6 +614,11 @@ export default function FacturasPage(): React.ReactElement {
           ? editItemForm.codigoArancelario 
           : null,
         camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
+        ...(editItemModoLibre ? {
+          nombreProducto: editItemForm.nombreProducto.trim() || null,
+          codigoProducto: editItemForm.codigoProducto.trim() || null,
+          unidadMedidaId: editItemForm.unidadMedidaId || null,
+        } : {}),
       });
       toast.success("Item actualizado");
       const updated = await facturasApi.getById(selectedFactura.id);
@@ -676,7 +714,7 @@ export default function FacturasPage(): React.ReactElement {
                     <SelectContent>
                       {ofertasImportadora.map((o) => (
                         <SelectItem key={o.id} value={o.id}>
-                          {o.numero} - {o.cliente.nombre} (CIF: {formatCurrency(o.precioCIF)})
+                          {o.numero} - {(o.cliente?.nombreCompania || `${o.cliente?.nombre ?? ""} ${o.cliente?.apellidos ?? ""}`.trim())} (CIF: {formatCurrency(o.precioCIF)})
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -932,7 +970,11 @@ export default function FacturasPage(): React.ReactElement {
                 </TableRow>
               ) : (
                 paginatedFacturas.map((factura) => (
-                  <TableRow key={factura.id}>
+                  <TableRow
+                    key={factura.id}
+                    className="cursor-pointer hover:bg-muted/60"
+                    onClick={() => openDetailDialog(factura)}
+                  >
                     <TableCell className="font-medium">{factura.numero}</TableCell>
                     <TableCell>{factura.cliente.nombre} {factura.cliente.apellidos}</TableCell>
                     <TableCell>{factura.importadora?.nombre || "-"}</TableCell>
@@ -951,7 +993,7 @@ export default function FacturasPage(): React.ReactElement {
                     <TableCell>
                       <Badge variant={estadoColors[factura.estado]}>{factura.estado}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openDetailDialog(factura)}>
                           <Eye className="h-4 w-4" />
@@ -1018,13 +1060,13 @@ export default function FacturasPage(): React.ReactElement {
 
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="w-[90vw] max-w-[1200px] max-h-[90vh] overflow-y-auto overflow-x-hidden">
-          <DialogHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[min(92vh,900px)] flex-col overflow-hidden p-3 sm:p-6 lg:pr-14">
+          <DialogHeader className="flex-shrink-0 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
               Factura: {selectedFactura?.numero}
             </DialogTitle>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap justify-end self-end gap-2">
               <Button 
                 variant="outline" 
                 size="sm"
@@ -1050,7 +1092,8 @@ export default function FacturasPage(): React.ReactElement {
             </div>
           </DialogHeader>
 
-          <div className="space-y-4 min-w-0">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div className="space-y-4 min-w-0 pr-1">
             {/* Info básica - Campos editables */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg min-w-0">
               <div>
@@ -1126,10 +1169,81 @@ export default function FacturasPage(): React.ReactElement {
               </div>
             </div>
 
-            {/* Flete, Seguro y Ajuste */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            {/* Tabla de productos */}
+            <div className="min-w-0">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium">Productos</h4>
+              </div>
+              {selectedFactura && (
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <Table className="min-w-full">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[150px] max-w-[200px]">Producto</TableHead>
+                      <TableHead className="w-16">UM</TableHead>
+                      {hasOptionalFields(selectedFactura.items).cantidadSacos && (
+                        <TableHead className="text-right w-20">Sacos</TableHead>
+                      )}
+                      {hasOptionalFields(selectedFactura.items).codigoArancelario && (
+                        <TableHead className="min-w-[120px] max-w-[150px]">Partida Arancel.</TableHead>
+                      )}
+                      <TableHead className="text-right w-24">Cantidad</TableHead>
+                      <TableHead className="text-right w-24">Peso Neto</TableHead>
+                      <TableHead className="text-right w-24">Peso Bruto</TableHead>
+                      <TableHead className="text-right w-24">Precio</TableHead>
+                      <TableHead className="text-right w-28">Importe</TableHead>
+                      <TableHead className="w-20"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedFactura.items.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="min-w-[150px] max-w-[200px]">
+                          <div className="truncate" title={item.producto?.nombre ?? item.nombreProducto ?? ""}>
+                            {item.producto?.nombre ?? item.nombreProducto ?? "—"}
+                            {!item.productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
+                          </div>
+                        </TableCell>
+                        <TableCell className="w-16">{umAbbrFacturaItem(item, unidades)}</TableCell>
+                        {hasOptionalFields(selectedFactura.items).cantidadSacos && (
+                          <TableCell className="text-right w-20">{item.cantidadSacos || "-"}</TableCell>
+                        )}
+                        {hasOptionalFields(selectedFactura.items).codigoArancelario && (
+                          <TableCell className="min-w-[120px] max-w-[150px]">
+                            <div className="truncate" title={item.codigoArancelario || "-"}>
+                              {item.codigoArancelario || "-"}
+                            </div>
+                          </TableCell>
+                        )}
+                        <TableCell className="text-right w-24">{item.cantidad.toFixed(2)}</TableCell>
+                        <TableCell className="text-right w-24">{(item.pesoNeto || item.cantidad).toFixed(2)}</TableCell>
+                        <TableCell className="text-right w-24">{(item.pesoBruto || "-")}</TableCell>
+                        <TableCell className="text-right w-24">{formatCurrencyUnitPrice(item.precioUnitario)}</TableCell>
+                        <TableCell className="text-right font-medium w-28">
+                          {formatCurrency(item.subtotal)}
+                        </TableCell>
+                        <TableCell className="w-20">
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                </div>
+              )}
+            </div>
+
+            {/* Costos y subtotal */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 items-stretch">
               {/* Costos de envío */}
-              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3 h-full">
                 <h4 className="font-medium text-slate-700">Costos de Envío</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
@@ -1167,27 +1281,66 @@ export default function FacturasPage(): React.ReactElement {
                 </div>
               </div>
 
-              {/* Ajustar al total */}
-              <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200 space-y-3">
-                <h4 className="font-medium text-emerald-800">Ajustar al Total CFR</h4>
-                <p className="text-xs text-slate-600">
-                  Si quieres que el CFR sea un valor específico, escríbelo aquí. Los precios de los productos se ajustarán.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    className="flex-1"
-                    placeholder={`Actual: ${formatCurrency(selectedFactura?.total || 0)}`}
-                    value={adjustTotal}
-                    onChange={(e) => setAdjustTotal(e.target.value)}
-                  />
-                  <Button 
-                    onClick={handleAdjustPrices}
-                    disabled={!adjustTotal || parseFloat(adjustTotal) <= 0}
-                    className="w-full sm:w-auto"
+              {/* Resumen totales */}
+              <div className="w-full space-y-2 text-sm p-4 bg-emerald-50 rounded-lg h-full">
+                <div className="flex justify-between">
+                  <span>FOB (productos):</span>
+                  <span className="font-medium">{formatCurrency(selectedFactura?.subtotal || 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>+ Flete:</span>
+                  <span>{formatCurrency(parseFloat(editFormData.flete) || 0)}</span>
+                </div>
+                {editFormData.tieneSeguro && (
+                  <div className="flex justify-between">
+                    <span>+ Seguro:</span>
+                    <span>{formatCurrency(parseFloat(editFormData.seguro) || 0)}</span>
+                  </div>
+                )}
+                <Separator />
+                <div className="flex justify-between text-lg font-bold text-emerald-700">
+                  <span>= CFR Total:</span>
+                  <span>{formatCurrency(selectedFactura?.total || 0)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Ajustar al total (debajo del subtotal) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mt-3">
+              <div className="hidden lg:block" />
+              <div className="space-y-2 sm:space-y-3">
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAdjustPrices((prev) => !prev)}
                   >
-                    Ajustar
+                    {showAdjustPrices ? "Cancelar" : "Ajustar al Total CFR"}
                   </Button>
                 </div>
+
+                {showAdjustPrices && (
+                  <div className="rounded-lg border border-slate-200 bg-white p-3 sm:p-4 space-y-2">
+                    <p className="text-xs text-slate-600">
+                      Si quieres que el CFR sea un valor específico, escríbelo aquí. Los precios de los productos se ajustarán.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        className="flex-1"
+                        placeholder={`Actual: ${formatCurrency(selectedFactura?.total || 0)}`}
+                        value={adjustTotal}
+                        onChange={(e) => setAdjustTotal(e.target.value)}
+                      />
+                      <Button 
+                        onClick={handleAdjustPrices}
+                        disabled={!adjustTotal || parseFloat(adjustTotal) <= 0}
+                        className="w-full sm:w-auto"
+                      >
+                        Ajustar
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1262,115 +1415,48 @@ export default function FacturasPage(): React.ReactElement {
                 </div>
               )}
             </div>
-
-            <Separator />
-
-            {/* Tabla de productos */}
-            <div className="min-w-0">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium">Productos</h4>
-              </div>
-              {selectedFactura && (
-                <div className="overflow-x-auto -mx-4 sm:mx-0">
-                <Table className="min-w-full">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="min-w-[150px] max-w-[200px]">Producto</TableHead>
-                      <TableHead className="w-16">UM</TableHead>
-                      {hasOptionalFields(selectedFactura.items).cantidadSacos && (
-                        <TableHead className="text-right w-20">Sacos</TableHead>
-                      )}
-                      {hasOptionalFields(selectedFactura.items).codigoArancelario && (
-                        <TableHead className="min-w-[120px] max-w-[150px]">Partida Arancel.</TableHead>
-                      )}
-                      <TableHead className="text-right w-24">Cantidad</TableHead>
-                      <TableHead className="text-right w-24">Peso Neto</TableHead>
-                      <TableHead className="text-right w-24">Peso Bruto</TableHead>
-                      <TableHead className="text-right w-24">Precio</TableHead>
-                      <TableHead className="text-right w-28">Importe</TableHead>
-                      <TableHead className="w-20"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedFactura.items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="min-w-[150px] max-w-[200px]">
-                          <div className="truncate" title={item.producto?.nombre ?? item.nombreProducto ?? ""}>
-                            {item.producto?.nombre ?? item.nombreProducto ?? "—"}
-                            {!item.productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
-                          </div>
-                        </TableCell>
-                        <TableCell className="w-16">{item.producto?.unidadMedida?.abreviatura ?? "—"}</TableCell>
-                        {hasOptionalFields(selectedFactura.items).cantidadSacos && (
-                          <TableCell className="text-right w-20">{item.cantidadSacos || "-"}</TableCell>
-                        )}
-                        {hasOptionalFields(selectedFactura.items).codigoArancelario && (
-                          <TableCell className="min-w-[120px] max-w-[150px]">
-                            <div className="truncate" title={item.codigoArancelario || "-"}>
-                              {item.codigoArancelario || "-"}
-                            </div>
-                          </TableCell>
-                        )}
-                        <TableCell className="text-right w-24">{item.cantidad.toFixed(2)}</TableCell>
-                        <TableCell className="text-right w-24">{(item.pesoNeto || item.cantidad).toFixed(2)}</TableCell>
-                        <TableCell className="text-right w-24">{(item.pesoBruto || "-")}</TableCell>
-                        <TableCell className="text-right w-24">{formatCurrencyUnitPrice(item.precioUnitario)}</TableCell>
-                        <TableCell className="text-right font-medium w-28">
-                          {formatCurrency(item.subtotal)}
-                        </TableCell>
-                        <TableCell className="w-20">
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEditItemDialog(item)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)}>
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                </div>
-              )}
-            </div>
-
-            {/* Resumen totales */}
-            <div className="flex justify-end">
-              <div className="w-full sm:w-80 space-y-2 text-sm p-4 bg-emerald-50 rounded-lg">
-                <div className="flex justify-between">
-                  <span>FOB (productos):</span>
-                  <span className="font-medium">{formatCurrency(selectedFactura?.subtotal || 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>+ Flete:</span>
-                  <span>{formatCurrency(parseFloat(editFormData.flete) || 0)}</span>
-                </div>
-                {editFormData.tieneSeguro && (
-                  <div className="flex justify-between">
-                    <span>+ Seguro:</span>
-                    <span>{formatCurrency(parseFloat(editFormData.seguro) || 0)}</span>
-                  </div>
-                )}
-                <Separator />
-                <div className="flex justify-between text-lg font-bold text-emerald-700">
-                  <span>= CFR Total:</span>
-                  <span>{formatCurrency(selectedFactura?.total || 0)}</span>
-                </div>
-              </div>
-            </div>
+          </div>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Edit Item Dialog */}
       <Dialog open={editItemDialogOpen} onOpenChange={setEditItemDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[min(90vh,800px)] w-[95vw] max-w-lg flex-col gap-4 overflow-y-auto overscroll-contain pr-2">
+          <DialogHeader className="shrink-0 pr-6">
             <DialogTitle>Editar Item</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="min-h-0 space-y-4 pb-1">
+            {/* Toggle catálogo / libre */}
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <button type="button" onClick={() => setEditItemModoLibre(false)}
+                className={`text-xs px-3 py-1.5 rounded border font-medium transition-colors ${!editItemModoLibre ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"}`}>
+                Del catálogo
+              </button>
+              <button type="button" onClick={() => setEditItemModoLibre(true)}
+                className={`text-xs px-3 py-1.5 rounded border font-medium transition-colors ${editItemModoLibre ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300 hover:border-slate-400"}`}>
+                Producto libre
+              </button>
+            </div>
+            {editItemModoLibre && (
+              <div className="grid grid-cols-2 gap-3 border-b pb-3">
+                <div className="space-y-2">
+                  <Label>Nombre del producto</Label>
+                  <Input placeholder="Nombre"
+                    value={editItemForm.nombreProducto}
+                    onChange={(e) => setEditItemForm((p) => ({ ...p, nombreProducto: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Unidad de medida</Label>
+                  <Select value={editItemForm.unidadMedidaId} onValueChange={(v) => setEditItemForm((p) => ({ ...p, unidadMedidaId: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Seleccionar UM" /></SelectTrigger>
+                    <SelectContent>
+                      {unidades.map((u) => <SelectItem key={u.id} value={u.id}>{u.nombre} ({u.abreviatura})</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Cantidad</Label>

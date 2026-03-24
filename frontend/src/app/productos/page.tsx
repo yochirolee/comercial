@@ -682,7 +682,11 @@ export default function ProductosPage() {
                 </TableRow>
               ) : (
                 paginatedProductos.map((producto) => (
-                  <TableRow key={producto.id}>
+                  <TableRow
+                    key={producto.id}
+                    className="cursor-pointer"
+                    onClick={() => openEditDialog(producto)}
+                  >
                     <TableCell className="font-mono text-sm">
                       {producto.codigo || "-"}
                     </TableCell>
@@ -706,7 +710,10 @@ export default function ProductosPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => openEditDialog(producto)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditDialog(producto);
+                          }}
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -714,7 +721,10 @@ export default function ProductosPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(producto.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(producto.id);
+                            }}
                           >
                             <Trash2 className="h-4 w-4 text-red-500" />
                           </Button>

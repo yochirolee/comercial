@@ -38,7 +38,10 @@ const facturaSchema = z.object({
 });
 
 const itemSchema = z.object({
-  productoId: z.string().min(1, 'Producto es requerido'),
+  productoId: z.string().optional().nullable(),
+  nombreProducto: z.string().optional().nullable(),
+  codigoProducto: z.string().optional().nullable(),
+  unidadMedidaId: z.string().optional().nullable(),
   descripcion: z.string().optional(),
   cantidad: z.number().positive('La cantidad debe ser positiva'),
   cantidadCajas: z.number().nullable().optional(),
@@ -73,6 +76,7 @@ const fromOfertaClienteSchema = z.object({
   tieneSeguro: z.boolean().optional(),
   // Términos (opcionales, si no se envían se toman de la oferta)
   codigoMincex: z.string().optional(),
+  nroContrato: z.string().optional(),
   puertoEmbarque: z.string().optional(),
   origen: z.string().optional(),
   moneda: z.string().optional(),
@@ -98,6 +102,7 @@ const fromOfertaImportadoraSchema = z.object({
   tieneSeguro: z.boolean().optional(),
   // Términos (opcionales, si no se envían se toman de la oferta)
   codigoMincex: z.string().optional(),
+  nroContrato: z.string().optional(),
   puertoEmbarque: z.string().optional(),
   origen: z.string().optional(),
   moneda: z.string().optional(),
@@ -197,9 +202,8 @@ const includeFactura = {
   importadora: true,
   items: {
     include: {
-      producto: {
-        include: { unidadMedida: true },
-      },
+      producto: { include: { unidadMedida: true } },
+      unidadMedida: true,
     },
   },
 };
@@ -214,6 +218,7 @@ const includeFacturaList = {
       producto: {
         select: { id: true, nombre: true, codigo: true, precioBase: true, unidadMedidaId: true, unidadMedida: true },
       },
+      unidadMedida: true,
     },
   },
 };
@@ -298,6 +303,7 @@ export const FacturaController = {
       tieneSeguro = false,
       totalDeseado,
       codigoMincex,
+      nroContrato,
       puertoEmbarque,
       origen,
       moneda,
@@ -398,6 +404,7 @@ export const FacturaController = {
         productoId: item.productoId ?? null,
         nombreProducto: item.nombreProducto ?? null,
         codigoProducto: item.codigoProducto ?? null,
+        unidadMedidaId: (item as any).unidadMedidaId ?? null,
         descripcion: item.producto?.nombre ?? item.nombreProducto ?? '',
         cantidad: item.cantidad,
         cantidadCajas: item.cantidadCajas,
@@ -459,6 +466,7 @@ export const FacturaController = {
       seguro,
       tieneSeguro,
       codigoMincex: codigoMincex || ofertaCliente.codigoMincex,
+      nroContrato: nroContrato?.trim() || null,
       puertoEmbarque: puertoEmbarque || ofertaCliente.puertoEmbarque,
       origen: origen || ofertaCliente.origen,
       moneda: moneda || ofertaCliente.moneda,
@@ -535,6 +543,7 @@ export const FacturaController = {
       tieneSeguro,
       totalDeseado,
       codigoMincex,
+      nroContrato,
       puertoEmbarque,
       origen,
       moneda,
@@ -620,6 +629,7 @@ export const FacturaController = {
         productoId: item.productoId ?? null,
         nombreProducto: item.nombreProducto ?? null,
         codigoProducto: item.codigoProducto ?? null,
+        unidadMedidaId: (item as any).unidadMedidaId ?? null,
         descripcion: item.producto?.nombre ?? item.nombreProducto ?? '',
         cantidad: item.cantidad,
         cantidadCajas: item.cantidadCajas,
@@ -676,6 +686,7 @@ export const FacturaController = {
       seguro: seguroFinal,
       tieneSeguro: tieneSeguro !== undefined ? tieneSeguro : ofertaImportadora.tieneSeguro,
       codigoMincex: codigoMincex || ofertaImportadora.codigoMincex,
+      nroContrato: nroContrato?.trim() || null,
       puertoEmbarque: puertoEmbarque || ofertaImportadora.puertoEmbarque,
       origen: origen || ofertaImportadora.origen,
       moneda: moneda || ofertaImportadora.moneda,
@@ -888,6 +899,9 @@ export const FacturaController = {
     if ('precioXCaja' in req.body) updateData.precioXCaja = validation.data.precioXCaja ?? null;
     if ('codigoArancelario' in req.body) updateData.codigoArancelario = validation.data.codigoArancelario ?? null;
     if ('descripcion' in req.body) updateData.descripcion = validation.data.descripcion ?? null;
+    if ('nombreProducto' in req.body) updateData.nombreProducto = validation.data.nombreProducto ?? null;
+    if ('codigoProducto' in req.body) updateData.codigoProducto = validation.data.codigoProducto ?? null;
+    if ('unidadMedidaId' in req.body) updateData.unidadMedidaId = validation.data.unidadMedidaId ?? null;
     if ('camposOpcionales' in req.body) {
       const co = validation.data.camposOpcionales;
       updateData.camposOpcionales = co != null ? JSON.stringify(co) : null;

@@ -64,6 +64,7 @@ const itemSchema = z.object({
   productoId: z.string().optional().nullable(),
   nombreProducto: z.string().optional().nullable(),
   codigoProducto: z.string().optional().nullable(),
+  unidadMedidaId: z.string().optional().nullable(),
   cantidad: z.number().positive('La cantidad debe ser positiva'),
   cantidadCajas: z.number().nullable().optional(),
   cantidadSacos: z.number().nullable().optional(),
@@ -181,6 +182,7 @@ export const OfertaImportadoraController = {
             producto: {
               select: { id: true, nombre: true, codigo: true, precioBase: true, unidadMedidaId: true, unidadMedida: true },
             },
+            unidadMedida: true,
           },
         },
       },
@@ -204,6 +206,7 @@ export const OfertaImportadoraController = {
             producto: {
               include: { unidadMedida: true },
             },
+            unidadMedida: true,
           },
         },
       },
@@ -259,6 +262,7 @@ export const OfertaImportadoraController = {
             producto: {
               include: { unidadMedida: true },
             },
+            unidadMedida: true,
           },
         },
       },
@@ -302,6 +306,7 @@ export const OfertaImportadoraController = {
         items: {
           include: {
             producto: { include: { unidadMedida: true } },
+            unidadMedida: true,
           },
         },
       },
@@ -350,6 +355,7 @@ export const OfertaImportadoraController = {
           productoId: item.productoId || null,
           nombreProducto: item.nombreProducto || null,
           codigoProducto: item.codigoProducto || null,
+          unidadMedidaId: (item as any).unidadMedidaId || null,
           cantidad: item.cantidad,
           cantidadCajas: item.cantidadCajas || null,
           cantidadSacos: item.cantidadSacos || null,
@@ -376,6 +382,7 @@ export const OfertaImportadoraController = {
         productoId: item.productoId ?? null,
         nombreProducto: item.nombreProducto ?? null,
         codigoProducto: item.codigoProducto ?? null,
+        unidadMedidaId: (item as any).unidadMedidaId ?? null,
         cantidad: item.cantidad,
         cantidadCajas: item.cantidadCajas,
         cantidadSacos: item.cantidadSacos,
@@ -465,6 +472,7 @@ export const OfertaImportadoraController = {
         items: {
           include: {
             producto: { include: { unidadMedida: true } },
+            unidadMedida: true,
           },
         },
       },
@@ -551,6 +559,7 @@ export const OfertaImportadoraController = {
         items: {
           include: {
             producto: { include: { unidadMedida: true } },
+            unidadMedida: true,
           },
         },
       },
@@ -613,6 +622,7 @@ export const OfertaImportadoraController = {
             producto: {
               include: { unidadMedida: true },
             },
+            unidadMedida: true,
           },
         },
       },
@@ -660,6 +670,7 @@ export const OfertaImportadoraController = {
         productoId: validation.data.productoId || null,
         nombreProducto: validation.data.nombreProducto || null,
         codigoProducto: validation.data.codigoProducto || null,
+        unidadMedidaId: validation.data.unidadMedidaId || null,
         cantidad: validation.data.cantidad,
         cantidadCajas: validation.data.cantidadCajas,
         cantidadSacos: validation.data.cantidadSacos,
@@ -692,6 +703,7 @@ export const OfertaImportadoraController = {
         items: {
           include: {
             producto: { include: { unidadMedida: true } },
+            unidadMedida: true,
           },
         },
       },
@@ -726,6 +738,7 @@ export const OfertaImportadoraController = {
     if (validation.data.productoId !== undefined) updateData.productoId = validation.data.productoId ?? null;
     if (validation.data.nombreProducto !== undefined) updateData.nombreProducto = validation.data.nombreProducto ?? null;
     if (validation.data.codigoProducto !== undefined) updateData.codigoProducto = validation.data.codigoProducto ?? null;
+    if (validation.data.unidadMedidaId !== undefined) updateData.unidadMedidaId = validation.data.unidadMedidaId ?? null;
     if (validation.data.cantidadCajas !== undefined) updateData.cantidadCajas = validation.data.cantidadCajas;
     if (validation.data.cantidadSacos !== undefined) updateData.cantidadSacos = validation.data.cantidadSacos;
     if (validation.data.pesoNeto !== undefined) updateData.pesoNeto = validation.data.pesoNeto;
@@ -795,6 +808,7 @@ export const OfertaImportadoraController = {
         items: {
           include: {
             producto: { include: { unidadMedida: true } },
+            unidadMedida: true,
           },
         },
       },
@@ -914,6 +928,7 @@ export const OfertaImportadoraController = {
         items: {
           include: {
             producto: { include: { unidadMedida: true } },
+            unidadMedida: true,
           },
         },
       },

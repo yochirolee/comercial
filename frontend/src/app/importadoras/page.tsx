@@ -291,7 +291,11 @@ export default function ImportadorasPage() {
               </TableHeader>
               <TableBody>
                 {importadoras.map((importadora) => (
-                  <TableRow key={importadora.id}>
+                  <TableRow
+                    key={importadora.id}
+                    className="cursor-pointer"
+                    onClick={() => openEditDialog(importadora)}
+                  >
                     <TableCell className="font-medium">{importadora.nombre}</TableCell>
                     <TableCell>{importadora.pais || "-"}</TableCell>
                     <TableCell>{importadora.puertoDestinoDefault || "-"}</TableCell>
@@ -303,7 +307,10 @@ export default function ImportadorasPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleViewDetail(importadora.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewDetail(importadora.id);
+                          }}
                           title="Ver detalle"
                         >
                           <Eye className="h-4 w-4" />
@@ -311,7 +318,10 @@ export default function ImportadorasPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => openEditDialog(importadora)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditDialog(importadora);
+                          }}
                           title="Editar"
                         >
                           <Pencil className="h-4 w-4" />
@@ -319,7 +329,10 @@ export default function ImportadorasPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDelete(importadora.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(importadora.id);
+                          }}
                           title="Eliminar"
                         >
                           <Trash2 className="h-4 w-4 text-red-500" />

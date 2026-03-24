@@ -1146,6 +1146,8 @@ export interface ItemOfertaCliente {
   producto?: Producto | null;
   nombreProducto?: string | null;
   codigoProducto?: string | null;
+  unidadMedidaId?: string | null;
+  unidadMedida?: { id: string; nombre: string; abreviatura: string } | null;
   cantidad: number;
   precioUnitario: number;
   subtotal: number;
@@ -1167,6 +1169,7 @@ export interface ItemOfertaClienteInput {
   productoId?: string | null;
   nombreProducto?: string | null;
   codigoProducto?: string | null;
+  unidadMedidaId?: string | null;
   cantidad: number;
   precioUnitario: number;
   // Campos informativos opcionales (pueden ser null para limpiar)
@@ -1272,6 +1275,7 @@ export interface CrearDesdeOfertaClienteInput {
     productoId?: string | null;
     nombreProducto?: string | null;
     codigoProducto?: string | null;
+    unidadMedidaId?: string | null;
     cantidad: number;
     precioUnitario: number;
     precioAjustado?: number;
@@ -1298,6 +1302,8 @@ export interface ItemOfertaImportadora {
   producto?: Producto | null;
   nombreProducto?: string | null;
   codigoProducto?: string | null;
+  unidadMedidaId?: string | null;
+  unidadMedida?: { id: string; nombre: string; abreviatura: string } | null;
   cantidad: number;
   precioOriginal: number;     // Precio original (de oferta cliente)
   precioAjustado: number;     // Precio ajustado para que CIF = precio acordado
@@ -1319,6 +1325,7 @@ export interface ItemOfertaImportadoraInput {
   productoId?: string | null;
   nombreProducto?: string | null;
   codigoProducto?: string | null;
+  unidadMedidaId?: string | null;
   cantidad?: number;
   precioUnitario?: number; // El precio del producto (actualiza original y ajustado)
   precioAjustado?: number; // Solo actualiza el precio ajustado (no el original)
@@ -1466,6 +1473,8 @@ export interface ItemFactura {
   producto?: Producto | null;
   nombreProducto?: string | null;
   codigoProducto?: string | null;
+  unidadMedidaId?: string | null;
+  unidadMedida?: { id: string; nombre: string; abreviatura: string } | null;
   descripcion?: string;
   cantidad: number;
   cantidadCajas?: number;
@@ -1486,6 +1495,7 @@ export interface ItemFacturaInput {
   productoId?: string | null;
   nombreProducto?: string | null;
   codigoProducto?: string | null;
+  unidadMedidaId?: string | null;
   descripcion?: string;
   cantidad: number;
   cantidadCajas?: number | null;
