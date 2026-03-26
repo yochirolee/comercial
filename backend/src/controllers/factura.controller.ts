@@ -899,6 +899,7 @@ export const FacturaController = {
     if ('precioXCaja' in req.body) updateData.precioXCaja = validation.data.precioXCaja ?? null;
     if ('codigoArancelario' in req.body) updateData.codigoArancelario = validation.data.codigoArancelario ?? null;
     if ('descripcion' in req.body) updateData.descripcion = validation.data.descripcion ?? null;
+    if ('productoId' in req.body) updateData.productoId = validation.data.productoId ?? null;
     if ('nombreProducto' in req.body) updateData.nombreProducto = validation.data.nombreProducto ?? null;
     if ('codigoProducto' in req.body) updateData.codigoProducto = validation.data.codigoProducto ?? null;
     if ('unidadMedidaId' in req.body) updateData.unidadMedidaId = validation.data.unidadMedidaId ?? null;

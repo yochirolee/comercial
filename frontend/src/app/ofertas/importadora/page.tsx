@@ -344,6 +344,11 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       return;
     }
 
+    if (itemsEditables.length === 0) {
+      toast.error("Agrega al menos un producto");
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -696,6 +701,109 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     }
   }
 
+  /** Agregar ítem a la lista local al crear oferta (sin `selectedOferta` en servidor). */
+  function handleAddItemCreate(e: React.FormEvent): void {
+    e.preventDefault();
+
+    const cantidadStr = String(editItemForm.cantidad ?? "").trim();
+    const precioStr = String(editItemForm.precioUnitario ?? "").trim();
+    if (!cantidadStr || !precioStr) {
+      toast.error("Completa cantidad y precio");
+      return;
+    }
+
+    if (!editItemModoLibre && !editItemForm.productoId) {
+      toast.error("Selecciona un producto del catálogo o elige «Producto libre» e indica el nombre");
+      return;
+    }
+    if (editItemModoLibre && !editItemForm.nombreProducto.trim()) {
+      toast.error("Escribe el nombre del producto libre");
+      return;
+    }
+
+    if (!editItemModoLibre) {
+      const p = productos.find((x) => x.id === editItemForm.productoId);
+      if (!p) {
+        toast.error("Producto no encontrado");
+        return;
+      }
+    }
+
+    const productoSeleccionado = editItemModoLibre ? null : productos.find((p) => p.id === editItemForm.productoId);
+    const cleanedExtra = editExtraFields
+      .map((f) => ({ label: f.label.trim(), value: f.value.trim() || null }))
+      .filter((f) => f.label);
+
+    const cantidad = parseFloat(editItemForm.cantidad);
+    const precioUnitario = parseFloat(editItemForm.precioUnitario);
+    const precioAjustado = precioUnitario;
+
+    const newItem = {
+      id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      productoId: editItemModoLibre ? null : (editItemForm.productoId || null),
+      producto: productoSeleccionado ?? undefined,
+      nombreProducto: editItemModoLibre ? (editItemForm.nombreProducto.trim() || null) : null,
+      codigoProducto: editItemModoLibre ? (editItemForm.codigoProducto.trim() || null) : null,
+      unidadMedidaId: editItemModoLibre ? (editItemForm.unidadMedidaId || null) : null,
+      cantidad,
+      precioUnitario,
+      precioAjustado,
+      cantidadCajas:
+        editItemForm.cantidadCajas && editItemForm.cantidadCajas.trim() !== ""
+          ? parseInt(editItemForm.cantidadCajas, 10)
+          : null,
+      cantidadSacos:
+        editItemForm.cantidadSacos && editItemForm.cantidadSacos.trim() !== ""
+          ? parseInt(editItemForm.cantidadSacos, 10)
+          : null,
+      pesoNeto: cantidad,
+      pesoBruto: null,
+      pesoXSaco:
+        editItemForm.pesoXSaco && editItemForm.pesoXSaco.trim() !== ""
+          ? parseFloat(editItemForm.pesoXSaco)
+          : null,
+      precioXSaco:
+        editItemForm.precioXSaco && editItemForm.precioXSaco.trim() !== ""
+          ? parseFloat(editItemForm.precioXSaco)
+          : null,
+      pesoXCaja:
+        editItemForm.pesoXCaja && editItemForm.pesoXCaja.trim() !== ""
+          ? parseFloat(editItemForm.pesoXCaja)
+          : null,
+      precioXCaja:
+        editItemForm.precioXCaja && editItemForm.precioXCaja.trim() !== ""
+          ? parseFloat(editItemForm.precioXCaja)
+          : null,
+      codigoArancelario:
+        editItemForm.codigoArancelario && editItemForm.codigoArancelario.trim() !== ""
+          ? editItemForm.codigoArancelario
+          : (productoSeleccionado?.codigoArancelario || null),
+      camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
+    };
+
+    setItemsEditables((prev) => [...prev, newItem]);
+    setEditItemDialogOpen(false);
+    setIsAddingNewItem(false);
+    setEditExtraFields([]);
+    setEditItemModoLibre(false);
+    setEditItemForm({
+      productoId: "",
+      nombreProducto: "",
+      codigoProducto: "",
+      unidadMedidaId: "",
+      cantidad: "",
+      precioUnitario: "",
+      cantidadCajas: "",
+      cantidadSacos: "",
+      pesoXSaco: "",
+      precioXSaco: "",
+      pesoXCaja: "",
+      precioXCaja: "",
+      codigoArancelario: "",
+    });
+    toast.success("Producto agregado");
+  }
+
   function formatCurrency(value: number): string {
     return new Intl.NumberFormat("es-ES", { style: "currency", currency: "USD" }).format(value);
   }
@@ -994,77 +1102,96 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   )}
 
                   {/* Tabla de productos editables */}
-                  {selectedOfertaCliente && itemsEditables.length > 0 && (
+                  {selectedOfertaCliente && (
                     <div className="p-2 sm:p-3 md:p-4 bg-white rounded-lg border border-slate-200">
-                      <h4 className="font-medium mb-2 sm:mb-3 text-slate-700 text-xs sm:text-sm">📦 Productos</h4>
-                    <div className="overflow-x-auto -mx-1 sm:-mx-2 md:mx-0">
-                      <div className="inline-block min-w-full align-middle px-1 sm:px-2 md:px-0">
-                        <Table className="min-w-full">
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="min-w-[150px] sm:min-w-[200px] md:min-w-[250px] text-xs sm:text-sm">Producto</TableHead>
-                              <TableHead className="text-right whitespace-nowrap text-xs sm:text-sm">Cantidad</TableHead>
-                              <TableHead className="text-right whitespace-nowrap text-xs sm:text-sm hidden sm:table-cell">Precio Unit.</TableHead>
-                              <TableHead className="text-right whitespace-nowrap text-xs sm:text-sm">Subtotal</TableHead>
-                              <TableHead className="w-12 sm:w-16 md:w-20 text-center text-xs sm:text-sm">Acción</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {itemsEditables.map((item, index) => {
-                              const cantidadParaCalculo = item.pesoNeto || item.cantidad;
-                              const subtotal = item.precioAjustado * cantidadParaCalculo;
-                              return (
-                                <TableRow key={item.id}>
-                                  <TableCell className="font-medium py-2 sm:py-3">
-                                    <div className="text-xs sm:text-sm md:text-base">
-                                      {item.producto?.nombre ?? (item as any).nombreProducto ?? "—"}
-                                      {!(item as any).productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
-                                    </div>
-                                    {item.codigoArancelario && (
-                                      <div className="text-xs text-slate-500 mt-0.5 sm:mt-1">
-                                        ({item.codigoArancelario})
-                                      </div>
-                                    )}
-                                    {/* Mostrar precio en móvil dentro de la celda de producto */}
-                                    <div className="sm:hidden text-xs text-slate-600 mt-1">
-                                      {formatCurrencyUnitPrice(item.precioAjustado)} c/u
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3">
-                                    {cantidadParaCalculo.toLocaleString()} {umAbbrImportadoraItem(item, unidades)}
-                                  </TableCell>
-                                  <TableCell className="text-right whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3 hidden sm:table-cell">
-                                    {formatCurrencyUnitPrice(item.precioAjustado)}
-                                  </TableCell>
-                                  <TableCell className="text-right font-medium whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3">
-                                    {formatCurrency(subtotal)}
-                                  </TableCell>
-                                  <TableCell className="text-center py-2 sm:py-3">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9"
-                                      onClick={() => openEditItemDialogCreate(index)}
-                                    >
-                                      <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" />
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                          </TableBody>
-                        </Table>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-2 sm:mb-3">
+                        <h4 className="font-medium text-slate-700 text-xs sm:text-sm">📦 Productos</h4>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full sm:w-auto shrink-0 gap-2 h-8 sm:h-9 text-xs sm:text-sm"
+                          onClick={openAddItemDialog}
+                        >
+                          <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          Agregar producto
+                        </Button>
                       </div>
+                      {itemsEditables.length === 0 ? (
+                        <p className="text-sm text-slate-500 py-2">
+                          No hay productos en la lista. Pulsa «Agregar producto» para incluir ítems del catálogo o libres.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="overflow-x-auto -mx-1 sm:-mx-2 md:mx-0">
+                            <div className="inline-block min-w-full align-middle px-1 sm:px-2 md:px-0">
+                              <Table className="min-w-full">
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="min-w-[150px] sm:min-w-[200px] md:min-w-[250px] text-xs sm:text-sm">Producto</TableHead>
+                                    <TableHead className="text-right whitespace-nowrap text-xs sm:text-sm">Cantidad</TableHead>
+                                    <TableHead className="text-right whitespace-nowrap text-xs sm:text-sm hidden sm:table-cell">Precio Unit.</TableHead>
+                                    <TableHead className="text-right whitespace-nowrap text-xs sm:text-sm">Subtotal</TableHead>
+                                    <TableHead className="w-12 sm:w-16 md:w-20 text-center text-xs sm:text-sm">Acción</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {itemsEditables.map((item, index) => {
+                                    const cantidadParaCalculo = item.pesoNeto || item.cantidad;
+                                    const subtotal = item.precioAjustado * cantidadParaCalculo;
+                                    return (
+                                      <TableRow key={item.id}>
+                                        <TableCell className="font-medium py-2 sm:py-3">
+                                          <div className="text-xs sm:text-sm md:text-base">
+                                            {item.producto?.nombre ?? (item as any).nombreProducto ?? "—"}
+                                            {!(item as any).productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
+                                          </div>
+                                          {item.codigoArancelario && (
+                                            <div className="text-xs text-slate-500 mt-0.5 sm:mt-1">
+                                              ({item.codigoArancelario})
+                                            </div>
+                                          )}
+                                          <div className="sm:hidden text-xs text-slate-600 mt-1">
+                                            {formatCurrencyUnitPrice(item.precioAjustado)} c/u
+                                          </div>
+                                        </TableCell>
+                                        <TableCell className="text-right whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3">
+                                          {cantidadParaCalculo.toLocaleString()} {umAbbrImportadoraItem(item, unidades)}
+                                        </TableCell>
+                                        <TableCell className="text-right whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3 hidden sm:table-cell">
+                                          {formatCurrencyUnitPrice(item.precioAjustado)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-medium whitespace-nowrap text-xs sm:text-sm md:text-base py-2 sm:py-3">
+                                          {formatCurrency(subtotal)}
+                                        </TableCell>
+                                        <TableCell className="text-center py-2 sm:py-3">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9"
+                                            onClick={() => openEditItemDialogCreate(index)}
+                                          >
+                                            <Pencil className="h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4" />
+                                          </Button>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t text-xs sm:text-sm md:text-base">
+                            <div className="flex justify-between font-medium">
+                              <span>Subtotal Productos (FOB):</span>
+                              <span className="text-xs sm:text-sm md:text-base">{formatCurrency(subtotalProductos)}</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t text-xs sm:text-sm md:text-base">
-                      <div className="flex justify-between font-medium">
-                        <span>Subtotal Productos (FOB):</span>
-                        <span className="text-xs sm:text-sm md:text-base">{formatCurrency(subtotalProductos)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  )}
 
                   {/* Resumen CIF y ajuste */}
                   {selectedOfertaCliente && (
@@ -1748,6 +1875,9 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-slate-500">
+                  Para cerrar el listado: Esc o clic fuera del listado.
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

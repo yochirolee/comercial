@@ -56,6 +56,7 @@ import {
   ofertasImportadoraApi,
   exportApi,
   importadorasApi,
+  productosApi,
   unidadesApi,
 } from "@/lib/api";
 import type {
@@ -65,6 +66,7 @@ import type {
   FacturaFromOfertaClienteInput,
   FacturaFromOfertaImportadoraInput,
   Importadora,
+  Producto,
   UnidadMedida,
   ItemFactura,
 } from "@/lib/api";
@@ -117,8 +119,10 @@ export default function FacturasPage(): React.ReactElement {
   const [ofertasCliente, setOfertasCliente] = useState<OfertaCliente[]>([]);
   const [ofertasImportadora, setOfertasImportadora] = useState<OfertaImportadora[]>([]);
   const [importadoras, setImportadoras] = useState<Importadora[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
   const [unidades, setUnidades] = useState<UnidadMedida[]>([]);
   const [editItemModoLibre, setEditItemModoLibre] = useState(false);
+  const [isAddingFacturaItem, setIsAddingFacturaItem] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -187,6 +191,7 @@ export default function FacturasPage(): React.ReactElement {
 
   // Form data for edit item
   const [editItemForm, setEditItemForm] = useState({
+    productoId: "",
     cantidad: "",
     pesoNeto: "",
     pesoBruto: "",
@@ -224,11 +229,12 @@ export default function FacturasPage(): React.ReactElement {
   async function loadData(): Promise<void> {
     try {
       setCurrentPage(1);
-      const [facturasData, ocData, oiData, importadorasData, unidadesData] = await Promise.all([
+      const [facturasData, ocData, oiData, importadorasData, productosData, unidadesData] = await Promise.all([
         facturasApi.getAll(),
         ofertasClienteApi.getAll(),
         ofertasImportadoraApi.getAll(),
         importadorasApi.getAll(),
+        productosApi.getAll(),
         unidadesApi.getAll(),
       ]);
       setFacturas(facturasData);
@@ -239,6 +245,7 @@ export default function FacturasPage(): React.ReactElement {
           .sort((a, b) => (b.numero ?? "").localeCompare(a.numero ?? ""))
       );
       setImportadoras(importadorasData);
+      setProductos(productosData.filter((p: Producto) => p.activo));
       setUnidades(unidadesData);
     } catch (error) {
       toast.error("Error al cargar datos");
@@ -517,8 +524,33 @@ export default function FacturasPage(): React.ReactElement {
     }
   }
 
+  function openAddFacturaItemDialog(): void {
+    setIsAddingFacturaItem(true);
+    setEditItemModoLibre(false);
+    setEditItemForm({
+      productoId: "",
+      cantidad: "",
+      pesoNeto: "",
+      pesoBruto: "",
+      precioUnitario: "",
+      cantidadCajas: "",
+      cantidadSacos: "",
+      pesoXSaco: "",
+      precioXSaco: "",
+      pesoXCaja: "",
+      precioXCaja: "",
+      codigoArancelario: "",
+      nombreProducto: "",
+      codigoProducto: "",
+      unidadMedidaId: "",
+    });
+    setEditExtraFields([]);
+    setEditItemDialogOpen(true);
+  }
+
   // Open edit item dialog
   function openEditItemDialog(item: Factura["items"][0]): void {
+    setIsAddingFacturaItem(false);
     setEditingItemId(item.id);
     
     // Precargar pesoNeto y pesoBruto desde el producto si están vacíos
@@ -533,6 +565,7 @@ export default function FacturasPage(): React.ReactElement {
     
     setEditItemModoLibre(!item.productoId);
     setEditItemForm({
+      productoId: item.productoId ?? "",
       cantidad: String(item.cantidad),
       pesoNeto: pesoNetoValue,
       pesoBruto: pesoBrutoValue,
@@ -571,6 +604,90 @@ export default function FacturasPage(): React.ReactElement {
     } catch (error) {
       toast.error("Error al eliminar");
       console.error(error);
+    }
+  }
+
+  async function handleAddFacturaItem(): Promise<void> {
+    if (!selectedFactura) return;
+    const cantidadStr = String(editItemForm.cantidad ?? "").trim();
+    const precioStr = String(editItemForm.precioUnitario ?? "").trim();
+    if (!cantidadStr || !precioStr) {
+      toast.error("Completa cantidad y precio");
+      return;
+    }
+    if (!editItemModoLibre && !editItemForm.productoId) {
+      toast.error("Selecciona un producto del catálogo o elige «Producto libre»");
+      return;
+    }
+    if (editItemModoLibre && !editItemForm.nombreProducto.trim()) {
+      toast.error("Escribe el nombre del producto libre");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const cleanedExtra = editExtraFields
+        .map((f) => ({ label: f.label.trim(), value: f.value.trim() || null }))
+        .filter((f) => f.label);
+      const cantidadNum = parseFloat(editItemForm.cantidad);
+      const precioNum = parseFloat(editItemForm.precioUnitario);
+      const pesoNetoVal =
+        editItemForm.pesoNeto && editItemForm.pesoNeto.trim() !== ""
+          ? parseFloat(editItemForm.pesoNeto)
+          : cantidadNum;
+      await facturasApi.addItem(selectedFactura.id, {
+        productoId: editItemModoLibre ? null : editItemForm.productoId || null,
+        nombreProducto: editItemModoLibre ? editItemForm.nombreProducto.trim() || null : null,
+        codigoProducto: editItemModoLibre ? editItemForm.codigoProducto.trim() || null : null,
+        unidadMedidaId: editItemModoLibre ? editItemForm.unidadMedidaId || null : null,
+        cantidad: cantidadNum,
+        precioUnitario: precioNum,
+        pesoNeto: pesoNetoVal,
+        pesoBruto:
+          editItemForm.pesoBruto && editItemForm.pesoBruto.trim() !== ""
+            ? parseFloat(editItemForm.pesoBruto)
+            : null,
+        cantidadCajas:
+          editItemForm.cantidadCajas && editItemForm.cantidadCajas.trim() !== ""
+            ? parseFloat(editItemForm.cantidadCajas)
+            : null,
+        cantidadSacos:
+          editItemForm.cantidadSacos && editItemForm.cantidadSacos.trim() !== ""
+            ? parseFloat(editItemForm.cantidadSacos)
+            : null,
+        pesoXSaco:
+          editItemForm.pesoXSaco && editItemForm.pesoXSaco.trim() !== ""
+            ? parseFloat(editItemForm.pesoXSaco)
+            : null,
+        precioXSaco:
+          editItemForm.precioXSaco && editItemForm.precioXSaco.trim() !== ""
+            ? parseFloat(editItemForm.precioXSaco)
+            : null,
+        pesoXCaja:
+          editItemForm.pesoXCaja && editItemForm.pesoXCaja.trim() !== ""
+            ? parseFloat(editItemForm.pesoXCaja)
+            : null,
+        precioXCaja:
+          editItemForm.precioXCaja && editItemForm.precioXCaja.trim() !== ""
+            ? parseFloat(editItemForm.precioXCaja)
+            : null,
+        codigoArancelario:
+          editItemForm.codigoArancelario && editItemForm.codigoArancelario.trim() !== ""
+            ? editItemForm.codigoArancelario
+            : null,
+        camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
+      });
+      toast.success("Producto agregado");
+      const updated = await facturasApi.getById(selectedFactura.id);
+      setSelectedFactura(updated);
+      setEditItemDialogOpen(false);
+      setIsAddingFacturaItem(false);
+      loadData();
+    } catch (error) {
+      toast.error("Error al agregar producto");
+      console.error(error);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -614,11 +731,19 @@ export default function FacturasPage(): React.ReactElement {
           ? editItemForm.codigoArancelario 
           : null,
         camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
-        ...(editItemModoLibre ? {
-          nombreProducto: editItemForm.nombreProducto.trim() || null,
-          codigoProducto: editItemForm.codigoProducto.trim() || null,
-          unidadMedidaId: editItemForm.unidadMedidaId || null,
-        } : {}),
+        ...(editItemModoLibre
+          ? {
+              productoId: null,
+              nombreProducto: editItemForm.nombreProducto.trim() || null,
+              codigoProducto: editItemForm.codigoProducto.trim() || null,
+              unidadMedidaId: editItemForm.unidadMedidaId || null,
+            }
+          : {
+              productoId: editItemForm.productoId || null,
+              nombreProducto: null,
+              codigoProducto: null,
+              unidadMedidaId: null,
+            }),
       });
       toast.success("Item actualizado");
       const updated = await facturasApi.getById(selectedFactura.id);
@@ -1142,12 +1267,12 @@ export default function FacturasPage(): React.ReactElement {
                 />
               </div>
               <div>
-                <Label className="text-slate-500">Número de Contrato</Label>
+                <Label className="text-slate-500">Contrato</Label>
                 <Input
                   className="mt-1"
                   value={editFormData.nroContrato}
                   onChange={(e) => setEditFormData((p) => ({ ...p, nroContrato: e.target.value }))}
-                  placeholder="Número de contrato"
+                  placeholder="Número o referencia"
                 />
               </div>
               <div>
@@ -1171,8 +1296,18 @@ export default function FacturasPage(): React.ReactElement {
 
             {/* Tabla de productos */}
             <div className="min-w-0">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
                 <h4 className="font-medium">Productos</h4>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto shrink-0 gap-2"
+                  onClick={openAddFacturaItemDialog}
+                >
+                  <Plus className="h-4 w-4" />
+                  Agregar producto
+                </Button>
               </div>
               {selectedFactura && (
                 <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -1421,10 +1556,16 @@ export default function FacturasPage(): React.ReactElement {
       </Dialog>
 
       {/* Edit Item Dialog */}
-      <Dialog open={editItemDialogOpen} onOpenChange={setEditItemDialogOpen}>
+      <Dialog
+        open={editItemDialogOpen}
+        onOpenChange={(open) => {
+          setEditItemDialogOpen(open);
+          if (!open) setIsAddingFacturaItem(false);
+        }}
+      >
         <DialogContent className="flex max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(90dvh,800px)] w-[95vw] max-w-lg flex-col gap-4 overflow-y-auto overscroll-contain pr-2">
           <DialogHeader className="shrink-0 pr-6">
-            <DialogTitle>Editar Item</DialogTitle>
+            <DialogTitle>{isAddingFacturaItem ? "Agregar producto" : "Editar item"}</DialogTitle>
           </DialogHeader>
           <div className="min-h-0 space-y-4 pb-1">
             {/* Toggle catálogo / libre */}
@@ -1438,15 +1579,64 @@ export default function FacturasPage(): React.ReactElement {
                 Producto libre
               </button>
             </div>
+            {!editItemModoLibre &&
+              (isAddingFacturaItem ||
+                !selectedFactura?.items.find((i) => i.id === editingItemId)?.productoId) && (
+              <div className="space-y-2 border-b pb-3">
+                <Label>Producto *</Label>
+                <Select
+                  value={editItemForm.productoId}
+                  onValueChange={(value) => {
+                    const producto = productos.find((p) => p.id === value);
+                    setEditItemForm((p) => ({
+                      ...p,
+                      productoId: value,
+                      precioUnitario: producto?.precioBase != null ? String(producto.precioBase) : p.precioUnitario,
+                      codigoArancelario: producto?.codigoArancelario || p.codigoArancelario,
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar producto" />
+                  </SelectTrigger>
+                  <SelectContent className="max-w-[min(100vw-2rem,var(--radix-select-trigger-width))]">
+                    {productos.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.nombre} ({p.unidadMedida.abreviatura})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500">
+                  Para cerrar el listado: Esc o clic fuera del listado.
+                </p>
+              </div>
+            )}
+            {!editItemModoLibre &&
+              !isAddingFacturaItem &&
+              selectedFactura?.items.find((i) => i.id === editingItemId)?.productoId && (
+              <div className="space-y-1 border-b pb-3">
+                <Label>Producto</Label>
+                <p className="text-sm font-medium text-slate-900">
+                  {selectedFactura.items.find((i) => i.id === editingItemId)?.producto?.nombre ?? "—"}
+                </p>
+              </div>
+            )}
             {editItemModoLibre && (
-              <div className="grid grid-cols-2 gap-3 border-b pb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-b pb-3">
                 <div className="space-y-2">
-                  <Label>Nombre del producto</Label>
+                  <Label>Nombre del producto *</Label>
                   <Input placeholder="Nombre"
                     value={editItemForm.nombreProducto}
                     onChange={(e) => setEditItemForm((p) => ({ ...p, nombreProducto: e.target.value }))} />
                 </div>
                 <div className="space-y-2">
+                  <Label>Código (opcional)</Label>
+                  <Input placeholder="Código"
+                    value={editItemForm.codigoProducto}
+                    onChange={(e) => setEditItemForm((p) => ({ ...p, codigoProducto: e.target.value }))} />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
                   <Label>Unidad de medida</Label>
                   <Select value={editItemForm.unidadMedidaId} onValueChange={(v) => setEditItemForm((p) => ({ ...p, unidadMedidaId: v }))}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar UM" /></SelectTrigger>
@@ -1624,11 +1814,22 @@ export default function FacturasPage(): React.ReactElement {
             </div>
             
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditItemDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditItemDialogOpen(false);
+                  setIsAddingFacturaItem(false);
+                }}
+              >
                 Cancelar
               </Button>
-              <Button onClick={handleUpdateItem} disabled={saving}>
-                {saving ? "Guardando..." : "Guardar"}
+              <Button
+                onClick={() => {
+                  void (isAddingFacturaItem ? handleAddFacturaItem() : handleUpdateItem());
+                }}
+                disabled={saving}
+              >
+                {saving ? "Guardando..." : isAddingFacturaItem ? "Agregar" : "Guardar"}
               </Button>
             </div>
           </div>

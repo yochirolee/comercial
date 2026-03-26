@@ -944,6 +944,9 @@ export default function OfertasClientePage(): React.ReactElement {
                           ))}
                         </SelectContent>
                       </Select>
+                      <p className="text-xs text-slate-500">
+                        Para cerrar el listado: Esc o clic fuera del listado.
+                      </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1379,6 +1382,9 @@ export default function OfertasClientePage(): React.ReactElement {
                                 ))}
                               </SelectContent>
                             </Select>
+                            <p className="text-xs text-slate-500">
+                              Para cerrar el listado: Esc o clic fuera del listado.
+                            </p>
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
