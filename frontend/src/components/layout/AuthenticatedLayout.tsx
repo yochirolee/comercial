@@ -69,27 +69,29 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
 
       {/* Contenido principal */}
       <main className="flex-1 overflow-x-hidden">
-        {/* Header móvil con menú hamburguesa */}
-        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-[#0C0A04] px-4 flex items-center justify-between">
-          <Link href="/" className="block">
-            <h1 className="text-xl font-bold cursor-pointer hover:opacity-80 transition-opacity">
-              <span className="text-[#F3B450]">ZAS</span>
-              <span className="text-gray-400 text-sm ml-2">by JMC</span>
-            </h1>
-          </Link>
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-72 bg-[#0C0A04] border-none overflow-hidden">
-              <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-              <Sidebar isMobile onNavigate={() => setMobileMenuOpen(false)} />
-            </SheetContent>
-          </Sheet>
+        {/* Header móvil: rellena notch/status bar (safe-area) para que no se vea el fondo claro del body */}
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#0C0A04] pt-[env(safe-area-inset-top)]">
+          <div className="h-14 px-4 flex items-center justify-between">
+            <Link href="/" className="block">
+              <h1 className="text-xl font-bold cursor-pointer hover:opacity-80 transition-opacity">
+                <span className="text-[#F3B450]">ZAS</span>
+                <span className="text-gray-400 text-sm ml-2">by JMC</span>
+              </h1>
+            </Link>
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-72 bg-[#0C0A04] border-none overflow-hidden">
+                <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
+                <Sidebar isMobile onNavigate={() => setMobileMenuOpen(false)} />
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
-        <div className="pt-14 lg:pt-0">{children}</div>
+        <div className="pt-[calc(env(safe-area-inset-top)+3.5rem)] lg:pt-0">{children}</div>
       </main>
     </div>
   );

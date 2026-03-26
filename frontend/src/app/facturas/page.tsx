@@ -692,7 +692,7 @@ export default function FacturasPage(): React.ReactElement {
                   Nueva Factura
                 </Button>
               </DialogTrigger>
-              <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-auto">
+              <DialogContent className="w-[95vw] max-w-2xl max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[90vh] overflow-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Receipt className="h-5 w-5" />
@@ -1060,7 +1060,7 @@ export default function FacturasPage(): React.ReactElement {
 
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[min(92vh,900px)] flex-col overflow-hidden p-3 sm:p-6 lg:pr-14">
+        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(92dvh,900px)] flex-col overflow-hidden p-3 sm:p-6 lg:pr-14">
           <DialogHeader className="flex-shrink-0 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
@@ -1092,7 +1092,7 @@ export default function FacturasPage(): React.ReactElement {
             </div>
           </DialogHeader>
 
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-4 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
           <div className="space-y-4 min-w-0 pr-1">
             {/* Info básica - Campos editables */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4 p-4 bg-slate-50 rounded-lg min-w-0">
@@ -1422,7 +1422,7 @@ export default function FacturasPage(): React.ReactElement {
 
       {/* Edit Item Dialog */}
       <Dialog open={editItemDialogOpen} onOpenChange={setEditItemDialogOpen}>
-        <DialogContent className="flex max-h-[min(90vh,800px)] w-[95vw] max-w-lg flex-col gap-4 overflow-y-auto overscroll-contain pr-2">
+        <DialogContent className="flex max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(90dvh,800px)] w-[95vw] max-w-lg flex-col gap-4 overflow-y-auto overscroll-contain pr-2">
           <DialogHeader className="shrink-0 pr-6">
             <DialogTitle>Editar Item</DialogTitle>
           </DialogHeader>

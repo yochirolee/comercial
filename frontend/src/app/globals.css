@@ -159,6 +159,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Chrome iOS: al recargar, el canvas por encima del body puede verse blanco; alinear con header #0C0A04 */
+  html {
+    background-color: var(--brand-black);
+  }
   body {
     @apply bg-background text-foreground;
   }

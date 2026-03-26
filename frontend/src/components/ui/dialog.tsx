@@ -62,7 +62,7 @@ function DialogContent({
         className={cn(
           // Mobile: anchor to top with safe-area and internal scrolling so the close button never gets clipped.
           // >=sm: keep the centered dialog behavior.
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed left-[50%] z-[61] flex w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] translate-x-[-50%] flex-col gap-4 rounded-lg border p-6 pt-5 pr-10 shadow-lg duration-200 outline-none top-[calc(env(safe-area-inset-top)+4.5rem)] translate-y-0 max-h-[calc(100dvh-env(safe-area-inset-top)-5.5rem)] overflow-y-auto sm:top-[50%] sm:translate-y-[-50%] sm:w-auto sm:max-w-none sm:max-h-[85vh] sm:overflow-visible lg:pr-14",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed left-[50%] z-[61] flex w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] translate-x-[-50%] flex-col gap-4 rounded-lg border p-6 pt-5 pr-10 shadow-lg duration-200 outline-none top-[calc(env(safe-area-inset-top)+4rem)] translate-y-0 max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] overflow-y-auto max-sm:pb-[max(1rem,env(safe-area-inset-bottom))] sm:top-[50%] sm:translate-y-[-50%] sm:w-auto sm:max-w-none sm:max-h-[85vh] sm:overflow-visible sm:pb-6 lg:pr-14",
           className
         )}
         {...props}

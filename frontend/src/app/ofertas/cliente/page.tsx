@@ -829,7 +829,7 @@ export default function OfertasClientePage(): React.ReactElement {
 
       {/* Create Dialog - Todo en un paso */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="w-[92vw] sm:w-[90vw] max-w-[900px] max-h-[85vh] overflow-y-auto overflow-x-hidden p-3 pr-12 sm:p-6 sm:pr-14">
+        <DialogContent className="w-[92vw] sm:w-[90vw] max-w-[900px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[85vh] overflow-y-auto overflow-x-hidden p-3 pr-12 sm:p-6 sm:pr-14">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Nueva Oferta a Cliente</DialogTitle>
           </DialogHeader>
@@ -1242,7 +1242,7 @@ export default function OfertasClientePage(): React.ReactElement {
 
       {/* Detail/Edit Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[min(92vh,900px)] flex-col overflow-hidden p-3 sm:p-6 lg:pr-14">
+        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(92dvh,900px)] flex-col overflow-hidden p-3 sm:p-6 lg:pr-14">
           <DialogHeader className="flex-shrink-0 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <DialogTitle className="flex items-center gap-2 flex-wrap text-left">
               <Users className="h-5 w-5 shrink-0" />
@@ -1274,7 +1274,7 @@ export default function OfertasClientePage(): React.ReactElement {
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto min-h-0 overflow-x-hidden">
+          <div className="flex-1 overflow-y-auto min-h-0 overflow-x-hidden pb-4 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
             <div className="space-y-3 sm:space-y-4 pr-2 min-w-0">
               {/* Info básica */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
@@ -1348,7 +1348,7 @@ export default function OfertasClientePage(): React.ReactElement {
                       <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                       Agregar Producto
                     </Button>
-                    <DialogContent className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="w-full max-w-lg max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>Agregar Producto</DialogTitle>
                       </DialogHeader>
