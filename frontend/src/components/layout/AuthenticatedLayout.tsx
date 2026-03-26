@@ -68,9 +68,9 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
       </div>
 
       {/* Contenido principal */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-x-hidden">
         {/* Header móvil con menú hamburguesa */}
-        <div className="lg:hidden sticky top-0 z-40 bg-[#0C0A04] px-4 py-3 flex items-center justify-between">
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-[#0C0A04] px-4 flex items-center justify-between">
           <Link href="/" className="block">
             <h1 className="text-xl font-bold cursor-pointer hover:opacity-80 transition-opacity">
               <span className="text-[#F3B450]">ZAS</span>
@@ -89,7 +89,7 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
             </SheetContent>
           </Sheet>
         </div>
-        {children}
+        <div className="pt-14 lg:pt-0">{children}</div>
       </main>
     </div>
   );

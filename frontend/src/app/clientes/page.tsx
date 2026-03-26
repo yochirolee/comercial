@@ -284,7 +284,19 @@ export default function ClientesPage() {
             <div className="text-center py-8 text-slate-500">No hay clientes</div>
           ) : (
             paginatedClientes.map((cliente) => (
-              <div key={cliente.id} className="bg-white rounded-lg border shadow-sm p-4">
+              <div
+                key={cliente.id}
+                role="button"
+                tabIndex={0}
+                className="bg-white rounded-lg border shadow-sm p-4 cursor-pointer transition-colors active:bg-slate-50"
+                onClick={() => openEditDialog(cliente)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openEditDialog(cliente);
+                  }
+                }}
+              >
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <p className="font-medium text-sm">{cliente.nombre} {cliente.apellidos}</p>
@@ -293,10 +305,26 @@ export default function ClientesPage() {
                     )}
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(cliente)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditDialog(cliente);
+                      }}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(cliente.id)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(cliente.id);
+                      }}
+                    >
                       <Trash2 className="h-3.5 w-3.5 text-red-500" />
                     </Button>
                   </div>

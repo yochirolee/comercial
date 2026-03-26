@@ -590,18 +590,46 @@ export default function ProductosPage() {
             <div className="text-center py-8 text-slate-500">No hay productos</div>
           ) : (
             paginatedProductos.map((producto) => (
-              <div key={producto.id} className="bg-white rounded-lg border shadow-sm p-4">
+              <div
+                key={producto.id}
+                role="button"
+                tabIndex={0}
+                className="bg-white rounded-lg border shadow-sm p-4 cursor-pointer transition-colors active:bg-slate-50"
+                onClick={() => openEditDialog(producto)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openEditDialog(producto);
+                  }
+                }}
+              >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{producto.nombre}</p>
                     <p className="text-xs text-slate-500 font-mono">{producto.codigo || "Sin código"}</p>
                   </div>
                   <div className="flex gap-1 ml-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(producto)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditDialog(producto);
+                      }}
+                    >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     {producto.activo && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(producto.id)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(producto.id);
+                        }}
+                      >
                         <Trash2 className="h-3.5 w-3.5 text-red-500" />
                       </Button>
                     )}

@@ -1130,7 +1130,6 @@ export default function OfertasClientePage(): React.ReactElement {
               )}
 
               {/* Lista de items temporales */}
-              <div className="overflow-x-auto">
               <Table className="text-xs sm:text-sm">
                 <TableHeader>
                   <TableRow>
@@ -1191,7 +1190,6 @@ export default function OfertasClientePage(): React.ReactElement {
                   )}
                 </TableBody>
               </Table>
-              </div>
 
               {itemsTemp.length > 0 && (
                 <div className="flex justify-end">
@@ -1531,7 +1529,6 @@ export default function OfertasClientePage(): React.ReactElement {
                   </Dialog>
                 </div>
 
-                <div className="overflow-x-auto">
                 <Table>
                 <TableHeader>
                   <TableRow>
@@ -1585,7 +1582,6 @@ export default function OfertasClientePage(): React.ReactElement {
                   )}
                 </TableBody>
               </Table>
-              </div>
             </div>
 
               {/* Ajuste por total (estilo original) */}

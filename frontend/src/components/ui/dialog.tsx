@@ -38,7 +38,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-[60] bg-black/50",
         className
       )}
       {...props}
@@ -60,7 +60,9 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 flex translate-x-[-50%] translate-y-[-50%] flex-col gap-4 rounded-lg border p-6 pt-5 pr-10 lg:pr-14 shadow-lg duration-200 outline-none",
+          // Mobile: anchor to top with safe-area and internal scrolling so the close button never gets clipped.
+          // >=sm: keep the centered dialog behavior.
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed left-[50%] z-[61] flex w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] translate-x-[-50%] flex-col gap-4 rounded-lg border p-6 pt-5 pr-10 shadow-lg duration-200 outline-none top-[calc(env(safe-area-inset-top)+4.5rem)] translate-y-0 max-h-[calc(100dvh-env(safe-area-inset-top)-5.5rem)] overflow-y-auto sm:top-[50%] sm:translate-y-[-50%] sm:w-auto sm:max-w-none sm:max-h-[85vh] sm:overflow-visible lg:pr-14",
           className
         )}
         {...props}
