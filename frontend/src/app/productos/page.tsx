@@ -316,7 +316,7 @@ export default function ProductosPage() {
                   Nuevo Producto
                 </Button>
               </DialogTrigger>
-              <DialogContent className="w-[95vw] max-w-lg max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+              <DialogContent className="w-[95vw] max-w-[min(95vw,36rem)] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl overflow-y-auto overflow-x-hidden max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Editar Producto" : "Nuevo Producto"}
@@ -418,7 +418,7 @@ export default function ProductosPage() {
                         setFormData((prev) => ({ ...prev, categoriaId: value === "__none__" ? null : value }))
                       }
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Sin categoría" />
                       </SelectTrigger>
                       <SelectContent>
@@ -447,86 +447,86 @@ export default function ProductosPage() {
                 {/* Campos informativos para precarga en ofertas */}
                 <div className="border-t pt-4 space-y-3">
                   <p className="text-sm font-medium text-slate-700">Campos Informativos (para precarga en ofertas)</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Cantidad</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-4 sm:gap-y-3">
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <Label className="text-xs min-h-[2.75rem] sm:min-h-0 flex items-end leading-snug">Cantidad</Label>
                       <Input
                         placeholder="-"
                         value={infoFields.cantidad}
                         onChange={(e) => setInfoFields((prev) => ({ ...prev, cantidad: e.target.value }))}
-                        className="h-9 text-sm"
+                        className="h-9 w-full min-w-0 text-sm"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Cant. Cajas</Label>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <Label className="text-xs min-h-[2.75rem] sm:min-h-0 flex items-end leading-snug">Cant. Cajas</Label>
                       <Input
                         placeholder="-"
                         value={infoFields.cantidadCajas}
                         onChange={(e) => setInfoFields((prev) => ({ ...prev, cantidadCajas: e.target.value }))}
-                        className="h-9 text-sm"
+                        className="h-9 w-full min-w-0 text-sm"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Cant. Sacos</Label>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <Label className="text-xs min-h-[2.75rem] sm:min-h-0 flex items-end leading-snug">Cant. Sacos</Label>
                       <Input
                         placeholder="-"
                         value={infoFields.cantidadSacos}
                         onChange={(e) => setInfoFields((prev) => ({ ...prev, cantidadSacos: e.target.value }))}
-                        className="h-9 text-sm"
+                        className="h-9 w-full min-w-0 text-sm"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Peso Neto</Label>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <Label className="text-xs min-h-[2.75rem] sm:min-h-0 flex items-end leading-snug">Peso Neto</Label>
                       <Input
                         placeholder="-"
                         value={infoFields.pesoNeto}
                         onChange={(e) => setInfoFields((prev) => ({ ...prev, pesoNeto: e.target.value }))}
-                        className="h-9 text-sm"
+                        className="h-9 w-full min-w-0 text-sm"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Peso Bruto</Label>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <Label className="text-xs min-h-[2.75rem] sm:min-h-0 flex items-end leading-snug">Peso Bruto</Label>
                       <Input
                         placeholder="-"
                         value={infoFields.pesoBruto}
                         onChange={(e) => setInfoFields((prev) => ({ ...prev, pesoBruto: e.target.value }))}
-                        className="h-9 text-sm"
+                        className="h-9 w-full min-w-0 text-sm"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Peso x Saco</Label>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <Label className="text-xs min-h-[2.75rem] sm:min-h-0 flex items-end leading-snug">Peso x Saco</Label>
                       <Input
                         placeholder="-"
                         value={infoFields.pesoXSaco}
                         onChange={(e) => setInfoFields((prev) => ({ ...prev, pesoXSaco: e.target.value }))}
-                        className="h-9 text-sm"
+                        className="h-9 w-full min-w-0 text-sm"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Precio x Saco</Label>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <Label className="text-xs min-h-[2.75rem] sm:min-h-0 flex items-end leading-snug">Precio x Saco</Label>
                       <Input
                         placeholder="-"
                         value={infoFields.precioXSaco}
                         onChange={(e) => setInfoFields((prev) => ({ ...prev, precioXSaco: e.target.value }))}
-                        className="h-9 text-sm"
+                        className="h-9 w-full min-w-0 text-sm"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Peso x Caja</Label>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <Label className="text-xs min-h-[2.75rem] sm:min-h-0 flex items-end leading-snug">Peso x Caja</Label>
                       <Input
                         placeholder="-"
                         value={infoFields.pesoXCaja}
                         onChange={(e) => setInfoFields((prev) => ({ ...prev, pesoXCaja: e.target.value }))}
-                        className="h-9 text-sm"
+                        className="h-9 w-full min-w-0 text-sm"
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Precio x Caja</Label>
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <Label className="text-xs min-h-[2.75rem] sm:min-h-0 flex items-end leading-snug">Precio x Caja</Label>
                       <Input
                         placeholder="-"
                         value={infoFields.precioXCaja}
                         onChange={(e) => setInfoFields((prev) => ({ ...prev, precioXCaja: e.target.value }))}
-                        className="h-9 text-sm"
+                        className="h-9 w-full min-w-0 text-sm"
                       />
                     </div>
                   </div>
