@@ -1417,7 +1417,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   const hasPrecioXCaja = items.some(i => i.precioXCaja);
                   
                   return (
-                    <div className="min-w-0 max-w-full [&_[data-slot=table-container]]:touch-pan-x">
+                    <div className="min-w-0 max-w-full max-sm:[&_[data-slot=table-container]]:overscroll-x-contain">
                     <Table>
                     <TableHeader>
                       <TableRow>
