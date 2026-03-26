@@ -159,7 +159,7 @@ export default function ClientesPage() {
                   Nuevo Cliente
                 </Button>
               </DialogTrigger>
-            <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] max-w-2xl max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
               <DialogHeader>
                 <DialogTitle>
                   {editingId ? "Editar Cliente" : "Nuevo Cliente"}

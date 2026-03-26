@@ -846,15 +846,15 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   <span className="md:hidden">Nueva</span>
                 </Button>
               </DialogTrigger>
-            <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[80vw] xl:w-[75vw] max-w-[1400px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden p-3 sm:p-4 md:p-6">
+            <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[80vw] xl:w-[75vw] max-w-[1400px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden overflow-x-hidden p-3 sm:p-4 md:p-6">
               <DialogHeader className="flex-shrink-0 pb-2 sm:pb-3">
                 <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <Ship className="h-4 w-4 sm:h-5 sm:w-5" />
                   Nueva Oferta a Importadora
                 </DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto min-h-0">
-                <div className="space-y-2 sm:space-y-3 pr-2">
+              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 overscroll-y-contain pb-4 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+                <div className="space-y-2 sm:space-y-3 pr-2 min-w-0 max-w-full">
                   {/* Seleccionar oferta cliente */}
                   <div className="space-y-1 sm:space-y-1.5">
                     <Label className="text-xs sm:text-sm">Oferta al Cliente *</Label>
@@ -1288,7 +1288,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
       {/* Diálogo de detalle/edición */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(92dvh,900px)] flex-col overflow-hidden p-3 sm:p-6 lg:pr-14">
+        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(92dvh,900px)] flex-col overflow-hidden overflow-x-hidden p-3 sm:p-6 lg:pr-14">
           <DialogHeader className="flex-shrink-0 flex flex-col gap-3">
             <DialogTitle className="flex items-center gap-2 flex-wrap">
               <Ship className="h-5 w-5" />
@@ -1326,8 +1326,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             </div>
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto min-h-0 pb-4 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-            <div className="space-y-3 sm:space-y-4 pr-2">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 overscroll-y-contain pb-4 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="space-y-3 sm:space-y-4 pr-2 min-w-0 max-w-full">
               {/* Info básica */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
                 <div>
@@ -1417,7 +1417,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   const hasPrecioXCaja = items.some(i => i.precioXCaja);
                   
                   return (
-                    <div className="overflow-x-auto">
+                    <div className="min-w-0 max-w-full [&_[data-slot=table-container]]:touch-pan-x">
                     <Table>
                     <TableHeader>
                       <TableRow>
