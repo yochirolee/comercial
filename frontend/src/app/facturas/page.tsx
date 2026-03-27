@@ -1185,13 +1185,14 @@ export default function FacturasPage(): React.ReactElement {
 
       {/* Detail Dialog */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(92dvh,900px)] flex-col overflow-hidden p-3 sm:p-6 lg:pr-14">
-          <DialogHeader className="flex-shrink-0 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <DialogContent className="flex w-[94vw] max-w-[1320px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(92dvh,900px)] flex-col overflow-hidden p-3 sm:p-6 [&>button]:hidden">
+          <DialogHeader className="flex-shrink-0">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
               Factura: {selectedFactura?.numero}
             </DialogTitle>
-            <div className="flex flex-wrap justify-end self-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2 lg:flex-nowrap lg:items-center">
               <Button 
                 variant="outline" 
                 size="sm"
@@ -1214,6 +1215,16 @@ export default function FacturasPage(): React.ReactElement {
                 <Save className="h-4 w-4" />
                 Guardar y Cerrar
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded-md text-slate-500 hover:text-slate-700"
+                onClick={() => setDetailDialogOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
             </div>
           </DialogHeader>
 

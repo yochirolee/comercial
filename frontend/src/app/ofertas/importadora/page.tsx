@@ -954,12 +954,23 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   <span className="md:hidden">Nueva</span>
                 </Button>
               </DialogTrigger>
-            <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[80vw] xl:w-[75vw] max-w-[1400px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden overflow-x-hidden p-3 sm:p-4 md:p-6">
+            <DialogContent className="w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[80vw] xl:w-[75vw] max-w-[1400px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[90vh] flex flex-col overflow-hidden overflow-x-hidden p-3 sm:p-4 md:p-6 [&>button]:hidden">
               <DialogHeader className="flex-shrink-0 pb-2 sm:pb-3">
+                <div className="flex items-start justify-between gap-2">
                 <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
                   <Ship className="h-4 w-4 sm:h-5 sm:w-5" />
                   Nueva Oferta a Importadora
                 </DialogTitle>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 rounded-md text-slate-500 hover:text-slate-700"
+                  onClick={() => setDialogOpen(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+                </div>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 overscroll-y-contain pb-4 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
                 <div className="space-y-2 sm:space-y-3 pr-2 min-w-0 max-w-full">
@@ -1415,41 +1426,51 @@ export default function OfertasImportadoraPage(): React.ReactElement {
 
       {/* Diálogo de detalle/edición */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="flex w-[90vw] max-w-[1200px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(92dvh,900px)] flex-col overflow-hidden overflow-x-hidden p-3 sm:p-6 lg:pr-14">
-          <DialogHeader className="flex-shrink-0 flex flex-col gap-3">
-            <DialogTitle className="flex items-center gap-2 flex-wrap">
-              <Ship className="h-5 w-5" />
-              Oferta: {selectedOferta?.numero}
-              {selectedOferta?.ofertaCliente && (
-                <Badge variant="outline" className="ml-2">
-                  Desde: {selectedOferta?.ofertaCliente?.numero ?? "-"}
-                </Badge>
-              )}
-            </DialogTitle>
-            <div className="flex w-full flex-wrap justify-end gap-2 md:flex-nowrap md:gap-1.5 md:shrink-0">
+        <DialogContent className="flex w-[94vw] max-w-[1320px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(92dvh,900px)] flex-col overflow-hidden overflow-x-hidden p-3 sm:p-6 [&>button]:hidden">
+          <DialogHeader className="flex-shrink-0">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <DialogTitle className="flex items-center gap-2 flex-wrap">
+                <Ship className="h-5 w-5" />
+                Oferta: {selectedOferta?.numero}
+                {selectedOferta?.ofertaCliente && (
+                  <Badge variant="outline" className="ml-2">
+                    Desde: {selectedOferta?.ofertaCliente?.numero ?? "-"}
+                  </Badge>
+                )}
+              </DialogTitle>
+            <div className="flex flex-wrap justify-end gap-2 lg:flex-nowrap lg:items-center">
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => selectedOferta && exportApi.downloadPdf("ofertas-importadora", selectedOferta.id)}
-                className="flex-1 sm:flex-initial whitespace-nowrap md:h-8 md:px-2.5 md:text-xs"
+                className="flex-1 sm:flex-initial"
               >
-                <FileDown className="h-4 w-4 mr-1 md:h-3.5 md:w-3.5 md:mr-0.5" />
+                <FileDown className="h-4 w-4 mr-1" />
                 PDF
               </Button>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => selectedOferta && exportApi.downloadExcel("ofertas-importadora", selectedOferta.id)}
-                className="flex-1 sm:flex-initial whitespace-nowrap md:h-8 md:px-2.5 md:text-xs"
+                className="flex-1 sm:flex-initial"
               >
-                <FileSpreadsheet className="h-4 w-4 mr-1 md:h-3.5 md:w-3.5 md:mr-0.5" />
+                <FileSpreadsheet className="h-4 w-4 mr-1" />
                 Excel
               </Button>
-              <Button onClick={handleSaveChanges} size="sm" className="gap-2 flex-1 sm:flex-initial whitespace-nowrap md:h-8 md:px-2.5 md:text-xs md:gap-1">
-                <Save className="h-4 w-4 md:h-3.5 md:w-3.5" />
-                <span className="md:hidden lg:inline">Guardar y Cerrar</span>
-                <span className="hidden md:inline lg:hidden">Guardar</span>
+              <Button onClick={handleSaveChanges} size="sm" className="gap-2 flex-1 sm:flex-initial">
+                <Save className="h-4 w-4" />
+                Guardar y Cerrar
               </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 rounded-md text-slate-500 hover:text-slate-700"
+                onClick={() => setDetailDialogOpen(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
             </div>
           </DialogHeader>
 
