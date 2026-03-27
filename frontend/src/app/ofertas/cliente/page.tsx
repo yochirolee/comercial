@@ -27,8 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { getCategoryBadgeClass } from "@/lib/category-colors";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save, Download, ChevronLeft, ChevronRight, Search, Users } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save, Download, ChevronLeft, ChevronRight, Search, Users, Printer } from "lucide-react";
 import { ofertasClienteApi, ofertasGeneralesApi, clientesApi, productosApi, exportApi, unidadesApi } from "@/lib/api";
 import type { OfertaCliente, OfertaGeneral, Cliente, Producto, ItemOfertaClienteInput, UnidadMedida } from "@/lib/api";
 
@@ -764,7 +765,12 @@ export default function OfertasClientePage(): React.ReactElement {
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => void openDetailDialog(oferta)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => exportApi.previewPdf("ofertas-cliente", oferta.id)}
+                          title="Vista previa"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button
@@ -1166,8 +1172,18 @@ export default function OfertasClientePage(): React.ReactElement {
                     itemsTemp.map((item) => (
                       <TableRow key={item.tempId}>
                         <TableCell>
-                          {item.producto?.nombre ?? item.nombreProducto ?? "—"}
-                          {!item.productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
+                          <div>
+                            {item.producto?.nombre ?? item.nombreProducto ?? "—"}
+                            {!item.productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
+                          </div>
+                          {item.producto?.categoria?.nombre && (
+                            <Badge
+                              variant="outline"
+                              className={`mt-1 text-[10px] ${getCategoryBadgeClass(item.producto.categoria.nombre)}`}
+                            >
+                              {item.producto.categoria.nombre}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell>{umAbbrForTempItem(item)}</TableCell>
                         <TableCell className="text-right">{item.cantidad}</TableCell>
@@ -1264,6 +1280,15 @@ export default function OfertasClientePage(): React.ReactElement {
               Oferta: {selectedOferta?.numero}
             </DialogTitle>
             <div className="flex flex-wrap justify-end gap-2 lg:flex-nowrap lg:items-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => selectedOferta && exportApi.previewPdf("ofertas-cliente", selectedOferta.id)}
+                className="flex-1 sm:flex-initial"
+              >
+                <Printer className="h-4 w-4 mr-1" />
+                Imprimir
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -1579,8 +1604,18 @@ export default function OfertasClientePage(): React.ReactElement {
                     selectedOferta?.items.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
-                          {item.producto?.nombre ?? item.nombreProducto ?? "—"}
-                          {!item.productoId && <span className="ml-1 text-[10px] text-orange-500 font-medium">(libre)</span>}
+                          <div>
+                            {item.producto?.nombre ?? item.nombreProducto ?? "—"}
+                            {!item.productoId && <span className="ml-1 text-[10px] text-orange-500 font-medium">(libre)</span>}
+                          </div>
+                          {item.producto?.categoria?.nombre && (
+                            <Badge
+                              variant="outline"
+                              className={`mt-1 text-[10px] ${getCategoryBadgeClass(item.producto.categoria.nombre)}`}
+                            >
+                              {item.producto.categoria.nombre}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">{item.cantidad}</TableCell>
                         <TableCell>

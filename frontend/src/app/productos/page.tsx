@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { getCategoryBadgeClass } from "@/lib/category-colors";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Search, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -194,13 +195,24 @@ export default function ProductosPage() {
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
+    const precioLimpio = precioString.trim();
+    if (!precioLimpio) {
+      toast.error("Escribe el precio base del producto");
+      return;
+    }
+    const precioBase = parseFloat(precioLimpio);
+    if (Number.isNaN(precioBase) || precioBase <= 0) {
+      toast.error("El precio base debe ser un numero mayor que 0");
+      return;
+    }
+
     setSaving(true);
 
     const dataToSend: ProductoInput = {
       codigo: formData.codigo,
       nombre: formData.nombre,
       descripcion: formData.descripcion,
-      precioBase: parseFloat(precioString) || 0,
+      precioBase,
       unidadMedidaId: formData.unidadMedidaId,
       categoriaId: formData.categoriaId || null,
       codigoArancelario: formData.codigoArancelario,
@@ -298,7 +310,11 @@ export default function ProductosPage() {
               variant="outline"
               onClick={async () => {
                 try {
-                  await exportApi.exportAllProductos(search);
+                  await exportApi.exportAllProductos(
+                    search || undefined,
+                    showOnlyActive ? "true" : undefined,
+                    filterCategoria !== "all" ? filterCategoria : undefined,
+                  );
                   toast.success("Productos exportados correctamente");
                 } catch (error) {
                   toast.error("Error al exportar productos");
@@ -637,7 +653,12 @@ export default function ProductosPage() {
                 </div>
                 {producto.categoria && (
                   <div className="mb-1">
-                    <Badge variant="outline" className="text-xs">{producto.categoria.nombre}</Badge>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${getCategoryBadgeClass(producto.categoria.nombre)}`}
+                    >
+                      {producto.categoria.nombre}
+                    </Badge>
                   </div>
                 )}
                 <div className="flex items-center justify-between text-sm">
@@ -721,7 +742,12 @@ export default function ProductosPage() {
                     <TableCell className="font-medium">{producto.nombre}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       {producto.categoria ? (
-                        <Badge variant="outline" className="text-xs">{producto.categoria.nombre}</Badge>
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${getCategoryBadgeClass(producto.categoria.nombre)}`}
+                        >
+                          {producto.categoria.nombre}
+                        </Badge>
                       ) : (
                         <span className="text-slate-400 text-xs">—</span>
                       )}

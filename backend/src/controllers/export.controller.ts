@@ -2984,7 +2984,7 @@ export const ExportController = {
   // Exportar todos los productos
   async exportProductos(req: Request, res: Response): Promise<void> {
     try {
-      const { search, activo } = req.query;
+      const { search, activo, categoriaId } = req.query;
       const { createContainsFilter } = await import('../lib/search-utils.js');
       
       const searchFilter = search ? createContainsFilter(String(search)) : null;
@@ -3000,6 +3000,7 @@ export const ExportController = {
               ],
             } : {},
             activo !== undefined ? { activo: activo === 'true' } : {},
+            categoriaId ? { categoriaId: String(categoriaId) } : {},
           ],
         },
         include: {

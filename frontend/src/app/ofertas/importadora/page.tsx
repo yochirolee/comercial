@@ -29,8 +29,9 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getCategoryBadgeClass } from "@/lib/category-colors";
 import { toast } from "sonner";
-import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight, Pencil, Save, Download, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight, Pencil, Save, Download, ChevronLeft, ChevronRight, Search, X, Printer } from "lucide-react";
 import { 
   ofertasImportadoraApi, 
   ofertasClienteApi, 
@@ -1157,6 +1158,14 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                                             {item.producto?.nombre ?? (item as any).nombreProducto ?? "—"}
                                             {!(item as any).productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
                                           </div>
+                                          {item.producto?.categoria?.nombre && (
+                                            <Badge
+                                              variant="outline"
+                                              className={`mt-1 text-[10px] ${getCategoryBadgeClass(item.producto.categoria.nombre)}`}
+                                            >
+                                              {item.producto.categoria.nombre}
+                                            </Badge>
+                                          )}
                                           {item.codigoArancelario && (
                                             <div className="text-xs text-slate-500 mt-0.5 sm:mt-1">
                                               ({item.codigoArancelario})
@@ -1361,7 +1370,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openDetailDialog(oferta)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => exportApi.previewPdf("ofertas-importadora", oferta.id)}
+                          title="Vista previa"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button
@@ -1439,6 +1453,15 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                 )}
               </DialogTitle>
             <div className="flex flex-wrap justify-end gap-2 lg:flex-nowrap lg:items-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => selectedOferta && exportApi.previewPdf("ofertas-importadora", selectedOferta.id)}
+                className="flex-1 sm:flex-initial"
+              >
+                <Printer className="h-4 w-4 mr-1" />
+                Imprimir
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -1588,7 +1611,17 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                     <TableBody>
                       {items.map((item) => (
                         <TableRow key={item.id}>
-                          <TableCell>{item.producto?.nombre ?? (item as any).nombreProducto ?? "—"}</TableCell>
+                          <TableCell>
+                            <div>{item.producto?.nombre ?? (item as any).nombreProducto ?? "—"}</div>
+                            {item.producto?.categoria?.nombre && (
+                              <Badge
+                                variant="outline"
+                                className={`mt-1 text-[10px] ${getCategoryBadgeClass(item.producto.categoria.nombre)}`}
+                              >
+                                {item.producto.categoria.nombre}
+                              </Badge>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right">{item.pesoNeto || item.cantidad}</TableCell>
                           <TableCell>{umAbbrImportadoraItem(item, unidades)}</TableCell>
                           {hasCantidadCajas && <TableCell className="text-right">{item.cantidadCajas || '-'}</TableCell>}

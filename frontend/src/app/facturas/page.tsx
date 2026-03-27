@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { getCategoryBadgeClass } from "@/lib/category-colors";
 import { toast } from "sonner";
 import { 
   Plus, 
@@ -49,6 +50,7 @@ import {
   ChevronRight,
   Search,
   X,
+  Printer,
 } from "lucide-react";
 import {
   facturasApi,
@@ -1120,7 +1122,12 @@ export default function FacturasPage(): React.ReactElement {
                     </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openDetailDialog(factura)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => exportApi.previewPdf("facturas", factura.id)}
+                          title="Vista previa"
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button
@@ -1193,6 +1200,15 @@ export default function FacturasPage(): React.ReactElement {
               Factura: {selectedFactura?.numero}
             </DialogTitle>
             <div className="flex flex-wrap justify-end gap-2 md:flex-nowrap md:items-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => selectedFactura && exportApi.previewPdf("facturas", selectedFactura.id)}
+                className="flex-1 sm:flex-initial md:h-8 md:px-2.5 md:text-xs lg:h-9 lg:px-3 lg:text-sm"
+              >
+                <Printer className="h-4 w-4 mr-1 md:h-3.5 md:w-3.5 md:mr-0.5 lg:h-4 lg:w-4 lg:mr-1" />
+                Imprimir
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm"
@@ -1345,11 +1361,19 @@ export default function FacturasPage(): React.ReactElement {
                   <TableBody>
                     {selectedFactura.items.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="min-w-[150px] max-w-[200px]">
+                        <TableCell className="min-w-[150px] max-w-[220px]">
                           <div className="truncate" title={item.producto?.nombre ?? item.nombreProducto ?? ""}>
                             {item.producto?.nombre ?? item.nombreProducto ?? "—"}
                             {!item.productoId && <span className="ml-1 text-[10px] text-orange-500">(libre)</span>}
                           </div>
+                          {item.producto?.categoria?.nombre && (
+                            <Badge
+                              variant="outline"
+                              className={`mt-1 text-[10px] ${getCategoryBadgeClass(item.producto.categoria.nombre)}`}
+                            >
+                              {item.producto.categoria.nombre}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="w-16">{umAbbrFacturaItem(item, unidades)}</TableCell>
                         {hasOptionalFields(selectedFactura.items).cantidadSacos && (

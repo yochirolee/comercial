@@ -29,6 +29,7 @@ interface KpiMetric {
   icon: React.ComponentType<{ className?: string }>;
   iconColor: string;
   iconBg: string;
+  breakdown?: BreakdownItem[];
   badge?: {
     text: string;
     color: string;
@@ -72,6 +73,7 @@ interface AgingBucket {
 
 function KpiCard({ metric }: { metric: KpiMetric }): React.ReactElement {
   const Icon = metric.icon;
+  const hasBreakdown = (metric.breakdown?.length ?? 0) > 0;
   return (
     <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200 h-full flex flex-col">
       <div className="flex items-start justify-between mb-3 md:mb-4">
@@ -85,13 +87,25 @@ function KpiCard({ metric }: { metric: KpiMetric }): React.ReactElement {
           <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900">
             {metric.value}
           </div>
+          {hasBreakdown && (
+            <div className="space-y-1.5 pt-1">
+              {metric.breakdown?.map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600 truncate pr-2">{item.label}</span>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${item.color} whitespace-nowrap`}>
+                    {item.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           {metric.badge && (
             <div className={`text-xs font-medium ${metric.badge.color}`}>
               {metric.badge.text}
             </div>
           )}
         </div>
-        {!metric.badge && <div className="h-5"></div>}
+        {!metric.badge && !hasBreakdown && <div className="h-5"></div>}
       </div>
     </div>
   );
@@ -233,6 +247,7 @@ function CommercialPanel({
 // ==========================================
 
 export default function Dashboard(): React.ReactElement {
+  const MAX_PRODUCT_CATEGORIES = 3;
   const [stats, setStats] = useState({
     clientes: 0,
     clientesEsteMes: 0,
@@ -257,6 +272,7 @@ export default function Dashboard(): React.ReactElement {
   });
   const [funnel, setFunnel] = useState<FunnelStep[]>([]);
   const [agingBuckets, setAgingBuckets] = useState<AgingBucket[]>([]);
+  const [productosBreakdown, setProductosBreakdown] = useState<BreakdownItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -362,6 +378,38 @@ export default function Dashboard(): React.ReactElement {
 
         const facturasPagadas = facturas.filter((f: Factura) => f.estado === "pagada").length;
         const facturasPendientes = facturas.filter((f: Factura) => f.estado === "pendiente").length;
+        const productosActivos = productos.filter((p: Producto) => p.activo);
+
+        // Top categorías para no romper diseño del card.
+        const categoriaCounts = new Map<string, number>();
+        productosActivos.forEach((p: Producto) => {
+          const categoria = p.categoria?.nombre?.trim() || "Sin categoría";
+          categoriaCounts.set(categoria, (categoriaCounts.get(categoria) || 0) + 1);
+        });
+        const categoriasOrdenadas = Array.from(categoriaCounts.entries())
+          .sort((a, b) => b[1] - a[1]);
+        const topCategorias = categoriasOrdenadas.slice(0, MAX_PRODUCT_CATEGORIES);
+        const otrasCount = categoriasOrdenadas
+          .slice(MAX_PRODUCT_CATEGORIES)
+          .reduce((acc, [, count]) => acc + count, 0);
+        const colorPalette = [
+          "bg-emerald-100 text-emerald-700",
+          "bg-blue-100 text-blue-700",
+          "bg-amber-100 text-amber-700",
+          "bg-slate-100 text-slate-700",
+        ];
+        const breakdownCategorias: BreakdownItem[] = topCategorias.map(([label, value], idx) => ({
+          label,
+          value,
+          color: colorPalette[idx % colorPalette.length],
+        }));
+        if (otrasCount > 0) {
+          breakdownCategorias.push({
+            label: "Otras",
+            value: otrasCount,
+            color: "bg-slate-100 text-slate-700",
+          });
+        }
 
         // Calcular funnel
         const ofertasClienteCreadas = ofertasCliente.length;
@@ -416,7 +464,7 @@ export default function Dashboard(): React.ReactElement {
         setStats({
           clientes: clientes.length,
           clientesEsteMes,
-          productos: productos.filter((p: Producto) => p.activo).length,
+          productos: productosActivos.length,
           ofertas: ofertasCliente.length + ofertasImportadora.length,
           ofertasCliente: ofertasCliente.length,
           ofertasImportadora: ofertasImportadora.length,
@@ -436,6 +484,7 @@ export default function Dashboard(): React.ReactElement {
         });
         setFunnel(funnelData);
         setAgingBuckets(agingData);
+        setProductosBreakdown(breakdownCategorias);
       } catch (error) {
         console.error("Error loading stats:", error);
       } finally {
@@ -475,6 +524,7 @@ export default function Dashboard(): React.ReactElement {
       icon: Package,
       iconColor: "text-emerald-600",
       iconBg: "bg-emerald-100",
+      breakdown: loading ? [] : productosBreakdown,
     },
   ];
 

@@ -345,6 +345,43 @@ export const facturasApi = {
 // EXPORTACIÓN
 // ==========================================
 export const exportApi = {
+  previewPdf: async (tipo: string, id: string): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    const response = await fetch(`${API_URL}/export/${tipo}/${id}/pdf`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+      throw new Error(errorData.error || 'Error al previsualizar PDF');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const tab = window.open(url, '_blank');
+    if (!tab) {
+      // Fallback para navegadores que abren la pestaña pero retornan null.
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // Limpieza tardía para no invalidar el recurso de la pestaña nueva.
+    window.setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 60000);
+  },
   downloadPdf: async (tipo: string, id: string): Promise<void> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
 
@@ -451,13 +488,14 @@ export const exportApi = {
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
   },
-  exportAllProductos: async (search?: string, activo?: string): Promise<void> => {
+  exportAllProductos: async (search?: string, activo?: string, categoriaId?: string): Promise<void> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
     if (!token) throw new Error('No hay token de autenticación');
     
     const params = new URLSearchParams();
     if (search) params.append('search', search);
     if (activo !== undefined) params.append('activo', activo);
+    if (categoriaId) params.append('categoriaId', categoriaId);
     const query = params.toString() ? `?${params.toString()}` : '';
     
     const response = await fetch(`${API_URL}/export/productos${query}`, {
