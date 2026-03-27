@@ -1187,33 +1187,34 @@ export default function FacturasPage(): React.ReactElement {
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
         <DialogContent className="flex w-[94vw] max-w-[1320px] max-h-[calc(100dvh-env(safe-area-inset-top)-4rem-env(safe-area-inset-bottom)-1rem)] sm:max-h-[min(92dvh,900px)] flex-col overflow-hidden p-3 sm:p-6 [&>button]:hidden">
           <DialogHeader className="flex-shrink-0">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="h-5 w-5" />
               Factura: {selectedFactura?.numero}
             </DialogTitle>
-            <div className="flex flex-wrap justify-end gap-2 lg:flex-nowrap lg:items-center">
+            <div className="flex flex-wrap justify-end gap-2 md:flex-nowrap md:items-center">
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => selectedFactura && exportApi.downloadPdf("facturas", selectedFactura.id)}
-                className="flex-1 sm:flex-initial"
+                className="flex-1 sm:flex-initial md:h-8 md:px-2.5 md:text-xs lg:h-9 lg:px-3 lg:text-sm"
               >
-                <FileDown className="h-4 w-4 mr-1" />
+                <FileDown className="h-4 w-4 mr-1 md:h-3.5 md:w-3.5 md:mr-0.5 lg:h-4 lg:w-4 lg:mr-1" />
                 PDF
               </Button>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => selectedFactura && exportApi.downloadExcel("facturas", selectedFactura.id)}
-                className="flex-1 sm:flex-initial"
+                className="flex-1 sm:flex-initial md:h-8 md:px-2.5 md:text-xs lg:h-9 lg:px-3 lg:text-sm"
               >
-                <FileSpreadsheet className="h-4 w-4 mr-1" />
+                <FileSpreadsheet className="h-4 w-4 mr-1 md:h-3.5 md:w-3.5 md:mr-0.5 lg:h-4 lg:w-4 lg:mr-1" />
                 Excel
               </Button>
-              <Button onClick={handleSaveChanges} disabled={saving} size="sm" className="gap-2 flex-1 sm:flex-initial">
-                <Save className="h-4 w-4" />
-                Guardar y Cerrar
+              <Button onClick={handleSaveChanges} disabled={saving} size="sm" className="gap-2 flex-1 sm:flex-initial md:h-8 md:px-2.5 md:text-xs md:gap-1 lg:h-9 lg:px-3 lg:text-sm lg:gap-2">
+                <Save className="h-4 w-4 md:h-3.5 md:w-3.5 lg:h-4 lg:w-4" />
+                <span className="md:hidden lg:inline">Guardar y Cerrar</span>
+                <span className="hidden md:inline lg:hidden">Guardar</span>
               </Button>
               <Button
                 type="button"
