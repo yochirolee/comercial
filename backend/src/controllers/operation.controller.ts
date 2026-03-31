@@ -1000,15 +1000,21 @@ export const OperationController = {
     }
     if (status) {
       const s = String(status);
+      // Si filtras por estado, debe aplicar tanto a estado de operación como a estado de contenedor.
+      // Este OR debe combinarse con el "OR de posición" (createdAt/id) usando AND.
       whereFilter.OR = [{ status: s }, { containers: { some: { status: s } } }];
     }
 
     const prev = await prisma.operation.findFirst({
       where: {
-        ...whereFilter,
-        OR: [
-          { createdAt: current.createdAt, id: { gt: current.id } },
-          { createdAt: { lt: current.createdAt } },
+        AND: [
+          whereFilter,
+          {
+            OR: [
+              { createdAt: current.createdAt, id: { gt: current.id } },
+              { createdAt: { lt: current.createdAt } },
+            ],
+          },
         ],
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
@@ -1057,10 +1063,14 @@ export const OperationController = {
 
     const next = await prisma.operation.findFirst({
       where: {
-        ...whereFilter,
-        OR: [
-          { createdAt: current.createdAt, id: { lt: current.id } },
-          { createdAt: { gt: current.createdAt } },
+        AND: [
+          whereFilter,
+          {
+            OR: [
+              { createdAt: current.createdAt, id: { lt: current.id } },
+              { createdAt: { gt: current.createdAt } },
+            ],
+          },
         ],
       },
       orderBy: [{ createdAt: 'asc' }, { id: 'desc' }],
