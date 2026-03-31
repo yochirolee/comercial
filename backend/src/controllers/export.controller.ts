@@ -3817,6 +3817,8 @@ export const ExportController = {
         { width: 14 },
       ];
 
+      const rows: any[][] = [];
+
       for (const op of operations) {
         const oferta = op.offerCustomer;
         const productos = oferta ? productosFromItems(oferta.items) : '';
@@ -3845,7 +3847,7 @@ export const ExportController = {
           const eta = c ? formatEsDate(c.etaActual ?? c.etaEstimated ?? null) : '';
           const salidaMariel = '';
 
-          sheet.addRow([
+          rows.push([
             labelOperacion(
               {
                 operationType: op.operationType,
@@ -3866,6 +3868,15 @@ export const ExportController = {
           ]);
         }
       }
+
+      // Ordenar por nombre de operación (columna 0), con orden numérico dentro del texto
+      rows.sort((a, b) =>
+        String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true, sensitivity: 'base' })
+      );
+
+      rows.forEach((r) => {
+        sheet.addRow(r);
+      });
 
       const buffer = await workbook.xlsx.writeBuffer();
       const day = new Date().toISOString().split('T')[0];

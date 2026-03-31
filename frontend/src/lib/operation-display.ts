@@ -1,15 +1,21 @@
 import type { Operation, OperationContainer } from "@/lib/api";
 
-/** Etiqueta visible en tablas: Parcel prioriza contenedor/BL/booking de la fila, luego ref. manual, luego PKG. */
+/** Etiqueta visible en tablas.
+ * Prioridad:
+ *  - Si hay referencia visible (cualquier tipo): usarla
+ *  - Parcel: contenedor/BL/booking de la fila
+ *  - Resto: número interno de operación
+ */
 export function operationRowLabel(op: Operation, container: OperationContainer): string {
-  if (op.operationType !== "PARCEL") return op.operationNo;
-  const fromContainer =
-    container.containerNo?.trim() ||
-    container.blNo?.trim() ||
-    container.bookingNo?.trim();
-  if (fromContainer) return fromContainer;
   const ref = op.referenciaOperacion?.trim();
   if (ref) return ref;
+  if (op.operationType === "PARCEL") {
+    const fromContainer =
+      container.containerNo?.trim() ||
+      container.blNo?.trim() ||
+      container.bookingNo?.trim();
+    if (fromContainer) return fromContainer;
+  }
   return op.operationNo;
 }
 

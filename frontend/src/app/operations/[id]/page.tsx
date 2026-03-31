@@ -36,6 +36,7 @@ const OPERATION_STATUSES = [
   "Gate In (Port)",
   "BL Final Issued",
   "Departed US",
+  "Departed Brazil",
   "Arrived Cuba",
   "Customs",
   "Released",
@@ -183,9 +184,7 @@ export default function OperationDetailPage(): React.ReactElement {
       const { referenciaOperacion, ...rest } = operationForm;
       await operationsApi.update(operationId, {
         ...rest,
-        ...(operation.operationType === "PARCEL"
-          ? { referenciaOperacion: referenciaOperacion.trim() || null }
-          : {}),
+        referenciaOperacion: referenciaOperacion.trim() || null,
       });
       toast.success("Operación actualizada");
       setEditOperationDialogOpen(false);
@@ -857,21 +856,23 @@ export default function OperationDetailPage(): React.ReactElement {
                 onChange={(e) => setOperationForm((p) => ({ ...p, notes: e.target.value }))}
               />
             </div>
-            {operation.operationType === "PARCEL" && (
-              <div>
-                <Label>Referencia visible</Label>
-                <Input
-                  value={operationForm.referenciaOperacion}
-                  onChange={(e) =>
-                    setOperationForm((p) => ({ ...p, referenciaOperacion: e.target.value }))
-                  }
-                  placeholder="BL, booking o nota (si aún no está en el contenedor)"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Nº interno: {operation.operationNo}
-                </p>
-              </div>
-            )}
+            <div>
+              <Label>Referencia visible</Label>
+              <Input
+                value={operationForm.referenciaOperacion}
+                onChange={(e) =>
+                  setOperationForm((p) => ({ ...p, referenciaOperacion: e.target.value }))
+                }
+                placeholder={
+                  operation.operationType === "PARCEL"
+                    ? "BL, booking o nota (si aún no está en el contenedor)"
+                    : "Alias visible (no cambia el número interno)"
+                }
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Nº interno: {operation.operationNo}
+              </p>
+            </div>
             <Button onClick={handleUpdateOperation} className="w-full">
               <Save className="h-4 w-4 mr-2" />
               Guardar

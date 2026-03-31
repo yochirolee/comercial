@@ -14,6 +14,7 @@ const OPERATION_STATUSES = [
   'Gate In (Port)',
   'BL Final Issued',
   'Departed US',
+  'Departed Brazil',
   'Arrived Cuba',
   'Customs',
   'Released',
@@ -30,6 +31,7 @@ const CONTAINER_STATUSES = [
   'Gate In (Port)',
   'BL Final Issued',
   'Departed US',
+  'Departed Brazil',
   'Arrived Cuba',
   'Customs',
   'Released',
@@ -770,7 +772,7 @@ export const OperationController = {
       }
     }
 
-    // Referencia visible (Parcel): vacío → null
+    // Referencia visible: vacío → null
     if ('referenciaOperacion' in data) {
       const raw = data.referenciaOperacion;
       if (raw === null || raw === undefined) {
