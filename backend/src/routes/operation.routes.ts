@@ -19,6 +19,10 @@ operationRouter.post('/', OperationController.create);
 // GET /api/operations/:id - Obtener operación por ID con detalles
 operationRouter.get('/:id', OperationController.getById);
 
+// Navegación: operación anterior / siguiente (orden creado desc)
+operationRouter.get('/:id/prev', OperationController.getPrev);
+operationRouter.get('/:id/next', OperationController.getNext);
+
 // PATCH /api/operations/:id - Actualizar operación
 operationRouter.patch('/:id', OperationController.update);
 

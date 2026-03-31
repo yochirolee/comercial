@@ -970,6 +970,72 @@ export const OperationController = {
     
     res.status(204).send();
   },
+
+  // Obtener operación anterior según orden creado desc
+  async getPrev(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+
+    const current = await prisma.operation.findUnique({
+      where: { id },
+      select: { createdAt: true, id: true },
+    });
+
+    if (!current) {
+      res.status(404).json({ error: 'Operación no encontrada' });
+      return;
+    }
+
+    const prev = await prisma.operation.findFirst({
+      where: {
+        OR: [
+          { createdAt: current.createdAt, id: { gt: current.id } },
+          { createdAt: { lt: current.createdAt } },
+        ],
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        operationNo: true,
+        operationType: true,
+        referenciaOperacion: true,
+      },
+    });
+
+    res.json(prev || null);
+  },
+
+  // Obtener operación siguiente según orden creado desc
+  async getNext(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+
+    const current = await prisma.operation.findUnique({
+      where: { id },
+      select: { createdAt: true, id: true },
+    });
+
+    if (!current) {
+      res.status(404).json({ error: 'Operación no encontrada' });
+      return;
+    }
+
+    const next = await prisma.operation.findFirst({
+      where: {
+        OR: [
+          { createdAt: current.createdAt, id: { lt: current.id } },
+          { createdAt: { gt: current.createdAt } },
+        ],
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'desc' }],
+      select: {
+        id: true,
+        operationNo: true,
+        operationType: true,
+        referenciaOperacion: true,
+      },
+    });
+
+    res.json(next || null);
+  },
   
   // Actualizar contenedor
   async updateContainer(req: Request, res: Response): Promise<void> {

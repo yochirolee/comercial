@@ -23,7 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, Save, Package, Ship, Clock, Trash2, ArrowUpDown } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, Save, Package, Ship, Clock, Trash2, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { operationsApi, importadorasApi, carriersApi } from "@/lib/api";
 import type { Operation, OperationContainer, OperationEvent, ContainerEvent, Carrier } from "@/lib/api";
 import { operationParcelDetailTitle } from "@/lib/operation-display";
@@ -75,6 +75,8 @@ export default function OperationDetailPage(): React.ReactElement {
   const [loading, setLoading] = useState(true);
   const [importadoras, setImportadoras] = useState<Array<{ id: string; nombre: string }>>([]);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
+  const [prevOperation, setPrevOperation] = useState<Operation | null>(null);
+  const [nextOperation, setNextOperation] = useState<Operation | null>(null);
   
   // Estado para ordenamiento de timeline de contenedores (por contenedor)
   const [containerEventOrder, setContainerEventOrder] = useState<Record<string, 'asc' | 'desc'>>({});
@@ -130,11 +132,24 @@ export default function OperationDetailPage(): React.ReactElement {
   });
 
   useEffect(() => {
-    if (operationId) {
-      loadOperation();
-      loadImportadoras();
-      loadCarriers();
-    }
+    if (!operationId) return;
+    loadOperation();
+    loadImportadoras();
+    loadCarriers();
+
+    // Cargar anterior / siguiente según orden creado desc
+    (async () => {
+      try {
+        const [prev, next] = await Promise.all([
+          operationsApi.getPrev(operationId),
+          operationsApi.getNext(operationId),
+        ]);
+        setPrevOperation(prev);
+        setNextOperation(next);
+      } catch (error) {
+        console.error("Error al cargar navegación de operaciones:", error);
+      }
+    })();
   }, [operationId]);
 
   async function loadImportadoras(): Promise<void> {
@@ -192,6 +207,14 @@ export default function OperationDetailPage(): React.ReactElement {
     } catch (error) {
       toast.error("Error al actualizar");
       console.error(error);
+    }
+  }
+
+  async function handleGoTo(operationIdTarget: string): Promise<void> {
+    try {
+      router.push(`/operations/${operationIdTarget}`);
+    } catch (error) {
+      console.error("Error al navegar a operación:", error);
     }
   }
 
@@ -403,10 +426,38 @@ export default function OperationDetailPage(): React.ReactElement {
             : `ID interno: ${operation.operationNo}`
         }
         actions={
-          <Button variant="outline" onClick={() => router.push("/operations")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={!prevOperation}
+              title={
+                prevOperation
+                  ? `Anterior: ${prevOperation.referenciaOperacion?.trim() || prevOperation.operationNo}`
+                  : "No hay operación anterior"
+              }
+              onClick={() => prevOperation && handleGoTo(prevOperation.id)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" onClick={() => router.push("/operations")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Volver
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={!nextOperation}
+              title={
+                nextOperation
+                  ? `Siguiente: ${nextOperation.referenciaOperacion?.trim() || nextOperation.operationNo}`
+                  : "No hay operación siguiente"
+              }
+              onClick={() => nextOperation && handleGoTo(nextOperation.id)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         }
       />
 
@@ -882,7 +933,32 @@ export default function OperationDetailPage(): React.ReactElement {
       </Dialog>
 
       {/* Add Container Dialog */}
-      <Dialog open={addContainerDialogOpen} onOpenChange={setAddContainerDialogOpen}>
+      <Dialog
+        open={addContainerDialogOpen}
+        onOpenChange={(open) => {
+          setAddContainerDialogOpen(open);
+          if (open) {
+            // Siempre empezar un contenedor nuevo en blanco
+            setSelectedContainer(null);
+            setContainerForm({
+              containerNo: "",
+              bookingNo: "",
+              blNo: "",
+              originPort: "",
+              destinationPort: "",
+              etdEstimated: "",
+              etaEstimated: "",
+              etdActual: "",
+              etaActual: "",
+              status: "Draft",
+              currentLocation: "",
+              itn: "",
+              itnValue: "",
+              itnWeight: "",
+            });
+          }
+        }}
+      >
         <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Agregar Contenedor</DialogTitle>

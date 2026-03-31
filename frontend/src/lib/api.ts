@@ -1761,6 +1761,12 @@ export const operationsApi = {
   // Obtener operación por ID
   getById: (id: string) => fetchApi<Operation>(`/operations/${id}`),
 
+  // Obtener operación anterior / siguiente (para navegación en detalle)
+  getPrev: (id: string) =>
+    fetchApi<Operation | null>(`/operations/${id}/prev`),
+  getNext: (id: string) =>
+    fetchApi<Operation | null>(`/operations/${id}/next`),
+
   // Crear operación manual
   create: (data: OperationInput) =>
     fetchApi<Operation>('/operations', {
