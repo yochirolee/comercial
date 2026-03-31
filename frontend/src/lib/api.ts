@@ -1762,10 +1762,22 @@ export const operationsApi = {
   getById: (id: string) => fetchApi<Operation>(`/operations/${id}`),
 
   // Obtener operación anterior / siguiente (para navegación en detalle)
-  getPrev: (id: string) =>
-    fetchApi<Operation | null>(`/operations/${id}/prev`),
-  getNext: (id: string) =>
-    fetchApi<Operation | null>(`/operations/${id}/next`),
+  getPrev: (id: string, params?: { soloActivas?: boolean; type?: 'COMMERCIAL' | 'PARCEL'; status?: string }) => {
+    const qp = new URLSearchParams();
+    if (params?.soloActivas === false) qp.append('soloActivas', '0');
+    if (params?.type) qp.append('type', params.type);
+    if (params?.status) qp.append('status', params.status);
+    const query = qp.toString();
+    return fetchApi<Operation | null>(`/operations/${id}/prev${query ? `?${query}` : ''}`);
+  },
+  getNext: (id: string, params?: { soloActivas?: boolean; type?: 'COMMERCIAL' | 'PARCEL'; status?: string }) => {
+    const qp = new URLSearchParams();
+    if (params?.soloActivas === false) qp.append('soloActivas', '0');
+    if (params?.type) qp.append('type', params.type);
+    if (params?.status) qp.append('status', params.status);
+    const query = qp.toString();
+    return fetchApi<Operation | null>(`/operations/${id}/next${query ? `?${query}` : ''}`);
+  },
 
   // Crear operación manual
   create: (data: OperationInput) =>

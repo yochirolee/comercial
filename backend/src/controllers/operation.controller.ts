@@ -985,8 +985,27 @@ export const OperationController = {
       return;
     }
 
+    const INACTIVE_STATUSES = ['Delivered', 'Closed', 'Cancelled'];
+    const soloActivas =
+      req.query.soloActivas !== '0' && String(req.query.soloActivas).toLowerCase() !== 'false';
+    const type = req.query.type;
+    const status = req.query.status;
+
+    const whereFilter: any = {};
+    if (type && (type === 'COMMERCIAL' || type === 'PARCEL')) {
+      whereFilter.operationType = type;
+    }
+    if (soloActivas) {
+      whereFilter.containers = { some: { status: { notIn: INACTIVE_STATUSES } } };
+    }
+    if (status) {
+      const s = String(status);
+      whereFilter.OR = [{ status: s }, { containers: { some: { status: s } } }];
+    }
+
     const prev = await prisma.operation.findFirst({
       where: {
+        ...whereFilter,
         OR: [
           { createdAt: current.createdAt, id: { gt: current.id } },
           { createdAt: { lt: current.createdAt } },
@@ -1018,8 +1037,27 @@ export const OperationController = {
       return;
     }
 
+    const INACTIVE_STATUSES = ['Delivered', 'Closed', 'Cancelled'];
+    const soloActivas =
+      req.query.soloActivas !== '0' && String(req.query.soloActivas).toLowerCase() !== 'false';
+    const type = req.query.type;
+    const status = req.query.status;
+
+    const whereFilter: any = {};
+    if (type && (type === 'COMMERCIAL' || type === 'PARCEL')) {
+      whereFilter.operationType = type;
+    }
+    if (soloActivas) {
+      whereFilter.containers = { some: { status: { notIn: INACTIVE_STATUSES } } };
+    }
+    if (status) {
+      const s = String(status);
+      whereFilter.OR = [{ status: s }, { containers: { some: { status: s } } }];
+    }
+
     const next = await prisma.operation.findFirst({
       where: {
+        ...whereFilter,
         OR: [
           { createdAt: current.createdAt, id: { lt: current.id } },
           { createdAt: { gt: current.createdAt } },

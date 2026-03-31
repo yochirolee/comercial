@@ -470,7 +470,13 @@ export default function OperationsPage(): React.ReactElement {
   }
 
   function handleViewDetail(operationId: string): void {
-    router.push(`/operations/${operationId}`);
+    const qp = new URLSearchParams();
+    // Pasar contexto de filtros para navegación prev/next en detalle
+    if (!showOnlyActive) qp.append("soloActivas", "0");
+    if (filterType !== "all") qp.append("type", filterType);
+    if (filterStatus !== "all") qp.append("status", filterStatus);
+    const query = qp.toString();
+    router.push(`/operations/${operationId}${query ? `?${query}` : ""}`);
   }
 
   function handleTracking(operation: Operation, container: OperationContainer): void {

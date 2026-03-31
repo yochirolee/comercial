@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,6 +70,7 @@ export default function OperationDetailPage(): React.ReactElement {
   const params = useParams();
   const router = useRouter();
   const operationId = params.id as string;
+  const searchParams = useSearchParams();
   
   const [operation, setOperation] = useState<Operation | null>(null);
   const [loading, setLoading] = useState(true);
@@ -138,11 +139,18 @@ export default function OperationDetailPage(): React.ReactElement {
     loadCarriers();
 
     // Cargar anterior / siguiente según orden creado desc
+    const navParams = {
+      soloActivas:
+        !(searchParams.get("soloActivas") === "0" || searchParams.get("soloActivas") === "false"),
+      type: (searchParams.get("type") as "COMMERCIAL" | "PARCEL" | null) || undefined,
+      status: searchParams.get("status") || undefined,
+    };
+
     (async () => {
       try {
         const [prev, next] = await Promise.all([
-          operationsApi.getPrev(operationId),
-          operationsApi.getNext(operationId),
+          operationsApi.getPrev(operationId, navParams),
+          operationsApi.getNext(operationId, navParams),
         ]);
         setPrevOperation(prev);
         setNextOperation(next);
@@ -150,7 +158,7 @@ export default function OperationDetailPage(): React.ReactElement {
         console.error("Error al cargar navegación de operaciones:", error);
       }
     })();
-  }, [operationId]);
+  }, [operationId, searchParams]);
 
   async function loadImportadoras(): Promise<void> {
     try {
@@ -212,7 +220,8 @@ export default function OperationDetailPage(): React.ReactElement {
 
   async function handleGoTo(operationIdTarget: string): Promise<void> {
     try {
-      router.push(`/operations/${operationIdTarget}`);
+      const query = searchParams.toString();
+      router.push(`/operations/${operationIdTarget}${query ? `?${query}` : ""}`);
     } catch (error) {
       console.error("Error al navegar a operación:", error);
     }
