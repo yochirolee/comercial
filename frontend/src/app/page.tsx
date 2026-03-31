@@ -349,7 +349,7 @@ export default function Dashboard(): React.ReactElement {
         }).length;
 
         // Calcular contenedores por estado y tipo
-        const estadosTransito = ["Departed US"];
+        const estadosTransito = ["Departed US", "Departed Brazil"];
         const estadosMariel = ["Arrived Cuba", "Customs", "Released"];
         
         let contenedoresTransitoCommercial = 0;
