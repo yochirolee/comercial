@@ -40,3 +40,6 @@ exportRouter.get('/ofertas-cliente/all', ExportController.exportOfertasCliente);
 exportRouter.get('/ofertas-generales/all', ExportController.exportOfertasGenerales);
 exportRouter.get('/ofertas-importadora/all', ExportController.exportOfertasImportadora);
 exportRouter.get('/facturas/all', ExportController.exportFacturas);
+
+// Resumen de operaciones — comercial y Parcel (Excel)
+exportRouter.get('/operaciones-comerciales', ExportController.exportOperacionesComerciales);

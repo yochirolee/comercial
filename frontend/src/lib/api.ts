@@ -627,6 +627,38 @@ export const exportApi = {
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
   },
+  /** Excel resumen de operaciones (comercial y Parcel): ofertas, contrato, contenedores. */
+  exportOperacionesComerciales: async (options?: {
+    soloActivas?: boolean;
+    tipo?: 'COMMERCIAL' | 'PARCEL' | 'all';
+  }): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+    if (!token) throw new Error('No hay token de autenticación');
+
+    const params = new URLSearchParams();
+    if (options?.soloActivas === false) params.append('soloActivas', '0');
+    if (options?.tipo && options.tipo !== 'all') params.append('tipo', options.tipo);
+    const query = params.toString() ? `?${params.toString()}` : '';
+
+    const response = await fetch(`${API_URL}/export/operaciones-comerciales${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Error al exportar' }));
+      throw new Error(typeof err.error === 'string' ? err.error : 'Error al exportar operaciones');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `resumen_operaciones_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
 };
 
 // ==========================================
@@ -1150,6 +1182,8 @@ export interface OfertaCliente {
   campoExtra2?: string;
   campoExtra3?: string;
   campoExtra4?: string;
+  /** Opcional: fecha contrato cliente–importadora (reportes) */
+  fechaContratoImportadora?: string | null;
   items: ItemOfertaCliente[];
 }
 
@@ -1172,6 +1206,7 @@ export interface OfertaClienteInput {
   campoExtra2?: string;
   campoExtra3?: string;
   campoExtra4?: string;
+  fechaContratoImportadora?: string | null;
 }
 
 export interface OfertaClienteInputWithItems extends OfertaClienteInput {
@@ -1590,6 +1625,8 @@ export interface Operation {
   originPort?: string;
   destinationPort?: string;
   notes?: string;
+  /** Parcel: manual hasta tener BL/contenedor en el primer contenedor */
+  referenciaOperacion?: string | null;
   createdAt: string;
   updatedAt: string;
   containers?: OperationContainer[];
@@ -1661,6 +1698,7 @@ export interface OperationInput {
   originPort?: string;
   destinationPort?: string;
   notes?: string;
+  referenciaOperacion?: string | null;
 }
 
 export interface OperationContainerInput {

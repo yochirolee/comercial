@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, Save, Package, Ship, Clock, Trash2, ArrowUpDown } from "lucide-react";
 import { operationsApi, importadorasApi, carriersApi } from "@/lib/api";
 import type { Operation, OperationContainer, OperationEvent, ContainerEvent, Carrier } from "@/lib/api";
+import { operationParcelDetailTitle } from "@/lib/operation-display";
 
 const OPERATION_STATUSES = [
   "Draft",
@@ -99,6 +100,7 @@ export default function OperationDetailPage(): React.ReactElement {
     notes: "",
     importadoraId: "",
     carrierId: "",
+    referenciaOperacion: "",
   });
   
   const [containerForm, setContainerForm] = useState({
@@ -165,6 +167,7 @@ export default function OperationDetailPage(): React.ReactElement {
         notes: data.notes || "",
         importadoraId: data.importadoraId || "",
         carrierId: data.carrierId || "",
+        referenciaOperacion: data.referenciaOperacion || "",
       });
     } catch (error) {
       toast.error("Error al cargar operación");
@@ -175,8 +178,15 @@ export default function OperationDetailPage(): React.ReactElement {
   }
 
   async function handleUpdateOperation(): Promise<void> {
+    if (!operation) return;
     try {
-      await operationsApi.update(operationId, operationForm);
+      const { referenciaOperacion, ...rest } = operationForm;
+      await operationsApi.update(operationId, {
+        ...rest,
+        ...(operation.operationType === "PARCEL"
+          ? { referenciaOperacion: referenciaOperacion.trim() || null }
+          : {}),
+      });
       toast.success("Operación actualizada");
       setEditOperationDialogOpen(false);
       loadOperation();
@@ -383,11 +393,15 @@ export default function OperationDetailPage(): React.ReactElement {
   return (
     <div>
       <Header
-        title={`Operación: ${operation.operationNo}`}
+        title={
+          operation.operationType === "PARCEL"
+            ? `Operación: ${operationParcelDetailTitle(operation)}`
+            : `Operación: ${operation.operationNo}`
+        }
         description={
           operation.operationType === "COMMERCIAL"
             ? `Desde: ${operation.offerCustomer?.numero || "N/A"}`
-            : "Operación Parcel"
+            : `ID interno: ${operation.operationNo}`
         }
         actions={
           <Button variant="outline" onClick={() => router.push("/operations")}>
@@ -843,6 +857,21 @@ export default function OperationDetailPage(): React.ReactElement {
                 onChange={(e) => setOperationForm((p) => ({ ...p, notes: e.target.value }))}
               />
             </div>
+            {operation.operationType === "PARCEL" && (
+              <div>
+                <Label>Referencia visible</Label>
+                <Input
+                  value={operationForm.referenciaOperacion}
+                  onChange={(e) =>
+                    setOperationForm((p) => ({ ...p, referenciaOperacion: e.target.value }))
+                  }
+                  placeholder="BL, booking o nota (si aún no está en el contenedor)"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Nº interno: {operation.operationNo}
+                </p>
+              </div>
+            )}
             <Button onClick={handleUpdateOperation} className="w-full">
               <Save className="h-4 w-4 mr-2" />
               Guardar

@@ -89,6 +89,7 @@ export default function OfertasClientePage(): React.ReactElement {
   const [formData, setFormData] = useState({
     numero: "",
     fecha: "",
+    fechaContratoImportadora: "",
     clienteId: "",
     observaciones: "",
     campoExtra1: "OFERTA VALIDA POR 30 DIAS",
@@ -204,6 +205,7 @@ export default function OfertasClientePage(): React.ReactElement {
       setFormData({
         numero,
         fecha: "",
+        fechaContratoImportadora: "",
         clienteId: clientes[0]?.id || "",
         observaciones: "",
         campoExtra1: "OFERTA VALIDA POR 30 DIAS",
@@ -457,6 +459,7 @@ export default function OfertasClientePage(): React.ReactElement {
   const [editFormData, setEditFormData] = useState({
     numero: "",
     fecha: "",
+    fechaContratoImportadora: "",
     observaciones: "",
     campoExtra1: "",
     estado: "pendiente",
@@ -472,6 +475,9 @@ export default function OfertasClientePage(): React.ReactElement {
     setEditFormData({
       numero: updated.numero || "",
       fecha: updated.fecha ? updated.fecha.split("T")[0] : "",
+      fechaContratoImportadora: updated.fechaContratoImportadora
+        ? updated.fechaContratoImportadora.split("T")[0]
+        : "",
       observaciones: updated.observaciones || "",
       campoExtra1: updated.campoExtra1 || "OFERTA VALIDA POR 30 DIAS",
       estado: updated.estado || "pendiente",
@@ -853,7 +859,7 @@ export default function OfertasClientePage(): React.ReactElement {
           
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
             {/* Información básica */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
               <div>
                 <Label className="text-slate-500 text-xs sm:text-sm">Número *</Label>
                 <Input
@@ -882,16 +888,32 @@ export default function OfertasClientePage(): React.ReactElement {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label className="text-slate-500 text-xs sm:text-sm">Fecha</Label>
+              <div className="min-w-0">
+                <Label className="text-slate-500 text-xs sm:text-sm block">Fecha</Label>
                 <Input
                   type="date"
                   value={formData.fecha}
                   onChange={(e) => setFormData((p) => ({ ...p, fecha: e.target.value }))}
-                  className="mt-1 h-9 sm:h-10 text-sm"
+                  className="mt-1 h-9 sm:h-10 text-sm w-full min-w-0"
                 />
               </div>
-              <div className="sm:col-span-2 lg:col-span-4">
+              <div className="min-w-0">
+                <Label
+                  className="text-slate-500 text-xs sm:text-sm block truncate"
+                  title="Fecha del contrato del cliente con la importadora (opcional)"
+                >
+                  Contrato c/ imp.
+                </Label>
+                <Input
+                  type="date"
+                  value={formData.fechaContratoImportadora}
+                  onChange={(e) =>
+                    setFormData((p) => ({ ...p, fechaContratoImportadora: e.target.value }))
+                  }
+                  className="mt-1 h-9 sm:h-10 text-sm w-full min-w-0"
+                />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-5">
                 <Label className="text-slate-500 text-xs sm:text-sm">Observaciones</Label>
                 <Input
                   value={formData.observaciones}
@@ -1327,7 +1349,7 @@ export default function OfertasClientePage(): React.ReactElement {
           <div className="flex-1 overflow-y-auto min-h-0 overflow-x-hidden pb-4 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))]">
             <div className="space-y-3 sm:space-y-4 min-w-0">
               {/* Info básica */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4 p-3 sm:p-4 bg-slate-50 rounded-lg">
                 <div>
                   <Label className="text-slate-500 text-xs sm:text-sm">Cliente</Label>
                   <p className="font-medium text-xs sm:text-sm mt-1">
@@ -1342,13 +1364,29 @@ export default function OfertasClientePage(): React.ReactElement {
                     className="mt-1 h-9 sm:h-10 text-sm"
                   />
                 </div>
-                <div>
-                  <Label className="text-slate-500 text-xs sm:text-sm">Fecha</Label>
+                <div className="min-w-0">
+                  <Label className="text-slate-500 text-xs sm:text-sm block">Fecha</Label>
                   <Input
                     type="date"
                     value={editFormData.fecha}
                     onChange={(e) => setEditFormData((p) => ({ ...p, fecha: e.target.value }))}
-                    className="mt-1 h-9 sm:h-10 text-sm"
+                    className="mt-1 h-9 sm:h-10 text-sm w-full min-w-0"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <Label
+                    className="text-slate-500 text-xs sm:text-sm block truncate"
+                    title="Fecha del contrato del cliente con la importadora (opcional)"
+                  >
+                    Contrato c/ imp.
+                  </Label>
+                  <Input
+                    type="date"
+                    value={editFormData.fechaContratoImportadora}
+                    onChange={(e) =>
+                      setEditFormData((p) => ({ ...p, fechaContratoImportadora: e.target.value }))
+                    }
+                    className="mt-1 h-9 sm:h-10 text-sm w-full min-w-0"
                   />
                 </div>
                 <div>
@@ -1366,7 +1404,7 @@ export default function OfertasClientePage(): React.ReactElement {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="sm:col-span-2 lg:col-span-4">
+                <div className="sm:col-span-2 lg:col-span-5">
                   <Label className="text-slate-500 text-xs sm:text-sm">Observaciones</Label>
                   <Input
                     value={editFormData.observaciones}

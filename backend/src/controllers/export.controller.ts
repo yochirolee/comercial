@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { formatStoredDateOnlyEs } from '../lib/date-only.js';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
@@ -3702,6 +3703,181 @@ export const ExportController = {
     } catch (error) {
       console.error('Error al exportar ofertas a importadora:', error);
       res.status(500).json({ error: 'Error al exportar ofertas a importadora' });
+    }
+  },
+
+  /** Resumen de operaciones (comercial y Parcel): Excel, una fila por contenedor. */
+  async exportOperacionesComerciales(req: Request, res: Response): Promise<void> {
+    const INACTIVE_CONTAINER = ['Delivered', 'Closed', 'Cancelled'];
+
+    function formatEsDate(d: Date | string | null | undefined): string {
+      if (!d) return '';
+      const date = typeof d === 'string' ? new Date(d) : d;
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'numeric',
+        year: 'numeric',
+      });
+    }
+
+    function productosFromItems(
+      items: Array<{ nombreProducto?: string | null; producto?: { nombre?: string | null } | null }>
+    ): string {
+      if (!items?.length) return '';
+      return items
+        .map((i) => (i.nombreProducto || i.producto?.nombre || '').trim())
+        .filter(Boolean)
+        .join(', ');
+    }
+
+    function labelOperacion(
+      op: { operationType: string; operationNo: string; referenciaOperacion: string | null },
+      c: { containerNo?: string | null; blNo?: string | null; bookingNo?: string | null } | null
+    ): string {
+      if (op.operationType !== 'PARCEL') return op.operationNo;
+      if (!c) return (op.referenciaOperacion || '').trim() || op.operationNo;
+      const fromC = (c.containerNo || c.blNo || c.bookingNo || '').trim();
+      if (fromC) return fromC;
+      return (op.referenciaOperacion || '').trim() || op.operationNo;
+    }
+
+    try {
+      const soloActivas =
+        req.query.soloActivas !== '0' && String(req.query.soloActivas).toLowerCase() !== 'false';
+      const tipo = String(req.query.tipo || '').toUpperCase();
+      const whereOp: { operationType?: string } = {};
+      if (tipo === 'COMMERCIAL' || tipo === 'PARCEL') {
+        whereOp.operationType = tipo;
+      }
+
+      const operations = await prisma.operation.findMany({
+        where: Object.keys(whereOp).length ? whereOp : undefined,
+        include: {
+          offerCustomer: {
+            select: {
+              fecha: true,
+              fechaContratoImportadora: true,
+              cliente: true,
+              items: {
+                orderBy: { createdAt: 'asc' },
+                include: { producto: { select: { nombre: true } } },
+              },
+            },
+          },
+          importadora: { select: { nombre: true } },
+          containers: { orderBy: { sequenceNo: 'asc' } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Operaciones');
+      const lastCol = 'J';
+
+      sheet.mergeCells(`A1:${lastCol}1`);
+      sheet.getCell('A1').value = 'Resumen de operaciones';
+      sheet.getCell('A1').font = { bold: true, size: 13 };
+      sheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
+      sheet.getRow(1).height = 24;
+
+      const headers = [
+        'Operación',
+        'Producto',
+        'Cliente',
+        'Importadora',
+        'Estado',
+        'Fecha Oferta',
+        'Fecha Contrato',
+        'Fecha Envío',
+        'ETA',
+        'Salida Mariel',
+      ];
+      const headerRow = sheet.getRow(2);
+      headers.forEach((h, i) => {
+        headerRow.getCell(i + 1).value = h;
+      });
+      headerRow.font = { bold: true };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' },
+      };
+
+      sheet.columns = [
+        { width: 14 },
+        { width: 28 },
+        { width: 26 },
+        { width: 18 },
+        { width: 26 },
+        { width: 14 },
+        { width: 16 },
+        { width: 14 },
+        { width: 14 },
+        { width: 14 },
+      ];
+
+      for (const op of operations) {
+        const oferta = op.offerCustomer;
+        const productos = oferta ? productosFromItems(oferta.items) : '';
+        const cliente = oferta?.cliente
+          ? (oferta.cliente.nombreCompania ||
+              `${oferta.cliente.nombre} ${oferta.cliente.apellidos || ''}`.trim())
+          : '';
+        // Oferta: fechas de calendario (YYYY-MM-DD) — usar UTC para coincidir con lo guardado en pantalla
+        const fechaOferta = oferta ? formatStoredDateOnlyEs(oferta.fecha) : '';
+        const fechaContrato = oferta?.fechaContratoImportadora
+          ? formatStoredDateOnlyEs(oferta.fechaContratoImportadora)
+          : '';
+
+        const containers = op.containers ?? [];
+        const list = containers.length === 0 ? [null] : containers.map((c) => c);
+
+        for (const c of list) {
+          if (soloActivas && c && INACTIVE_CONTAINER.includes(c.status)) {
+            continue;
+          }
+
+          const estado = c?.status ?? op.status;
+          const fechaEnvio = c
+            ? formatEsDate(c.etdActual ?? c.etdEstimated ?? null)
+            : '';
+          const eta = c ? formatEsDate(c.etaActual ?? c.etaEstimated ?? null) : '';
+          const salidaMariel = '';
+
+          sheet.addRow([
+            labelOperacion(
+              {
+                operationType: op.operationType,
+                operationNo: op.operationNo,
+                referenciaOperacion: op.referenciaOperacion,
+              },
+              c
+            ),
+            productos || (op.operationType === 'PARCEL' ? '—' : ''),
+            cliente || '—',
+            op.importadora?.nombre || '—',
+            estado,
+            fechaOferta,
+            fechaContrato,
+            fechaEnvio,
+            eta,
+            salidaMariel,
+          ]);
+        }
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const day = new Date().toISOString().split('T')[0];
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="resumen_operaciones_${day}.xlsx"`
+      );
+      res.send(Buffer.from(buffer));
+    } catch (error) {
+      console.error('Error al exportar resumen de operaciones:', error);
+      res.status(500).json({ error: 'Error al exportar el resumen de operaciones' });
     }
   },
 };

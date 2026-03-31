@@ -11,10 +11,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Download, FileText, FileCheck, Sparkles, FolderCheck, ClipboardCheck, FileSignature } from "lucide-react";
-import { ofertasClienteApi, documentosApi } from "@/lib/api";
+import {
+  Download,
+  FileText,
+  FileCheck,
+  Sparkles,
+  FolderCheck,
+  ClipboardCheck,
+  TableProperties,
+  FileSpreadsheet,
+} from "lucide-react";
+import { ofertasClienteApi, documentosApi, exportApi } from "@/lib/api";
 import type { OfertaCliente } from "@/lib/api";
 
 interface DocumentTemplate {
@@ -69,6 +79,9 @@ export default function DocumentacionPage(): React.ReactElement {
   const [selectedOfertaId, setSelectedOfertaId] = useState("");
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
+  const [reportSoloActivas, setReportSoloActivas] = useState(true);
+  const [reportTipo, setReportTipo] = useState<"all" | "COMMERCIAL" | "PARCEL">("all");
+  const [exportingReport, setExportingReport] = useState(false);
 
   async function loadOfertas(): Promise<void> {
     try {
@@ -119,6 +132,22 @@ export default function DocumentacionPage(): React.ReactElement {
   }
 
   const selectedOferta = ofertas.find((o) => o.id === selectedOfertaId);
+
+  async function handleExportOperacionesComerciales(): Promise<void> {
+    setExportingReport(true);
+    try {
+      await exportApi.exportOperacionesComerciales({
+        soloActivas: reportSoloActivas,
+        tipo: reportTipo,
+      });
+      toast.success("Excel generado con datos del sistema");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al exportar");
+      console.error(error);
+    } finally {
+      setExportingReport(false);
+    }
+  }
 
   return (
     <div>
@@ -264,6 +293,79 @@ export default function DocumentacionPage(): React.ReactElement {
                     </div>
                   );
                 })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Resumen de operaciones — mismo estilo de fila que los documentos, con filtros */}
+          <Card className="border-slate-200 shadow-sm">
+            <CardHeader className="p-3 pb-0">
+              <CardTitle className="text-sm font-semibold text-slate-900">
+                Resumen de operaciones
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 hover:shadow-sm transition-shadow p-2.5 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-2.5">
+                  <div className="p-1.5 rounded border border-emerald-200 bg-emerald-50 flex-shrink-0 self-start">
+                    <TableProperties className="h-3.5 w-3.5 text-emerald-700" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      Excel con datos del sistema (comercial y Parcel): una fila por contenedor, oferta o
+                      referencia, productos, cliente, importadora, estado, fechas de oferta y contrato c/
+                      importadora, ETD/ETA. Salida Mariel reservada para cuando se registre.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-3 pt-1 border-t border-emerald-200/80 sm:flex-row sm:flex-wrap sm:items-end sm:gap-x-3 sm:gap-y-2">
+                  <div className="w-full sm:w-[min(100%,11rem)] sm:flex-shrink-0 space-y-1">
+                    <Label className="text-xs text-slate-600">Tipo</Label>
+                    <Select
+                      value={reportTipo}
+                      onValueChange={(v) => setReportTipo(v as "all" | "COMMERCIAL" | "PARCEL")}
+                    >
+                      <SelectTrigger className="h-8 w-full text-sm bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas</SelectItem>
+                        <SelectItem value="COMMERCIAL">Comercial</SelectItem>
+                        <SelectItem value="PARCEL">Parcel</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer select-none sm:pb-1 sm:min-h-[32px]">
+                    <Checkbox
+                      checked={reportSoloActivas}
+                      onCheckedChange={(c) => setReportSoloActivas(c === true)}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-xs sm:text-sm text-slate-700">Solo contenedores activos</span>
+                  </label>
+                  <div className="w-full sm:flex-1 sm:min-w-[8rem] sm:flex sm:justify-end md:ml-auto">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void handleExportOperacionesComerciales()}
+                      disabled={exportingReport}
+                      className="h-8 w-full sm:w-auto px-3 text-xs bg-white"
+                    >
+                      {exportingReport ? (
+                        <>
+                          <Sparkles className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          Generando…
+                        </>
+                      ) : (
+                        <>
+                          <FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />
+                          Descargar Excel
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

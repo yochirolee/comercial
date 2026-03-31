@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
+import { parseDateOnlyToStored } from '../lib/date-only.js';
 import { z } from 'zod';
 
 const itemSchema = z.object({
@@ -57,6 +58,7 @@ const ofertaClienteSchema = z.object({
   campoExtra2: z.string().optional(),
   campoExtra3: z.string().optional(),
   campoExtra4: z.string().optional(),
+  fechaContratoImportadora: z.string().optional().nullable(),
 });
 
 // Genera el siguiente número de oferta en formato Z26XXX
@@ -216,7 +218,7 @@ export const OfertaClienteController = {
     }
 
     // Extraer items del data
-    const { items, ...ofertaData } = validation.data;
+    const { items, fechaContratoImportadora, ...ofertaData } = validation.data;
 
     // Calcular total si hay items
     let total = 0;
@@ -268,8 +270,12 @@ export const OfertaClienteController = {
     const dataToCreate: any = {
       ...ofertaData,
       numero,
-      fecha: ofertaData.fecha ? new Date(ofertaData.fecha) : new Date(),
-      vigenciaHasta: ofertaData.vigenciaHasta ? new Date(ofertaData.vigenciaHasta) : null,
+      fecha: ofertaData.fecha ? parseDateOnlyToStored(ofertaData.fecha) ?? new Date() : new Date(),
+      vigenciaHasta: ofertaData.vigenciaHasta ? parseDateOnlyToStored(ofertaData.vigenciaHasta) : null,
+      fechaContratoImportadora:
+        fechaContratoImportadora && String(fechaContratoImportadora).trim() !== ''
+          ? parseDateOnlyToStored(fechaContratoImportadora)
+          : null,
       total,
       items: itemsToCreate && itemsToCreate.length > 0 ? {
         create: itemsToCreate,
@@ -320,7 +326,7 @@ export const OfertaClienteController = {
     }
 
     // Extraer items y clienteId del data (no se pueden actualizar directamente)
-    const { items, clienteId, ...updateData } = validation.data;
+    const { items, clienteId, fechaContratoImportadora, ...updateData } = validation.data;
 
     const puertoFromText = extractPuertoEmbarqueFromText(updateData.terminosDocumentoTexto);
     if (puertoFromText) {
@@ -331,8 +337,18 @@ export const OfertaClienteController = {
       where: { id },
       data: {
         ...updateData,
-        fecha: updateData.fecha ? new Date(updateData.fecha) : undefined,
-        vigenciaHasta: updateData.vigenciaHasta ? new Date(updateData.vigenciaHasta) : undefined,
+        fecha: updateData.fecha ? parseDateOnlyToStored(updateData.fecha) ?? undefined : undefined,
+        vigenciaHasta: updateData.vigenciaHasta
+          ? parseDateOnlyToStored(updateData.vigenciaHasta)
+          : undefined,
+        ...(fechaContratoImportadora !== undefined
+          ? {
+              fechaContratoImportadora:
+                fechaContratoImportadora && String(fechaContratoImportadora).trim() !== ''
+                  ? parseDateOnlyToStored(fechaContratoImportadora)
+                  : null,
+            }
+          : {}),
       },
       include: {
         cliente: true,

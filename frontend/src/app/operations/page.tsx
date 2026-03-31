@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { operationsApi, ofertasClienteApi, importadorasApi } from "@/lib/api";
 import type { Operation, OperationContainer, OfertaCliente, Importadora } from "@/lib/api";
+import { operationRowLabel } from "@/lib/operation-display";
 
 // Estados considerados como inactivos/completados
 const INACTIVE_STATUSES = ["Delivered", "Closed", "Cancelled"];
@@ -141,7 +142,18 @@ export default function OperationsPage(): React.ReactElement {
   const [showOnlyActive, setShowOnlyActive] = useState(true); // Por defecto solo activas
   
   // Sorting - column-based with direction
-  type SortColumn = "operation" | "container" | "booking" | "bl" | "etd" | "eta" | "status" | "last-update" | "importadora" | null;
+  type SortColumn =
+    | "type"
+    | "operation"
+    | "container"
+    | "booking"
+    | "bl"
+    | "etd"
+    | "eta"
+    | "status"
+    | "last-update"
+    | "importadora"
+    | null;
   type SortDirection = "asc" | "desc";
   const [sortColumn, setSortColumn] = useState<SortColumn>("eta");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -151,6 +163,8 @@ export default function OperationsPage(): React.ReactElement {
   const [selectedOfertaId, setSelectedOfertaId] = useState("");
   const [selectedImportadoraId, setSelectedImportadoraId] = useState("");
   const [operationType, setOperationType] = useState<"COMMERCIAL" | "PARCEL">("COMMERCIAL");
+  /** Referencia visible al crear Parcel (BL, booking, nota) antes de cargar contenedor */
+  const [parcelReferencia, setParcelReferencia] = useState("");
   
   // Auto-refresh (cada 30 segundos)
   const AUTO_REFRESH_INTERVAL = 30000;
@@ -206,8 +220,15 @@ export default function OperationsPage(): React.ReactElement {
       let comparison = 0;
 
       switch (column) {
+        case "type": {
+          comparison = a.operation.operationType.localeCompare(b.operation.operationType);
+          break;
+        }
+
         case "operation": {
-          comparison = a.operation.operationNo.localeCompare(b.operation.operationNo);
+          const labelA = operationRowLabel(a.operation, a.container);
+          const labelB = operationRowLabel(b.operation, b.container);
+          comparison = labelA.localeCompare(labelB);
           break;
         }
 
@@ -431,9 +452,13 @@ export default function OperationsPage(): React.ReactElement {
         operationType,
         importadoraId: selectedImportadoraId,
         status: "Draft",
+        ...(operationType === "PARCEL" && parcelReferencia.trim()
+          ? { referenciaOperacion: parcelReferencia.trim() }
+          : {}),
       });
       toast.success("Operación creada");
       setCreateDialogOpen(false);
+      setParcelReferencia("");
       setOperationType("COMMERCIAL");
       loadData();
     } catch (error) {
@@ -532,7 +557,7 @@ export default function OperationsPage(): React.ReactElement {
     <div className="container mx-auto px-4 py-6 max-w-[1920px]">
       <Header
         title="Operations Board"
-        description="Tracking de operaciones comerciales y paquetería"
+        description="Tracking de operaciones (comercial y Parcel)"
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -544,7 +569,13 @@ export default function OperationsPage(): React.ReactElement {
               <Ship className="h-4 w-4 mr-2" />
               {syncingGlobal ? "Sincronizando…" : "Tracking global"}
             </Button>
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <Dialog
+              open={createDialogOpen}
+              onOpenChange={(open) => {
+                setCreateDialogOpen(open);
+                if (!open) setParcelReferencia("");
+              }}
+            >
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
@@ -560,7 +591,10 @@ export default function OperationsPage(): React.ReactElement {
                   <Label>Tipo de Operación</Label>
                   <Select
                     value={operationType}
-                    onValueChange={(value) => setOperationType(value as "COMMERCIAL" | "PARCEL")}
+                    onValueChange={(value) => {
+                      setOperationType(value as "COMMERCIAL" | "PARCEL");
+                      if (value === "COMMERCIAL") setParcelReferencia("");
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -608,9 +642,23 @@ export default function OperationsPage(): React.ReactElement {
                     </Button>
                   </div>
                 ) : (
-                  <Button onClick={handleCreateManual} className="w-full">
-                    Crear Operación Parcel
-                  </Button>
+                  <div className="space-y-3">
+                    <div>
+                      <Label>Referencia (opcional)</Label>
+                      <Input
+                        value={parcelReferencia}
+                        onChange={(e) => setParcelReferencia(e.target.value)}
+                        placeholder="Ej. BL, booking o nota hasta tener contenedor"
+                        className="mt-1"
+                      />
+                      <p className="text-xs text-slate-500 mt-1">
+                        El número interno PKG se sigue generando; aquí defines lo que quieres ver en Operación.
+                      </p>
+                    </div>
+                    <Button onClick={handleCreateManual} className="w-full">
+                      Crear Operación Parcel
+                    </Button>
+                  </div>
                 )}
               </div>
             </DialogContent>
@@ -619,64 +667,65 @@ export default function OperationsPage(): React.ReactElement {
         }
       />
 
-      {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:gap-4 p-4 sm:p-6 bg-slate-50 rounded-lg">
-        <div className="flex-1 min-w-0">
-          <Label className="text-sm font-medium mb-2 block">Buscar</Label>
+      {/* Filters — apilado en móvil; grid en tablet; fila flexible en desktop */}
+      <div className="mb-6 space-y-4 rounded-lg bg-slate-50 p-4 sm:p-5 md:p-6">
+        <div className="w-full min-w-0">
+          <Label className="mb-2 block text-sm font-medium">Buscar</Label>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               placeholder="Operación, BL, contenedor, importadora..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 h-10"
+              className="h-10 w-full pl-9"
             />
           </div>
         </div>
-        <div className="w-full sm:w-36 lg:w-40">
-          <Label className="text-sm font-medium mb-2 block">Tipo</Label>
-          <Select
-            value={filterType}
-            onValueChange={(value) => setFilterType(value as typeof filterType)}
-          >
-            <SelectTrigger className="h-10">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="COMMERCIAL">Comercial</SelectItem>
-              <SelectItem value="PARCEL">Parcel</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="w-full sm:w-40 lg:w-44">
-          <Label className="text-sm font-medium mb-2 block">Estado</Label>
-          <Select
-            value={filterStatus}
-            onValueChange={setFilterStatus}
-          >
-            <SelectTrigger className="h-10">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {OPERATION_STATUSES.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-end pb-1">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <Checkbox
-              checked={showOnlyActive}
-              onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
-              className="h-5 w-5"
-            />
-            <span className="text-sm font-medium text-slate-700 whitespace-nowrap">Solo activas</span>
-          </label>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-6 md:items-end md:gap-4 lg:grid-cols-12">
+          <div className="min-w-0 sm:col-span-1 md:col-span-2 lg:col-span-3">
+            <Label className="mb-2 block text-sm font-medium">Tipo</Label>
+            <Select
+              value={filterType}
+              onValueChange={(value) => setFilterType(value as typeof filterType)}
+            >
+              <SelectTrigger className="h-10 w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="COMMERCIAL">Comercial</SelectItem>
+                <SelectItem value="PARCEL">Parcel</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-0 sm:col-span-1 md:col-span-2 lg:col-span-4">
+            <Label className="mb-2 block text-sm font-medium">Estado</Label>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-10 w-full min-w-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="max-h-[min(320px,70vh)]">
+                <SelectItem value="all">Todos</SelectItem>
+                {OPERATION_STATUSES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center pt-1 sm:col-span-2 md:col-span-2 md:col-start-5 md:row-start-1 lg:col-span-3 lg:col-start-auto lg:justify-end lg:self-end lg:pb-0.5 sm:pt-2 md:pt-0">
+            <label className="flex cursor-pointer select-none items-center gap-2">
+              <Checkbox
+                checked={showOnlyActive}
+                onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
+                className="h-5 w-5 shrink-0"
+              />
+              <span className="text-sm font-medium leading-snug text-slate-700">
+                Solo activas
+              </span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -687,7 +736,20 @@ export default function OperationsPage(): React.ReactElement {
             <TableHeader>
               <TableRow className="bg-slate-50 text-[13px]">
                 <TableHead className="w-8"></TableHead>
-                <TableHead className="min-w-[60px] text-[13px]">Tipo</TableHead>
+                <TableHead
+                  className="min-w-[60px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("type")}
+                >
+                  <div className="flex items-center gap-1">
+                    Tipo
+                    {sortColumn === "type" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
                 <TableHead
                   className="min-w-[100px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("operation")}
@@ -866,7 +928,7 @@ export default function OperationsPage(): React.ReactElement {
                   {/* Operación */}
                   <TableCell className="py-1.5">
                     <span className={`text-[13px] ${isFirstContainer ? "font-semibold text-slate-900" : "text-slate-400"}`}>
-                      {operation.operationNo}
+                      {operationRowLabel(operation, container)}
                     </span>
                   </TableCell>
 

@@ -46,7 +46,7 @@ const navigation: NavItem[] = [
     ]
   },
   { name: "Facturas", href: "/facturas", icon: Receipt },
-  { name: "Operations", href: "/operations", icon: MapPin },
+  { name: "Operaciones", href: "/operations", icon: MapPin },
   { name: "Buscar", href: "/importadoras/buscar", icon: Search },
   { name: "Documentación", href: "/documentacion", icon: FileCheck, adminOnly: true },
   { 

@@ -51,6 +51,7 @@ const operationSchema = z.object({
   originPort: z.string().optional(),
   destinationPort: z.string().optional(),
   notes: z.string().optional(),
+  referenciaOperacion: z.string().optional().nullable(),
 });
 
 const containerSchema = z.object({
@@ -496,6 +497,11 @@ export const OperationController = {
         originPort: validation.data.originPort,
         destinationPort: validation.data.destinationPort,
         notes: validation.data.notes,
+        referenciaOperacion:
+          validation.data.referenciaOperacion != null &&
+          String(validation.data.referenciaOperacion).trim() !== ''
+            ? String(validation.data.referenciaOperacion).trim()
+            : null,
       },
       include: {
         offerCustomer: {
@@ -571,6 +577,7 @@ export const OperationController = {
         { containers: { some: { bookingNo: s } } },
         { containers: { some: { containerNo: s } } },
         { importadora: { nombre: s } },
+        { referenciaOperacion: s },
       ];
     }
     
@@ -760,6 +767,18 @@ export const OperationController = {
       const raw = data.carrierId;
       if (!raw || (typeof raw === 'string' && raw.trim() === '')) {
         data.carrierId = null;
+      }
+    }
+
+    // Referencia visible (Parcel): vacío → null
+    if ('referenciaOperacion' in data) {
+      const raw = data.referenciaOperacion;
+      if (raw === null || raw === undefined) {
+        data.referenciaOperacion = null;
+      } else if (typeof raw === 'string' && raw.trim() === '') {
+        data.referenciaOperacion = null;
+      } else if (typeof raw === 'string') {
+        data.referenciaOperacion = raw.trim();
       }
     }
     
