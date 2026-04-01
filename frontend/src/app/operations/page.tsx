@@ -31,7 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, Anchor } from "lucide-react";
+import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, Anchor, CalendarDays } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1350,8 +1350,20 @@ function OperationsPageContent(): React.ReactElement {
                   <TableCell className="py-1.5 text-center text-[12px]">
                     {(() => {
                       const d = getDaysInMarielDisplay(container);
+                      if (d.text === "—") {
+                        return <span className="text-slate-400">—</span>;
+                      }
                       return (
-                        <span className={d.danger ? "font-semibold text-red-600" : "text-slate-700"}>
+                        <span
+                          className={cn(
+                            "inline-flex items-center justify-center gap-1 tabular-nums",
+                            d.danger ? "font-semibold text-red-600" : "text-slate-700"
+                          )}
+                        >
+                          <CalendarDays
+                            className="h-3.5 w-3.5 shrink-0 text-slate-400"
+                            aria-hidden
+                          />
                           {d.text}
                         </span>
                       );

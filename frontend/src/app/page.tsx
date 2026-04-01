@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  Users, 
-  Package, 
-  FileText, 
-  Receipt, 
+import { Badge } from "@/components/ui/badge";
+import {
+  Users,
+  Package,
+  FileText,
+  Receipt,
   DollarSign,
   TrendingUp,
   AlertCircle,
@@ -17,10 +18,34 @@ import {
   ArrowRight,
   Ship,
   Loader2,
+  Anchor,
+  CalendarDays,
 } from "lucide-react";
 import { clientesApi, productosApi, ofertasClienteApi, ofertasImportadoraApi, ofertasGeneralesApi, facturasApi, operationsApi } from "@/lib/api";
-import type { Producto, Factura, OfertaCliente, OfertaImportadora, Cliente, Operation } from "@/lib/api";
+import type {
+  Producto,
+  Factura,
+  OfertaCliente,
+  OfertaImportadora,
+  Cliente,
+  Operation,
+  OperationContainer,
+} from "@/lib/api";
+import { operationRowLabel } from "@/lib/operation-display";
+import {
+  operationStatusBadgeClass,
+  operationStatusLabelEs,
+} from "@/lib/operation-status";
+import {
+  formatEtaArriboMarielDashboard,
+  etaArriboMarielIsGreenDashboard,
+  getDaysInMarielDisplayDashboard,
+  getDisplayLocation,
+  getLastUpdateDashboard,
+  daysInMarielSortKeyDashboard,
+} from "@/lib/dashboard-pipeline-helpers";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 /** Contadores dashboard: tránsito hacia Mariel (incluye valores legacy en inglés hasta migrar BD). */
 const DASHBOARD_ESTADOS_TRANSITO = [
@@ -43,6 +68,8 @@ const DASHBOARD_ESTADOS_MARIEL = [
   "Customs",
   "Released",
 ];
+
+const DASHBOARD_PIPELINE_TOP_N = 10;
 
 // ==========================================
 // TIPOS
@@ -267,6 +294,295 @@ function CommercialPanel({
   );
 }
 
+interface DashboardContainerCounts {
+  transitoTotal: number;
+  transitoCommercial: number;
+  transitoParcel: number;
+  marielTotal: number;
+  marielCommercial: number;
+  marielParcel: number;
+}
+
+function DashboardOperationsPipelineTable({
+  rows,
+  loading,
+  containerCounts,
+}: {
+  rows: Array<{ operation: Operation; container: OperationContainer }>;
+  loading: boolean;
+  containerCounts: DashboardContainerCounts;
+}): React.ReactElement {
+  const router = useRouter();
+
+  return (
+    <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-xl p-3 sm:p-4">
+      <div className="mb-2">
+        <h3 className="text-sm font-semibold text-slate-900">Últimas operaciones</h3>
+        <p className="text-[11px] text-slate-500 mt-0.5">
+          Las {DASHBOARD_PIPELINE_TOP_N} operaciones más recientes y su estado
+        </p>
+      </div>
+
+      {/* Contadores tránsito / Mariel en una sola franja compacta */}
+      <div className="mb-3 rounded-lg border border-slate-100 bg-slate-50/80 px-2.5 py-2 sm:px-3">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex items-start gap-2 min-w-0 flex-1">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cyan-100">
+              <Ship className="h-3.5 w-3.5 text-cyan-600" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Tránsito</p>
+              <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                <span className="text-lg font-bold tabular-nums text-slate-900 leading-none">
+                  {loading ? "…" : containerCounts.transitoTotal}
+                </span>
+                <span className="text-[10px] text-slate-600">
+                  COM{" "}
+                  <span className="font-semibold text-amber-800">
+                    {loading ? "…" : containerCounts.transitoCommercial}
+                  </span>
+                  {" · "}
+                  PKG{" "}
+                  <span className="font-semibold text-blue-800">
+                    {loading ? "…" : containerCounts.transitoParcel}
+                  </span>
+                </span>
+              </p>
+            </div>
+          </div>
+          <div className="hidden sm:block h-10 w-px shrink-0 bg-slate-200" aria-hidden />
+          <div className="flex items-start gap-2 min-w-0 flex-1">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-100">
+              <Ship className="h-3.5 w-3.5 text-emerald-700" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Mariel</p>
+              <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                <span className="text-lg font-bold tabular-nums text-slate-900 leading-none">
+                  {loading ? "…" : containerCounts.marielTotal}
+                </span>
+                <span className="text-[10px] text-slate-600">
+                  COM{" "}
+                  <span className="font-semibold text-amber-800">
+                    {loading ? "…" : containerCounts.marielCommercial}
+                  </span>
+                  {" · "}
+                  PKG{" "}
+                  <span className="font-semibold text-blue-800">
+                    {loading ? "…" : containerCounts.marielParcel}
+                  </span>
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-xs text-slate-500 py-2">Cargando…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-xs text-slate-500 py-2">Sin datos en tránsito / Mariel.</p>
+      ) : (
+        <>
+          {/* Tablet / desktop: tabla compacta */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full min-w-[600px] text-left border-collapse text-[10px] sm:text-[11px]">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500">
+                  <th className="py-1 pr-2 font-medium">Operación</th>
+                  <th className="py-1 pr-2 font-medium">Estado</th>
+                  <th className="py-1 pr-2 font-medium whitespace-nowrap">ETA Mariel</th>
+                  <th className="py-1 pr-2 font-medium">Origen/Destino</th>
+                  <th className="py-1 font-medium whitespace-nowrap">Actualizado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ operation, container }) => (
+                  <tr
+                    key={container.id}
+                    className="border-b border-slate-100 hover:bg-slate-50/90 cursor-pointer"
+                    onClick={() => router.push(`/operations/${operation.id}`)}
+                  >
+                    <td className="py-1.5 pr-2 align-top max-w-[140px] lg:max-w-[180px]">
+                      <div className="font-medium text-slate-900 leading-tight line-clamp-2">
+                        {operationRowLabel(operation, container)}
+                      </div>
+                      <div className="font-mono text-slate-500 mt-0.5 truncate">
+                        {container.containerNo || "—"}
+                      </div>
+                    </td>
+                    <td className="py-1.5 pr-2 align-top max-w-[120px]">
+                      <Badge
+                        className={cn(
+                          operationStatusBadgeClass(container.status),
+                          "border-0 font-medium shadow-none whitespace-nowrap rounded px-1.5 py-0.5 w-fit max-w-full text-[9px] sm:text-[10px]"
+                        )}
+                      >
+                        {operationStatusLabelEs(container.status)}
+                      </Badge>
+                      <div className="text-slate-600 mt-1 line-clamp-2 leading-snug">
+                        {getDisplayLocation(container, operation)}
+                      </div>
+                    </td>
+                    <td className="py-1.5 pr-2 align-top whitespace-nowrap">
+                      {formatEtaArriboMarielDashboard(container) !== "—" ? (
+                        <span
+                          className={cn(
+                            "inline-block font-semibold tabular-nums rounded px-1 py-0.5",
+                            etaArriboMarielIsGreenDashboard(container)
+                              ? "text-green-800 bg-green-100 border border-green-400/70"
+                              : "text-slate-900"
+                          )}
+                        >
+                          {formatEtaArriboMarielDashboard(container)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                      <div className="mt-0.5">
+                        {(() => {
+                          const d = getDaysInMarielDisplayDashboard(container);
+                          if (d.text === "—") {
+                            return <span className="text-slate-400">—</span>;
+                          }
+                          return (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-0.5 tabular-nums",
+                                d.danger ? "font-semibold text-red-600" : "text-slate-700"
+                              )}
+                            >
+                              <CalendarDays
+                                className="h-3 w-3 shrink-0 text-slate-400"
+                                aria-hidden
+                              />
+                              {d.text} d
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </td>
+                    <td className="py-1.5 pr-2 align-top">
+                      <div className="flex flex-col gap-0 leading-tight max-w-[140px] lg:max-w-[180px]">
+                        <span className="flex items-center gap-0.5 text-slate-700 truncate">
+                          <Anchor className="h-3 w-3 text-slate-400 shrink-0" />
+                          <span className="truncate">
+                            {container.originPort || operation.originPort || "—"}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-0.5 text-slate-700 truncate">
+                          <Ship className="h-3 w-3 text-slate-400 shrink-0" />
+                          <span className="truncate">
+                            {container.destinationPort || operation.destinationPort || "—"}
+                          </span>
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-1.5 align-top text-slate-500 whitespace-nowrap">
+                      {getLastUpdateDashboard(container)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Móvil: tarjetas compactas */}
+          <ul className="md:hidden space-y-2">
+            {rows.map(({ operation, container }) => {
+              const dMar = getDaysInMarielDisplayDashboard(container);
+              return (
+                <li key={container.id}>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/operations/${operation.id}`)}
+                    className="w-full text-left rounded-lg border border-slate-200 bg-white px-2.5 py-2 active:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-medium text-slate-900 leading-tight line-clamp-2">
+                          {operationRowLabel(operation, container)}
+                        </p>
+                        <p className="font-mono text-[10px] text-slate-500 truncate mt-0.5">
+                          {container.containerNo || "—"}
+                        </p>
+                      </div>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-0.5 text-[12px] font-semibold tabular-nums shrink-0",
+                          dMar.danger ? "text-red-600" : "text-slate-700"
+                        )}
+                      >
+                        {dMar.text === "—" ? (
+                          "—"
+                        ) : (
+                          <>
+                            <CalendarDays
+                              className="h-3 w-3 shrink-0 text-slate-400"
+                              aria-hidden
+                            />
+                            {dMar.text} d
+                          </>
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      <Badge
+                        className={cn(
+                          operationStatusBadgeClass(container.status),
+                          "border-0 font-medium shadow-none text-[9px] px-1.5 py-0 rounded"
+                        )}
+                      >
+                        {operationStatusLabelEs(container.status)}
+                      </Badge>
+                      <span className="text-[10px] text-slate-500 truncate flex-1 min-w-0">
+                        {getDisplayLocation(container, operation)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5 text-[10px] text-slate-600">
+                      <span>
+                        ETA:{" "}
+                        {formatEtaArriboMarielDashboard(container) !== "—" ? (
+                          <span
+                            className={cn(
+                              "font-semibold",
+                              etaArriboMarielIsGreenDashboard(container) ? "text-green-700" : "text-slate-900"
+                            )}
+                          >
+                            {formatEtaArriboMarielDashboard(container)}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </span>
+                      <span className="text-slate-400">·</span>
+                      <span className="flex items-center gap-0.5 min-w-0 max-w-[45%]">
+                        <Anchor className="h-3 w-3 shrink-0 text-slate-400" />
+                        <span className="truncate">
+                          {container.originPort || operation.originPort || "—"}
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-0.5 min-w-0 max-w-[45%]">
+                        <Ship className="h-3 w-3 shrink-0 text-slate-400" />
+                        <span className="truncate">
+                          {container.destinationPort || operation.destinationPort || "—"}
+                        </span>
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Actualizado: {getLastUpdateDashboard(container)}
+                    </p>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ==========================================
 // COMPONENTE PRINCIPAL
 // ==========================================
@@ -301,6 +617,7 @@ export default function Dashboard(): React.ReactElement {
   const [agingBuckets, setAgingBuckets] = useState<AgingBucket[]>([]);
   const [productosBreakdown, setProductosBreakdown] = useState<BreakdownItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dashboardOperations, setDashboardOperations] = useState<Operation[]>([]);
 
   useEffect(() => {
     if (authLoading) {
@@ -346,6 +663,7 @@ export default function Dashboard(): React.ReactElement {
           setFunnel([]);
           setAgingBuckets([]);
           setProductosBreakdown([]);
+          setDashboardOperations(operations);
           return;
         }
 
@@ -556,6 +874,7 @@ export default function Dashboard(): React.ReactElement {
         setFunnel(funnelData);
         setAgingBuckets(agingData);
         setProductosBreakdown(breakdownCategorias);
+        setDashboardOperations(operations);
       } catch (error) {
         console.error("Error loading stats:", error);
       } finally {
@@ -630,6 +949,28 @@ export default function Dashboard(): React.ReactElement {
     ? Math.round((stats.facturas / stats.ofertas) * 100) 
     : 0;
 
+  const pipelineSummaryRows = useMemo(() => {
+    const estadosTransito = DASHBOARD_ESTADOS_TRANSITO;
+    const estadosMariel = DASHBOARD_ESTADOS_MARIEL;
+    const rows: Array<{ operation: Operation; container: OperationContainer }> = [];
+    dashboardOperations.forEach((op) => {
+      (op.containers || []).forEach((c) => {
+        if (estadosTransito.includes(c.status) || estadosMariel.includes(c.status)) {
+          rows.push({ operation: op, container: c });
+        }
+      });
+    });
+    rows.sort((a, b) => {
+      const da = daysInMarielSortKeyDashboard(a.container);
+      const db = daysInMarielSortKeyDashboard(b.container);
+      if (da === -1 && db === -1) return 0;
+      if (da === -1) return 1;
+      if (db === -1) return -1;
+      return db - da;
+    });
+    return rows.slice(0, DASHBOARD_PIPELINE_TOP_N);
+  }, [dashboardOperations]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -649,58 +990,18 @@ export default function Dashboard(): React.ReactElement {
           <p className="text-sm text-slate-600 max-w-xl">
             Vista resumida para tu rol: indicadores de contenedores. Usa el menú para abrir Operaciones o Mi perfil.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 lg:gap-6">
-            <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200">
-              <div className="flex items-start justify-between mb-3 md:mb-4">
-                <h3 className="text-xs sm:text-sm font-medium text-slate-600">Contenedores en Tránsito</h3>
-                <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-cyan-100 flex items-center justify-center">
-                  <Ship className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-600" />
-                </div>
-              </div>
-              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4">
-                {loading ? "..." : totalTransito}
-              </div>
-              <div className="space-y-1.5 sm:space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-600">Commercial</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-700">
-                    {stats.contenedoresTransitoCommercial}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-600">Parcel</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
-                    {stats.contenedoresTransitoParcel}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200">
-              <div className="flex items-start justify-between mb-3 md:mb-4">
-                <h3 className="text-xs sm:text-sm font-medium text-slate-600">Contenedores en Mariel</h3>
-                <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-green-100 flex items-center justify-center">
-                  <Ship className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                </div>
-              </div>
-              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4">
-                {loading ? "..." : totalMariel}
-              </div>
-              <div className="space-y-1.5 sm:space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-600">Commercial</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-700">
-                    {stats.contenedoresMarielCommercial}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-600">Parcel</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
-                    {stats.contenedoresMarielParcel}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+          <DashboardOperationsPipelineTable
+            rows={pipelineSummaryRows}
+            loading={loading}
+            containerCounts={{
+              transitoTotal: totalTransito,
+              transitoCommercial: stats.contenedoresTransitoCommercial,
+              transitoParcel: stats.contenedoresTransitoParcel,
+              marielTotal: totalMariel,
+              marielCommercial: stats.contenedoresMarielCommercial,
+              marielParcel: stats.contenedoresMarielParcel,
+            }}
+          />
           <Link
             href="/operations"
             className="inline-flex items-center gap-2 rounded-lg bg-[#0C0A04] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1a1610] transition-colors"
@@ -815,63 +1116,6 @@ export default function Dashboard(): React.ReactElement {
           />
         </div>
 
-        {/* Fila 4: Contenedores */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 lg:gap-6 mb-4 md:mb-6">
-          {/* Contenedores en Tránsito */}
-          <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200">
-            <div className="flex items-start justify-between mb-3 md:mb-4">
-              <h3 className="text-xs sm:text-sm font-medium text-slate-600">Contenedores en Tránsito</h3>
-              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-cyan-100 flex items-center justify-center">
-                <Ship className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-600" />
-              </div>
-            </div>
-            <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4">
-              {loading ? "..." : totalTransito}
-            </div>
-            <div className="space-y-1.5 sm:space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600">Commercial</span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-700">
-                  {stats.contenedoresTransitoCommercial}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600">Parcel</span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
-                  {stats.contenedoresTransitoParcel}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Contenedores en Mariel */}
-          <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200">
-            <div className="flex items-start justify-between mb-3 md:mb-4">
-              <h3 className="text-xs sm:text-sm font-medium text-slate-600">Contenedores en Mariel</h3>
-              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-green-100 flex items-center justify-center">
-                <Ship className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-              </div>
-            </div>
-            <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4">
-              {loading ? "..." : totalMariel}
-            </div>
-            <div className="space-y-1.5 sm:space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600">Commercial</span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-700">
-                  {stats.contenedoresMarielCommercial}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600">Parcel</span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
-                  {stats.contenedoresMarielParcel}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Panel Comercial */}
         <div className="mb-6">
           <CommercialPanel
@@ -881,6 +1125,21 @@ export default function Dashboard(): React.ReactElement {
             paymentRate={stats.facturas > 0 
               ? Math.round((stats.facturasPagadas / stats.facturas) * 100) 
               : 0}
+          />
+        </div>
+
+        <div className="mb-6">
+          <DashboardOperationsPipelineTable
+            rows={pipelineSummaryRows}
+            loading={loading}
+            containerCounts={{
+              transitoTotal: totalTransito,
+              transitoCommercial: stats.contenedoresTransitoCommercial,
+              transitoParcel: stats.contenedoresTransitoParcel,
+              marielTotal: totalMariel,
+              marielCommercial: stats.contenedoresMarielCommercial,
+              marielParcel: stats.contenedoresMarielParcel,
+            }}
           />
         </div>
       </div>
