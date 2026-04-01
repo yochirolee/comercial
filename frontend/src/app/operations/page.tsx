@@ -172,6 +172,20 @@ function getDaysInMarielDisplay(container: OperationContainer): { text: string; 
   return { text: String(days), danger: days > 10 };
 }
 
+/** Clave numérica para ordenar por «Días en Mariel»; -1 = sin dato (van al final en asc). */
+function daysInMarielSortKey(container: OperationContainer): number {
+  const refRaw = container.etaActual || container.etaEstimated;
+  if (!refRaw) return -1;
+  const arr = new Date(refRaw);
+  if (isNaN(arr.getTime())) return -1;
+  const today = startOfLocalDay(new Date());
+  const arrDay = startOfLocalDay(arr);
+  const diffMs = today.getTime() - arrDay.getTime();
+  const days = Math.floor(diffMs / 86400000);
+  if (days < 0) return -1;
+  return days;
+}
+
 function clienteNombreCompania(operation: Operation): string {
   const c = operation.offerCustomer?.cliente;
   if (!c) return "—";
@@ -189,8 +203,9 @@ export default function OperationsPage(): React.ReactElement {
   const [importadoras, setImportadoras] = useState<Importadora[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Pagination
-  const PAGE_SIZE = 10;
+  // Pagination (cliente: filas = contenedores)
+  const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100] as const;
+  const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState(1);
 
   // Filters
@@ -203,12 +218,18 @@ export default function OperationsPage(): React.ReactElement {
   type SortColumn =
     | "type"
     | "operation"
+    | "description"
     | "container"
     | "booking"
     | "bl"
     | "etd"
     | "eta"
     | "status"
+    | "fecha-oferta"
+    | "fecha-contrato"
+    | "days-mariel"
+    | "origen-destino"
+    | "seq"
     | "last-update"
     | "importadora"
     | "cliente"
@@ -291,6 +312,13 @@ export default function OperationsPage(): React.ReactElement {
           break;
         }
 
+        case "description": {
+          comparison = operationTableDescription(a.operation).localeCompare(
+            operationTableDescription(b.operation)
+          );
+          break;
+        }
+
         case "container": {
           const containerA = a.container.containerNo || "";
           const containerB = b.container.containerNo || "";
@@ -351,6 +379,62 @@ export default function OperationsPage(): React.ReactElement {
           break;
         }
 
+        case "fecha-oferta": {
+          const fa = a.operation.offerCustomer?.fecha;
+          const fb = b.operation.offerCustomer?.fecha;
+          if (fa && fb) {
+            comparison = new Date(fa).getTime() - new Date(fb).getTime();
+          } else if (fa && !fb) {
+            comparison = -1;
+          } else if (!fa && fb) {
+            comparison = 1;
+          } else {
+            comparison = 0;
+          }
+          break;
+        }
+
+        case "fecha-contrato": {
+          const ca = a.operation.offerCustomer?.fechaContratoImportadora;
+          const cb = b.operation.offerCustomer?.fechaContratoImportadora;
+          if (ca && cb) {
+            comparison = new Date(ca).getTime() - new Date(cb).getTime();
+          } else if (ca && !cb) {
+            comparison = -1;
+          } else if (!ca && cb) {
+            comparison = 1;
+          } else {
+            comparison = 0;
+          }
+          break;
+        }
+
+        case "days-mariel": {
+          const da = daysInMarielSortKey(a.container);
+          const db = daysInMarielSortKey(b.container);
+          const na = da === -1;
+          const nb = db === -1;
+          if (na && nb) comparison = 0;
+          else if (na) comparison = 1;
+          else if (nb) comparison = -1;
+          else comparison = da - db;
+          break;
+        }
+
+        case "origen-destino": {
+          const originA = a.container.originPort || a.operation.originPort || "";
+          const destA = a.container.destinationPort || a.operation.destinationPort || "";
+          const originB = b.container.originPort || b.operation.originPort || "";
+          const destB = b.container.destinationPort || b.operation.destinationPort || "";
+          comparison = originA.localeCompare(originB) || destA.localeCompare(destB);
+          break;
+        }
+
+        case "seq": {
+          comparison = a.container.sequenceNo - b.container.sequenceNo;
+          break;
+        }
+
         case "last-update": {
           const lastUpdateA = a.container.trackingLastSyncAt
             ? new Date(a.container.trackingLastSyncAt).getTime()
@@ -395,9 +479,17 @@ export default function OperationsPage(): React.ReactElement {
   // Aplicar ordenamiento
   const sortedContainerRows = sortContainerRows(filteredContainerRows);
 
-  const totalPages = Math.max(1, Math.ceil(sortedContainerRows.length / PAGE_SIZE));
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const paginatedRows = sortedContainerRows.slice(start, start + PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(sortedContainerRows.length / pageSize));
+  const start = (currentPage - 1) * pageSize;
+  const paginatedRows = sortedContainerRows.slice(start, start + pageSize);
+
+  // Evitar página actual fuera de rango si cambian los datos o el tamaño de página
+  useEffect(() => {
+    setCurrentPage((p) => {
+      const tp = Math.max(1, Math.ceil(sortedContainerRows.length / pageSize));
+      return Math.min(p, tp);
+    });
+  }, [sortedContainerRows.length, pageSize]);
 
   // Función para refrescar solo operaciones (para auto-refresh)
   const refreshOperations = useCallback(async (): Promise<void> => {
@@ -841,7 +933,20 @@ export default function OperationsPage(): React.ReactElement {
                       ))}
                   </div>
                 </TableHead>
-                <TableHead className="min-w-[120px] max-w-[180px] text-[12px]">Descripción</TableHead>
+                <TableHead
+                  className="min-w-[120px] max-w-[180px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("description")}
+                >
+                  <div className="flex items-center gap-1">
+                    Descripción
+                    {sortColumn === "description" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
                 <TableHead
                   className="min-w-[200px] text-[12px] cursor-pointer hover:bg-slate-100 select-none whitespace-nowrap"
                   onClick={() => handleSortClick("status")}
@@ -856,8 +961,34 @@ export default function OperationsPage(): React.ReactElement {
                       ))}
                   </div>
                 </TableHead>
-                <TableHead className="min-w-[88px] text-[12px] whitespace-nowrap">Fecha oferta</TableHead>
-                <TableHead className="min-w-[88px] text-[12px] whitespace-nowrap">Fecha contrato</TableHead>
+                <TableHead
+                  className="min-w-[88px] text-[12px] whitespace-nowrap cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("fecha-oferta")}
+                >
+                  <div className="flex items-center gap-1">
+                    Fecha oferta
+                    {sortColumn === "fecha-oferta" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="min-w-[88px] text-[12px] whitespace-nowrap cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("fecha-contrato")}
+                >
+                  <div className="flex items-center gap-1">
+                    Fecha contrato
+                    {sortColumn === "fecha-contrato" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
                 <TableHead
                   className="min-w-[88px] text-[12px] cursor-pointer hover:bg-slate-100 select-none whitespace-nowrap"
                   onClick={() => handleSortClick("etd")}
@@ -888,9 +1019,48 @@ export default function OperationsPage(): React.ReactElement {
                     </span>
                   </div>
                 </TableHead>
-                <TableHead className="min-w-[72px] text-[12px] text-center">Días en Mariel</TableHead>
-                <TableHead className="min-w-[120px] text-[12px]">Origen / Destino</TableHead>
-                <TableHead className="w-10 text-center text-[12px]">Seq</TableHead>
+                <TableHead
+                  className="min-w-[72px] text-[12px] text-center cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("days-mariel")}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    Días en Mariel
+                    {sortColumn === "days-mariel" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="min-w-[120px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("origen-destino")}
+                >
+                  <div className="flex items-center gap-1">
+                    Origen / Destino
+                    {sortColumn === "origen-destino" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="w-10 text-center text-[12px] cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("seq")}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    Seq
+                    {sortColumn === "seq" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
                 <TableHead
                   className="min-w-[100px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("container")}
@@ -1185,11 +1355,36 @@ export default function OperationsPage(): React.ReactElement {
           </TableBody>
         </Table>
         {!loading && sortedContainerRows.length > 0 && (
-          <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-t bg-slate-50/50">
-            <p className="text-xs sm:text-sm text-slate-500">
-              <span className="hidden sm:inline">Mostrando </span>
-              {start + 1}-{Math.min(start + PAGE_SIZE, sortedContainerRows.length)} de {sortedContainerRows.length}
-            </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-4 py-2 sm:py-3 border-t bg-slate-50/50">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <p className="text-xs sm:text-sm text-slate-500">
+                <span className="hidden sm:inline">Mostrando </span>
+                {start + 1}-{Math.min(start + pageSize, sortedContainerRows.length)} de {sortedContainerRows.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <Label htmlFor="ops-page-size" className="text-xs text-slate-500 whitespace-nowrap">
+                  Por página
+                </Label>
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(v) => {
+                    setPageSize(Number(v));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger id="ops-page-size" className="h-8 w-[4.5rem] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={String(n)}>
+                        {n}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div className="flex items-center gap-1 sm:gap-2">
               <Button
                 variant="outline"
