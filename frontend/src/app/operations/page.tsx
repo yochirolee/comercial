@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, useRef, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -194,25 +194,82 @@ function clienteNombreCompania(operation: Operation): string {
   return [c.nombre, c.apellidos].filter(Boolean).join(" ").trim() || "—";
 }
 
-export default function OperationsPage(): React.ReactElement {
+const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100] as const;
+
+/** Filtros y paginación leídos de la URL (persisten al ir al detalle y volver con Atrás). */
+function parseOperationsListParams(sp: URLSearchParams): {
+  filterType: "COMMERCIAL" | "PARCEL" | "all";
+  filterStatus: string;
+  searchTerm: string;
+  showOnlyActive: boolean;
+  currentPage: number;
+  pageSize: number;
+} {
+  const typeRaw = sp.get("type");
+  const filterType: "COMMERCIAL" | "PARCEL" | "all" =
+    typeRaw === "COMMERCIAL" || typeRaw === "PARCEL" ? typeRaw : "all";
+
+  const statusRaw = sp.get("status");
+  const filterStatus = statusRaw && statusRaw !== "all" ? statusRaw : "all";
+
+  const searchTerm = sp.get("search") ?? "";
+
+  const showOnlyActive = sp.get("soloActivas") !== "0";
+
+  const page = Math.max(1, parseInt(sp.get("page") ?? "1", 10) || 1);
+  const psRaw = parseInt(sp.get("pageSize") ?? "10", 10);
+  const pageSize = PAGE_SIZE_OPTIONS.includes(psRaw as (typeof PAGE_SIZE_OPTIONS)[number])
+    ? psRaw
+    : 10;
+
+  return { filterType, filterStatus, searchTerm, showOnlyActive, currentPage: page, pageSize };
+}
+
+function OperationsPageContent(): React.ReactElement {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { usuario } = useAuth();
   const isOperador = usuario?.rol?.toLowerCase() === "operador";
   const [operations, setOperations] = useState<Operation[]>([]);
   const [ofertasCliente, setOfertasCliente] = useState<OfertaCliente[]>([]);
   const [importadoras, setImportadoras] = useState<Importadora[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Pagination (cliente: filas = contenedores)
-  const PAGE_SIZE_OPTIONS = [10, 15, 25, 50, 100] as const;
-  const [pageSize, setPageSize] = useState<number>(10);
-  const [currentPage, setCurrentPage] = useState(1);
 
-  // Filters
-  const [filterType, setFilterType] = useState<"COMMERCIAL" | "PARCEL" | "all">("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showOnlyActive, setShowOnlyActive] = useState(true); // Por defecto solo activas
+  const { filterType, filterStatus, searchTerm, showOnlyActive, currentPage, pageSize } =
+    parseOperationsListParams(searchParams);
+
+  /** Borrador del buscador: se sincroniza a la URL con debounce. */
+  const [searchDraft, setSearchDraft] = useState(() => searchParams.get("search") ?? "");
+
+  useEffect(() => {
+    setSearchDraft(searchParams.get("search") ?? "");
+  }, [searchParams]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const next = searchDraft.trim();
+      const cur = searchParams.get("search") ?? "";
+      if (next === cur) return;
+      const params = new URLSearchParams(searchParams.toString());
+      if (next) params.set("search", next);
+      else params.delete("search");
+      params.delete("page");
+      const q = params.toString();
+      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    }, 450);
+    return () => clearTimeout(t);
+  }, [searchDraft, pathname, router, searchParams]);
+
+  function patchListUrl(updates: Record<string, string | null>): void {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(updates)) {
+      if (v === null || v === "") params.delete(k);
+      else params.set(k, v);
+    }
+    const q = params.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }
   
   // Sorting - column-based with direction
   type SortColumn =
@@ -485,11 +542,15 @@ export default function OperationsPage(): React.ReactElement {
 
   // Evitar página actual fuera de rango si cambian los datos o el tamaño de página
   useEffect(() => {
-    setCurrentPage((p) => {
-      const tp = Math.max(1, Math.ceil(sortedContainerRows.length / pageSize));
-      return Math.min(p, tp);
-    });
-  }, [sortedContainerRows.length, pageSize]);
+    const tp = Math.max(1, Math.ceil(sortedContainerRows.length / pageSize));
+    if (currentPage > tp) {
+      const params = new URLSearchParams(searchParams.toString());
+      if (tp > 1) params.set("page", String(tp));
+      else params.delete("page");
+      const q = params.toString();
+      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    }
+  }, [sortedContainerRows.length, pageSize, currentPage, searchParams, pathname, router]);
 
   // Función para refrescar solo operaciones (para auto-refresh)
   const refreshOperations = useCallback(async (): Promise<void> => {
@@ -511,11 +572,6 @@ export default function OperationsPage(): React.ReactElement {
     loadData();
   }, [filterType, filterStatus, searchTerm, isOperador]);
 
-  // Resetear página al cambiar filtro "Solo activas"
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [showOnlyActive]);
-
   // Auto-refresh cada 30 segundos
   useEffect(() => {
     intervalRef.current = setInterval(() => {
@@ -531,7 +587,6 @@ export default function OperationsPage(): React.ReactElement {
 
   async function loadData(): Promise<void> {
     setLoading(true);
-    setCurrentPage(1);
     try {
       const params: Record<string, string> = {};
       if (filterType !== "all") params.type = filterType;
@@ -621,13 +676,8 @@ export default function OperationsPage(): React.ReactElement {
   }
 
   function handleViewDetail(operationId: string): void {
-    const qp = new URLSearchParams();
-    // Pasar contexto de filtros para navegación prev/next en detalle
-    if (!showOnlyActive) qp.append("soloActivas", "0");
-    if (filterType !== "all") qp.append("type", filterType);
-    if (filterStatus !== "all") qp.append("status", filterStatus);
-    const query = qp.toString();
-    router.push(`/operations/${operationId}${query ? `?${query}` : ""}`);
+    const q = searchParams.toString();
+    router.push(`/operations/${operationId}${q ? `?${q}` : ""}`);
   }
 
   function handleTracking(operation: Operation, container: OperationContainer): void {
@@ -844,8 +894,8 @@ export default function OperationsPage(): React.ReactElement {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               placeholder="Operación, BL, contenedor, importadora..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
               className="h-10 w-full pl-9"
             />
           </div>
@@ -855,7 +905,13 @@ export default function OperationsPage(): React.ReactElement {
             <Label className="mb-2 block text-sm font-medium">Tipo</Label>
             <Select
               value={filterType}
-              onValueChange={(value) => setFilterType(value as typeof filterType)}
+              onValueChange={(value) => {
+                const v = value as typeof filterType;
+                patchListUrl({
+                  type: v === "all" ? null : v,
+                  page: null,
+                });
+              }}
             >
               <SelectTrigger className="h-10 w-full">
                 <SelectValue />
@@ -869,7 +925,15 @@ export default function OperationsPage(): React.ReactElement {
           </div>
           <div className="min-w-0 sm:col-span-1 md:col-span-2 lg:col-span-4">
             <Label className="mb-2 block text-sm font-medium">Estado</Label>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <Select
+              value={filterStatus}
+              onValueChange={(value) => {
+                patchListUrl({
+                  status: value === "all" ? null : value,
+                  page: null,
+                });
+              }}
+            >
               <SelectTrigger className="h-10 w-full min-w-0">
                 <SelectValue />
               </SelectTrigger>
@@ -887,7 +951,12 @@ export default function OperationsPage(): React.ReactElement {
             <label className="flex cursor-pointer select-none items-center gap-2">
               <Checkbox
                 checked={showOnlyActive}
-                onCheckedChange={(checked) => setShowOnlyActive(checked === true)}
+                onCheckedChange={(checked) => {
+                  patchListUrl({
+                    soloActivas: checked === true ? null : "0",
+                    page: null,
+                  });
+                }}
                 className="h-5 w-5 shrink-0"
               />
               <span className="text-sm font-medium leading-snug text-slate-700">
@@ -1368,8 +1437,10 @@ export default function OperationsPage(): React.ReactElement {
                 <Select
                   value={String(pageSize)}
                   onValueChange={(v) => {
-                    setPageSize(Number(v));
-                    setCurrentPage(1);
+                    patchListUrl({
+                      pageSize: v,
+                      page: null,
+                    });
                   }}
                 >
                   <SelectTrigger id="ops-page-size" className="h-8 w-[4.5rem] text-xs">
@@ -1390,7 +1461,10 @@ export default function OperationsPage(): React.ReactElement {
                 variant="outline"
                 size="sm"
                 className="h-8 sm:h-9"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                onClick={() => {
+                  const p = Math.max(1, currentPage - 1);
+                  patchListUrl({ page: p > 1 ? String(p) : null });
+                }}
                 disabled={currentPage <= 1}
               >
                 <ChevronLeft className="h-4 w-4 sm:mr-1" />
@@ -1403,7 +1477,10 @@ export default function OperationsPage(): React.ReactElement {
                 variant="outline"
                 size="sm"
                 className="h-8 sm:h-9"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() => {
+                  const p = Math.min(totalPages, currentPage + 1);
+                  patchListUrl({ page: p > 1 ? String(p) : null });
+                }}
                 disabled={currentPage >= totalPages}
               >
                 <span className="hidden sm:inline">Siguiente</span>
@@ -1415,5 +1492,19 @@ export default function OperationsPage(): React.ReactElement {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OperationsPage(): React.ReactElement {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-slate-500">
+          Cargando operaciones…
+        </div>
+      }
+    >
+      <OperationsPageContent />
+    </Suspense>
   );
 }

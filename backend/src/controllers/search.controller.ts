@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { createContainsFilter } from '../lib/search-utils.js';
+import { buildOperationSearchOr, createContainsFilter } from '../lib/search-utils.js';
 
 export const SearchController = {
   // Búsqueda universal: busca en importadoras, clientes, productos, operaciones, facturas
@@ -75,15 +75,10 @@ export const SearchController = {
         take: 10,
       }),
       
-      // Operaciones
+      // Operaciones (mismos criterios que GET /operations?search=)
       prisma.operation.findMany({
         where: {
-          OR: [
-            { operationNo: containsFilter },
-            { notes: containsFilter },
-            // Permitir buscar operaciones por nombre de importadora
-            { importadora: { nombre: containsFilter } },
-          ],
+          OR: buildOperationSearchOr(term),
         },
         select: {
           id: true,

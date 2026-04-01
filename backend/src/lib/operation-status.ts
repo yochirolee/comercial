@@ -55,6 +55,35 @@ export function normalizeContainerStatus(status: string): string {
   return c ?? status;
 }
 
+/**
+ * Valores en BD que deben coincidir al filtrar por un estado de la UI (canónico en español o legacy).
+ * Ej.: filtro "Pendiente" → ["Pendiente", "Draft"].
+ */
+export function statusFilterValuesForQuery(filterLabel: string): string[] {
+  const f = filterLabel.trim();
+  if (!f) return [];
+
+  const out = new Set<string>();
+
+  if ((STATUS_ORDER as readonly string[]).includes(f)) {
+    out.add(f);
+    for (const [legacy, canon] of Object.entries(LEGACY_STATUS_TO_CANONICAL)) {
+      if (canon === f) out.add(legacy);
+    }
+    return [...out];
+  }
+
+  if (Object.prototype.hasOwnProperty.call(LEGACY_STATUS_TO_CANONICAL, f)) {
+    const canon = LEGACY_STATUS_TO_CANONICAL[f as keyof typeof LEGACY_STATUS_TO_CANONICAL];
+    out.add(f);
+    out.add(canon);
+    return [...out];
+  }
+
+  out.add(f);
+  return [...out];
+}
+
 export function statusOrderIndex(status: string): number {
   const n = normalizeContainerStatus(status);
   const i = STATUS_ORDER.indexOf(n as OperationStatusValue);

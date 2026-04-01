@@ -1,9 +1,13 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { createContainsFilter } from '../lib/search-utils.js';
+import { buildOperationSearchOr } from '../lib/search-utils.js';
 import { z } from 'zod';
 import { syncOperationSummaryFromContainers } from '../lib/operation-summary.js';
-import { DEFAULT_OPERATION_STATUS, INACTIVE_CONTAINER_STATUSES } from '../lib/operation-status.js';
+import {
+  DEFAULT_OPERATION_STATUS,
+  INACTIVE_CONTAINER_STATUSES,
+  statusFilterValuesForQuery,
+} from '../lib/operation-status.js';
 import { fetchTerminal49Tracking } from '../services/terminal49.service.js';
 
 // Schemas de validación
@@ -523,32 +527,35 @@ export const OperationController = {
   // Listar operaciones con filtros
   async getAll(req: Request, res: Response): Promise<void> {
     const { type, status, search } = req.query;
-    
+
     const where: any = {};
-    
+
     if (type && (type === 'COMMERCIAL' || type === 'PARCEL')) {
       where.operationType = type;
     }
-    
+
+    const andParts: any[] = [];
+
     if (status) {
-      where.status = status;
+      const values = statusFilterValuesForQuery(String(status));
+      andParts.push({
+        OR: [
+          { status: { in: values } },
+          { containers: { some: { status: { in: values } } } },
+        ],
+      });
     }
-    
+
     if (search) {
-      const s = createContainsFilter(String(search));
-      where.OR = [
-        { operationNo: s },
-        { currentLocation: s },
-        { originPort: s },
-        { destinationPort: s },
-        { containers: { some: { blNo: s } } },
-        { containers: { some: { bookingNo: s } } },
-        { containers: { some: { containerNo: s } } },
-        { importadora: { nombre: s } },
-        { referenciaOperacion: s },
-      ];
+      andParts.push({ OR: buildOperationSearchOr(String(search)) });
     }
-    
+
+    if (andParts.length === 1) {
+      Object.assign(where, andParts[0]);
+    } else if (andParts.length > 1) {
+      where.AND = andParts;
+    }
+
     const operations = await prisma.operation.findMany({
       where,
       include: {
@@ -981,10 +988,11 @@ export const OperationController = {
       whereFilter.containers = { some: { status: { notIn: INACTIVE_STATUSES } } };
     }
     if (status) {
-      const s = String(status);
-      // Si filtras por estado, debe aplicar tanto a estado de operación como a estado de contenedor.
-      // Este OR debe combinarse con el "OR de posición" (createdAt/id) usando AND.
-      whereFilter.OR = [{ status: s }, { containers: { some: { status: s } } }];
+      const values = statusFilterValuesForQuery(String(status));
+      whereFilter.OR = [
+        { status: { in: values } },
+        { containers: { some: { status: { in: values } } } },
+      ];
     }
 
     const prev = await prisma.operation.findFirst({
@@ -1039,8 +1047,11 @@ export const OperationController = {
       whereFilter.containers = { some: { status: { notIn: INACTIVE_STATUSES } } };
     }
     if (status) {
-      const s = String(status);
-      whereFilter.OR = [{ status: s }, { containers: { some: { status: s } } }];
+      const values = statusFilterValuesForQuery(String(status));
+      whereFilter.OR = [
+        { status: { in: values } },
+        { containers: { some: { status: { in: values } } } },
+      ];
     }
 
     const next = await prisma.operation.findFirst({

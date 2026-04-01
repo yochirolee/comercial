@@ -439,7 +439,13 @@ export default function OperationDetailPage(): React.ReactElement {
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="outline" onClick={() => router.push("/operations")}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                const q = searchParams.toString();
+                router.push(q ? `/operations?${q}` : "/operations");
+              }}
+            >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Volver
             </Button>
