@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { Header } from "@/components/layout/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +14,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  ArrowRight,
   Ship,
   Loader2,
   Anchor,
@@ -627,7 +625,12 @@ export default function Dashboard(): React.ReactElement {
     async function loadStats(): Promise<void> {
       try {
         if (isOperador) {
-          const operations = await operationsApi.getAll();
+          const [operations, ofertasCliente, ofertasImportadora, facturas] = await Promise.all([
+            operationsApi.getAll(),
+            ofertasClienteApi.getAll(),
+            ofertasImportadoraApi.getAll(),
+            facturasApi.getAll(),
+          ]);
           const estadosTransito = DASHBOARD_ESTADOS_TRANSITO;
           const estadosMariel = DASHBOARD_ESTADOS_MARIEL;
           let contenedoresTransitoCommercial = 0;
@@ -652,16 +655,54 @@ export default function Dashboard(): React.ReactElement {
               }
             });
           });
+
+          const facturasPagadas = facturas.filter((f: Factura) => f.estado === "pagada").length;
+          const facturasPendientes = facturas.filter((f: Factura) => f.estado === "pendiente").length;
+          const ofertasClienteCreadas = ofertasCliente.length;
+          const ofertasImportadoraCreadas = ofertasImportadora.length;
+          const facturasEmitidas = facturas.length;
+
+          const funnelData: FunnelStep[] = [
+            { label: "Ofertas a cliente creadas", value: ofertasClienteCreadas, color: "bg-blue-500" },
+            { label: "Ofertas a importadora creadas", value: ofertasImportadoraCreadas, color: "bg-indigo-500" },
+            { label: "Facturas emitidas", value: facturasEmitidas, color: "bg-purple-500" },
+            { label: "Facturas pagadas", value: facturasPagadas, color: "bg-green-500" },
+          ];
+
+          const nowDate = new Date();
+          const agingData: AgingBucket[] = [
+            { label: "0–7 días", value: 0, color: "bg-green-400" },
+            { label: "8–15 días", value: 0, color: "bg-yellow-400" },
+            { label: "16–30 días", value: 0, color: "bg-orange-400" },
+            { label: "30+ días", value: 0, color: "bg-red-400" },
+          ];
+          facturas
+            .filter((f: Factura) => f.estado === "pendiente")
+            .forEach((f: Factura) => {
+              const fecha = new Date(f.fecha);
+              const dias = Math.floor((nowDate.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24));
+              if (dias <= 7) agingData[0].value++;
+              else if (dias <= 15) agingData[1].value++;
+              else if (dias <= 30) agingData[2].value++;
+              else agingData[3].value++;
+            });
+
           setStats((prev) => ({
             ...prev,
             yearConfig: new Date().getFullYear(),
+            ofertas: ofertasClienteCreadas + ofertasImportadoraCreadas,
+            ofertasCliente: ofertasClienteCreadas,
+            ofertasImportadora: ofertasImportadoraCreadas,
+            facturas: facturasEmitidas,
+            facturasPagadas,
+            facturasPendientes,
             contenedoresTransitoCommercial,
             contenedoresTransitoParcel,
             contenedoresMarielCommercial,
             contenedoresMarielParcel,
           }));
-          setFunnel([]);
-          setAgingBuckets([]);
+          setFunnel(funnelData);
+          setAgingBuckets(agingData);
           setProductosBreakdown([]);
           setDashboardOperations(operations);
           return;
@@ -988,8 +1029,20 @@ export default function Dashboard(): React.ReactElement {
         />
         <div className="p-4 sm:p-5 md:p-6 lg:p-8 bg-slate-50 min-h-screen space-y-6">
           <p className="text-sm text-slate-600 max-w-xl">
-            Vista resumida para tu rol: indicadores de contenedores. Usa el menú para abrir Operaciones o Mi perfil.
+            Resumen comercial (funnel y antigüedad de facturas pendientes), contadores de tránsito / Mariel y las últimas operaciones. Usa el menú para Operaciones o Mi perfil.
           </p>
+          <div className="mb-2">
+            <CommercialPanel
+              funnel={funnel}
+              agingBuckets={agingBuckets}
+              conversionRate={conversionRate}
+              paymentRate={
+                stats.facturas > 0
+                  ? Math.round((stats.facturasPagadas / stats.facturas) * 100)
+                  : 0
+              }
+            />
+          </div>
           <DashboardOperationsPipelineTable
             rows={pipelineSummaryRows}
             loading={loading}
@@ -1002,13 +1055,6 @@ export default function Dashboard(): React.ReactElement {
               marielParcel: stats.contenedoresMarielParcel,
             }}
           />
-          <Link
-            href="/operations"
-            className="inline-flex items-center gap-2 rounded-lg bg-[#0C0A04] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1a1610] transition-colors"
-          >
-            Abrir Operations Board
-            <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
       </div>
     );

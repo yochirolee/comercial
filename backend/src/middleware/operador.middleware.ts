@@ -6,7 +6,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'zas-secret-key-change-in-productio
 
 /**
  * Si el usuario autenticado es `operador`, solo puede usar rutas de operaciones,
- * lectura de importadoras/carriers (dropdowns) y perfil propio.
+ * lectura de importadoras/carriers (dropdowns), listados GET de ofertas/facturas
+ * para el dashboard, y perfil propio.
  */
 export async function operadorApiGuard(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
@@ -61,6 +62,18 @@ export async function operadorApiGuard(req: Request, res: Response, next: NextFu
     if (path.startsWith('/api/carriers') && method === 'GET') {
       next();
       return;
+    }
+
+    // Lectura de listados para el resumen del dashboard (funnel y antigüedad de facturas pendientes).
+    if (method === 'GET') {
+      if (
+        path === '/api/ofertas-cliente' ||
+        path === '/api/ofertas-importadora' ||
+        path === '/api/facturas'
+      ) {
+        next();
+        return;
+      }
     }
 
     const allowedExact: Record<string, string[]> = {
