@@ -36,6 +36,20 @@ import { Users, Trash2, Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+function roleLabel(rol: string): string {
+  const r = rol.toLowerCase();
+  if (r === "admin") return "Administrador";
+  if (r === "operador") return "Operador";
+  return "Comercial";
+}
+
+function avatarRoleClass(rol: string): string {
+  const r = rol.toLowerCase();
+  if (r === "admin") return "bg-amber-100 text-amber-800";
+  if (r === "operador") return "bg-emerald-100 text-emerald-800";
+  return "bg-slate-200 text-slate-700";
+}
+
 export default function UsuariosPage(): React.ReactElement {
   const { usuario: currentUser, refreshUser } = useAuth();
   const router = useRouter();
@@ -55,7 +69,7 @@ export default function UsuariosPage(): React.ReactElement {
     email: "",
     telefono: "",
     password: "",
-    rol: "comercial" as "admin" | "comercial",
+    rol: "comercial" as "admin" | "comercial" | "operador",
   });
 
   // Verificar que el usuario es admin
@@ -90,11 +104,11 @@ export default function UsuariosPage(): React.ReactElement {
 
     setUpdating(user.id);
     try {
-      const updated = await authApi.updateUserRole(user.id, newRole as "admin" | "comercial");
+      const updated = await authApi.updateUserRole(user.id, newRole as "admin" | "comercial" | "operador");
       setUsuarios((prev) =>
         prev.map((u) => (u.id === user.id ? updated : u))
       );
-      toast.success(`Rol de ${user.nombre} actualizado a ${newRole === "admin" ? "Administrador" : "Comercial"}`);
+      toast.success(`Rol de ${user.nombre} actualizado a ${roleLabel(newRole)}`);
       
       // Si el usuario cambió su propio rol, actualizar el contexto
       if (user.id === currentUser?.id) {
@@ -211,9 +225,7 @@ export default function UsuariosPage(): React.ReactElement {
                     <div key={user.id} className="border rounded-lg p-3 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-                            user.rol === "admin" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-700"
-                          }`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${avatarRoleClass(user.rol)}`}>
                             {user.nombre.charAt(0)}{user.apellidos.charAt(0)}
                           </div>
                           <div>
@@ -253,6 +265,7 @@ export default function UsuariosPage(): React.ReactElement {
                           <SelectContent>
                             <SelectItem value="admin">Administrador</SelectItem>
                             <SelectItem value="comercial">Comercial</SelectItem>
+                            <SelectItem value="operador">Operador</SelectItem>
                           </SelectContent>
                         </Select>
                         <Badge variant={user.activo ? "outline" : "destructive"} className="text-xs shrink-0">
@@ -281,9 +294,7 @@ export default function UsuariosPage(): React.ReactElement {
                         <TableRow key={user.id}>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                                user.rol === "admin" ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-slate-700"
-                              }`}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${avatarRoleClass(user.rol)}`}>
                                 {user.nombre.charAt(0)}{user.apellidos.charAt(0)}
                               </div>
                               <div>
@@ -320,6 +331,12 @@ export default function UsuariosPage(): React.ReactElement {
                                   <span className="flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-blue-500"></span>
                                     Comercial
+                                  </span>
+                                </SelectItem>
+                                <SelectItem value="operador">
+                                  <span className="flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    Operador
                                   </span>
                                 </SelectItem>
                               </SelectContent>
@@ -448,7 +465,7 @@ export default function UsuariosPage(): React.ReactElement {
               <Label htmlFor="rol">Rol</Label>
               <Select
                 value={newUser.rol}
-                onValueChange={(value) => setNewUser({ ...newUser, rol: value as "admin" | "comercial" })}
+                onValueChange={(value) => setNewUser({ ...newUser, rol: value as "admin" | "comercial" | "operador" })}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -464,6 +481,12 @@ export default function UsuariosPage(): React.ReactElement {
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-amber-500"></span>
                       Administrador
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="operador">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      Operador
                     </span>
                   </SelectItem>
                 </SelectContent>

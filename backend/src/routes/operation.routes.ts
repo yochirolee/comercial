@@ -10,7 +10,7 @@ operationRouter.use(authMiddleware);
 // POST /api/operations/from-offer - Crear operación desde Oferta a Cliente
 operationRouter.post('/from-offer', OperationController.createFromOffer);
 
-// GET /api/operations - Listar operaciones (con filtros: ?type=COMMERCIAL&status=Draft&search=Z20006)
+// GET /api/operations - Listar operaciones (con filtros: ?type=COMMERCIAL&status=Pendiente&search=Z20006)
 operationRouter.get('/', OperationController.getAll);
 
 // POST /api/operations - Crear operación manual (PARCEL o COMMERCIAL)

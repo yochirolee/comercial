@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Sidebar } from "./Sidebar";
+import { RoleRouteGuard } from "./RoleRouteGuard";
 import { Loader2, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -91,7 +92,9 @@ export function AuthenticatedLayout({ children }: { children: React.ReactNode })
             </Sheet>
           </div>
         </div>
-        <div className="pt-[calc(env(safe-area-inset-top)+3.5rem)] lg:pt-0">{children}</div>
+        <div className="pt-[calc(env(safe-area-inset-top)+3.5rem)] lg:pt-0">
+          <RoleRouteGuard>{children}</RoleRouteGuard>
+        </div>
       </main>
     </div>
   );

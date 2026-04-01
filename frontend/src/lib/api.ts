@@ -66,7 +66,7 @@ export interface UsuarioUpdateInput {
   nombre?: string;
   apellidos?: string;
   telefono?: string;
-  rol?: 'admin' | 'comercial';
+  rol?: 'admin' | 'comercial' | 'operador';
 }
 
 export interface UsuarioCreateInput {
@@ -75,7 +75,7 @@ export interface UsuarioCreateInput {
   email: string;
   telefono?: string;
   password: string;
-  rol?: 'admin' | 'comercial';
+  rol?: 'admin' | 'comercial' | 'operador';
 }
 
 export const authApi = {
@@ -90,7 +90,7 @@ export const authApi = {
   }),
   // Admin endpoints
   getAllUsers: () => fetchApi<Usuario[]>('/auth/users'),
-  updateUserRole: (id: string, rol: 'admin' | 'comercial') => fetchApi<Usuario>(`/auth/users/${id}/role`, {
+  updateUserRole: (id: string, rol: 'admin' | 'comercial' | 'operador') => fetchApi<Usuario>(`/auth/users/${id}/role`, {
     method: 'PUT',
     body: JSON.stringify({ rol }),
   }),
@@ -1604,12 +1604,19 @@ export interface Operation {
   offerCustomer?: {
     id: string;
     numero: string;
+    fecha?: string;
+    fechaContratoImportadora?: string | null;
     cliente: {
       id: string;
       nombre: string;
       apellidos?: string;
       nombreCompania?: string;
     };
+    items?: Array<{
+      nombreProducto?: string | null;
+      descripcion?: string | null;
+      producto?: { nombre?: string | null } | null;
+    }>;
   };
   importadoraId: string;
   importadora?: Importadora;

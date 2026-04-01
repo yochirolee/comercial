@@ -3708,7 +3708,13 @@ export const ExportController = {
 
   /** Resumen de operaciones (comercial y Parcel): Excel, una fila por contenedor. */
   async exportOperacionesComerciales(req: Request, res: Response): Promise<void> {
-    const INACTIVE_CONTAINER = ['Delivered', 'Closed', 'Cancelled'];
+    const INACTIVE_CONTAINER = [
+      'Completado',
+      'Cancelado',
+      'Delivered',
+      'Closed',
+      'Cancelled',
+    ];
 
     function formatEsDate(d: Date | string | null | undefined): string {
       if (!d) return '';

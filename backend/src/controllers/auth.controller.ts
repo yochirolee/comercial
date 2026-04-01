@@ -172,7 +172,7 @@ export const AuthController = {
       nombre: z.string().min(1).optional(),
       apellidos: z.string().min(1).optional(),
       telefono: z.string().optional(),
-      rol: z.enum(['admin', 'comercial']).optional(),
+      rol: z.enum(['admin', 'comercial', 'operador']).optional(),
     });
 
     const validation = updateSchema.safeParse(req.body);
@@ -185,7 +185,7 @@ export const AuthController = {
     // Normalizar el rol a lowercase si viene
     const dataToUpdate = validation.data;
     if (dataToUpdate.rol) {
-      dataToUpdate.rol = dataToUpdate.rol.toLowerCase() as 'admin' | 'comercial';
+      dataToUpdate.rol = dataToUpdate.rol.toLowerCase() as 'admin' | 'comercial' | 'operador';
     }
 
     const usuario = await prisma.usuario.update({
@@ -411,8 +411,8 @@ export const AuthController = {
     const { id } = req.params;
     const { rol } = req.body;
 
-    if (!['admin', 'comercial'].includes(rol)) {
-      res.status(400).json({ error: 'Rol inválido. Debe ser "admin" o "comercial".' });
+    if (!['admin', 'comercial', 'operador'].includes(rol)) {
+      res.status(400).json({ error: 'Rol inválido. Debe ser "admin", "comercial" u "operador".' });
       return;
     }
 
@@ -513,7 +513,7 @@ export const AuthController = {
       telefono: z.string().optional(),
       email: z.string().email('Email inválido'),
       password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
-      rol: z.enum(['admin', 'comercial']).optional().default('comercial'),
+      rol: z.enum(['admin', 'comercial', 'operador']).optional().default('comercial'),
     });
 
     const validation = createUserSchema.safeParse(req.body);

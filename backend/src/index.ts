@@ -20,6 +20,7 @@ import { terminal49WebhookRouter } from './routes/terminal49Webhook.routes.js';
 import { importadoraRouter } from './routes/importadora.routes.js';
 import { searchRouter } from './routes/search.routes.js';
 import { categoriaProductoRouter } from './routes/categoriaProducto.routes.js';
+import { operadorApiGuard } from './middleware/operador.middleware.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -32,6 +33,7 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use('/api', operadorApiGuard);
 
 // Servir archivos estáticos (imágenes subidas)
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));

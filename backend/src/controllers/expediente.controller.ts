@@ -224,15 +224,27 @@ export const ExpedienteController = {
 
       // Calcular métricas usando datos actualizados
       const containers = importadora.operaciones.flatMap(op => op.containers);
+      const ST_TRANSITO = [
+        'Cargando',
+        'Sellado',
+        'En puerto US',
+        'En puerto Brazil',
+        'En Tránsito al Puerto del Mariel',
+        'En Transito al Puerto del Mariel',
+        'Departed US',
+        'Departed Brazil',
+      ];
+      const ST_ADUANA = ['En Aduana', 'Retenido en Aduana', 'Customs'];
+      const ST_ENTREGADOS = ['Completado', 'Delivered', 'Closed', 'Cancelado', 'Cancelled'];
       const metrics = {
         totalClientes: clientesConActividad.length,
         totalOfertas: ofertasFiltradas.length,
         totalFacturas: todasLasFacturas.length,
         totalOperaciones: importadora.operaciones.length,
         totalContainers: containers.length,
-        containersEnTransito: containers.filter(c => ['Departed US', 'Arrived Cuba'].includes(c.status)).length,
-        containersEnAduana: containers.filter(c => c.status === 'Customs').length,
-        containersEntregados: containers.filter(c => ['Delivered', 'Closed'].includes(c.status)).length,
+        containersEnTransito: containers.filter((c) => ST_TRANSITO.includes(c.status)).length,
+        containersEnAduana: containers.filter((c) => ST_ADUANA.includes(c.status)).length,
+        containersEntregados: containers.filter((c) => ST_ENTREGADOS.includes(c.status)).length,
         totalFacturado: todasLasFacturas.reduce((sum, f) => sum + f.total, 0),
         totalOfertasCIF: ofertasFiltradas.reduce((sum, o) => sum + (o.precioCIF || 0), 0),
       };

@@ -3,42 +3,8 @@ import { prisma } from '../lib/prisma.js';
 import { createContainsFilter } from '../lib/search-utils.js';
 import { z } from 'zod';
 import { syncOperationSummaryFromContainers } from '../lib/operation-summary.js';
+import { DEFAULT_OPERATION_STATUS, INACTIVE_CONTAINER_STATUSES } from '../lib/operation-status.js';
 import { fetchTerminal49Tracking } from '../services/terminal49.service.js';
-
-// Statuses válidos
-const OPERATION_STATUSES = [
-  'Draft',
-  'Booking Confirmed',
-  'Container Assigned',
-  'Loaded',
-  'Gate In (Port)',
-  'BL Final Issued',
-  'Departed US',
-  'Departed Brazil',
-  'Arrived Cuba',
-  'Customs',
-  'Released',
-  'Delivered',
-  'Closed',
-  'Cancelled',
-] as const;
-
-const CONTAINER_STATUSES = [
-  'Draft',
-  'Booking Confirmed',
-  'Container Assigned',
-  'Loaded',
-  'Gate In (Port)',
-  'BL Final Issued',
-  'Departed US',
-  'Departed Brazil',
-  'Arrived Cuba',
-  'Customs',
-  'Released',
-  'Delivered',
-  'Closed',
-  'Cancelled',
-] as const;
 
 // Schemas de validación
 const operationSchema = z.object({
@@ -48,7 +14,7 @@ const operationSchema = z.object({
   importadoraId: z.string().min(1, 'Importadora es requerida'),
   invoiceId: z.string().optional(),
   carrierId: z.string().optional(),
-  status: z.string().optional().default('Draft'),
+  status: z.string().optional().default(DEFAULT_OPERATION_STATUS),
   currentLocation: z.string().optional(),
   originPort: z.string().optional(),
   destinationPort: z.string().optional(),
@@ -67,7 +33,7 @@ const containerSchema = z.object({
   etaEstimated: z.string().optional(),
   etdActual: z.string().optional(),
   etaActual: z.string().optional(),
-  status: z.string().optional().default('Draft'),
+  status: z.string().optional().default(DEFAULT_OPERATION_STATUS),
   currentLocation: z.string().optional(),
   itn: z.string().optional().nullable(),
   itnValue: z.number().optional().nullable(),
@@ -162,7 +128,7 @@ export const OperationController = {
         }
       }
 
-      const inactiveStatuses = ['Delivered', 'Closed', 'Cancelled'];
+      const inactiveStatuses = [...INACTIVE_CONTAINER_STATUSES];
 
       const operationId = req.params.id as string | undefined;
 
@@ -328,7 +294,7 @@ export const OperationController = {
         operationType: 'COMMERCIAL',
         offerCustomerId,
         importadoraId,
-        status: 'Draft',
+        status: DEFAULT_OPERATION_STATUS,
         originPort: oferta.puertoEmbarque || undefined,
         destinationPort,
       },
@@ -344,7 +310,7 @@ export const OperationController = {
       data: {
         operationId: operation.id,
         sequenceNo: 1,
-        status: 'Draft',
+        status: DEFAULT_OPERATION_STATUS,
       },
     });
     
@@ -494,7 +460,7 @@ export const OperationController = {
           validation.data.carrierId && validation.data.carrierId.trim() !== ''
             ? validation.data.carrierId
             : undefined,
-        status: status || 'Draft',
+        status: status || DEFAULT_OPERATION_STATUS,
         currentLocation: validation.data.currentLocation,
         originPort: validation.data.originPort,
         destinationPort: validation.data.destinationPort,
@@ -519,7 +485,7 @@ export const OperationController = {
       data: {
         operationId: operation.id,
         sequenceNo: 1,
-        status: 'Draft',
+        status: DEFAULT_OPERATION_STATUS,
       },
     });
     
@@ -587,7 +553,23 @@ export const OperationController = {
       where,
       include: {
         offerCustomer: {
-          select: { id: true, numero: true, clienteId: true, cliente: { select: { id: true, nombre: true, apellidos: true, nombreCompania: true } } },
+          select: {
+            id: true,
+            numero: true,
+            fecha: true,
+            fechaContratoImportadora: true,
+            clienteId: true,
+            cliente: { select: { id: true, nombre: true, apellidos: true, nombreCompania: true } },
+            items: {
+              take: 40,
+              orderBy: { id: 'asc' },
+              select: {
+                nombreProducto: true,
+                descripcion: true,
+                producto: { select: { nombre: true } },
+              },
+            },
+          },
         },
         importadora: { select: { id: true, nombre: true } },
         carrier: { select: { id: true, name: true, trackingUrlTemplate: true, scac: true } },
@@ -985,7 +967,7 @@ export const OperationController = {
       return;
     }
 
-    const INACTIVE_STATUSES = ['Delivered', 'Closed', 'Cancelled'];
+    const INACTIVE_STATUSES = [...INACTIVE_CONTAINER_STATUSES];
     const soloActivas =
       req.query.soloActivas !== '0' && String(req.query.soloActivas).toLowerCase() !== 'false';
     const type = req.query.type;
@@ -1043,7 +1025,7 @@ export const OperationController = {
       return;
     }
 
-    const INACTIVE_STATUSES = ['Delivered', 'Closed', 'Cancelled'];
+    const INACTIVE_STATUSES = [...INACTIVE_CONTAINER_STATUSES];
     const soloActivas =
       req.query.soloActivas !== '0' && String(req.query.soloActivas).toLowerCase() !== 'false';
     const type = req.query.type;

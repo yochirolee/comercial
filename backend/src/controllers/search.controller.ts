@@ -206,6 +206,19 @@ export const SearchController = {
       },
     });
     
+    const ST_TRANSITO = [
+      'Cargando',
+      'Sellado',
+      'En puerto US',
+      'En puerto Brazil',
+      'En Tránsito al Puerto del Mariel',
+      'En Transito al Puerto del Mariel',
+      'Departed US',
+      'Departed Brazil',
+    ] as const;
+    const ST_ADUANA = ['En Aduana', 'Retenido en Aduana', 'Customs'] as const;
+    const ST_ENTREGADOS = ['Completado', 'Delivered', 'Closed', 'Cancelado', 'Cancelled'] as const;
+
     if (!importadora) {
       res.status(404).json({ error: 'Importadora no encontrada' });
       return;
@@ -378,9 +391,9 @@ export const SearchController = {
         productos,
         containers: {
           total: containers.length,
-          enTransito: containers.filter(c => ['Departed US', 'Arrived Cuba'].includes(c.status)).length,
-          enAduana: containers.filter(c => c.status === 'Customs').length,
-          entregados: containers.filter(c => ['Delivered', 'Closed'].includes(c.status)).length,
+          enTransito: containers.filter(c => (ST_TRANSITO as readonly string[]).includes(c.status)).length,
+          enAduana: containers.filter(c => (ST_ADUANA as readonly string[]).includes(c.status)).length,
+          entregados: containers.filter(c => (ST_ENTREGADOS as readonly string[]).includes(c.status)).length,
         },
       },
     });

@@ -39,48 +39,56 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
 import { operationsApi, ofertasClienteApi, importadorasApi } from "@/lib/api";
 import type { Operation, OperationContainer, OfertaCliente, Importadora } from "@/lib/api";
-import { operationRowLabel } from "@/lib/operation-display";
+import { operationRowLabel, operationTableDescription } from "@/lib/operation-display";
+import {
+  OPERATION_STATUSES,
+  operationStatusBadgeClass,
+  operationStatusLabelEs,
+} from "@/lib/operation-status";
+import { cn } from "@/lib/utils";
 
 // Estados considerados como inactivos/completados
-const INACTIVE_STATUSES = ["Delivered", "Closed", "Cancelled"];
-
-// Status colors — colores más distinguibles por fase
-const statusColors: Record<string, string> = {
-  Draft: "bg-slate-100 text-slate-600",
-  "Booking Confirmed": "bg-blue-100 text-blue-700",
-  "Container Assigned": "bg-violet-100 text-violet-700",
-  Loaded: "bg-amber-200 text-amber-800",
-  "Gate In (Port)": "bg-orange-200 text-orange-800",
-  "BL Final Issued": "bg-indigo-200 text-indigo-800",
-  "Departed US": "bg-sky-200 text-sky-800",
-  "Departed Brazil": "bg-sky-200 text-sky-800",
-  "Arrived Cuba": "bg-green-200 text-green-800",
-  Customs: "bg-yellow-200 text-yellow-800",
-  Released: "bg-emerald-200 text-emerald-800",
-  Delivered: "bg-green-600 text-white",
-  Closed: "bg-gray-400 text-white",
-  Cancelled: "bg-red-500 text-white",
-};
+const INACTIVE_STATUSES = [
+  "Completado",
+  "Cancelado",
+  "Delivered",
+  "Closed",
+  "Cancelled",
+];
 
 // Helper para obtener ubicación sugerida basada en estado
 function getSuggestedLocation(status: string): string {
   const locationMap: Record<string, string> = {
-    "Draft": "En preparación",
+    Pendiente: "En preparación",
+    Cargando: "Carga / almacén",
+    Sellado: "Sellado",
+    "En puerto US": "Puerto EE. UU.",
+    "En puerto Brazil": "Puerto Brasil",
+    "En Tránsito al Puerto del Mariel": "En tránsito a Mariel",
+    "En Transito al Puerto del Mariel": "En tránsito a Mariel",
+    "En Puerto del Mariel": "Puerto Mariel",
+    "En Aduana": "Aduana",
+    "Retenido en Aduana": "Aduana (retenido)",
+    "Liberado Aduana": "Aduana liberada",
+    "Descargado en Puerto del Mariel": "Descargado Mariel",
+    Completado: "Finalizado",
+    Cancelado: "Cancelado",
+    Draft: "En preparación",
     "Booking Confirmed": "En preparación",
     "Container Assigned": "En preparación",
-    "Loaded": "Almacén",
+    Loaded: "Almacén",
     "Gate In (Port)": "En puerto (origen)",
     "BL Final Issued": "En puerto (origen)",
     "Departed US": "En tránsito",
     "Departed Brazil": "En tránsito",
     "Arrived Cuba": "Puerto de destino",
-    "Customs": "Aduana",
-    "Released": "Liberado",
-    "Delivered": "Entregado",
-    "Closed": "Entregado",
-    "Cancelled": "Cancelado",
+    Customs: "Aduana",
+    Released: "Liberado",
+    Delivered: "Entregado",
+    Closed: "Entregado",
   };
   return locationMap[status] || "Sin ubicación";
 }
@@ -103,21 +111,6 @@ function formatDateShort(dateString?: string): string {
   return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" }).replace(".", "");
 }
 
-function formatDateFull(dateString?: string): string {
-  if (!dateString) return "";
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "short", year: "numeric" }).replace(".", "");
-}
-
-function formatETD(container: OperationContainer): string {
-  return formatDateShort(container.etdEstimated || container.etdActual);
-}
-
-function formatETA(container: OperationContainer): string {
-  return formatDateFull(container.etaEstimated || container.etaActual);
-}
-
 function getLastUpdate(container: OperationContainer): string {
   const raw = container.trackingLastEventAt
     || container.trackingLastSyncAt
@@ -126,8 +119,71 @@ function getLastUpdate(container: OperationContainer): string {
   return formatDateShort(raw);
 }
 
+function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function formatTableDate(iso?: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function formatFechaEnvio(container: OperationContainer): string {
+  const raw = container.etdActual || container.etdEstimated;
+  return formatTableDate(raw ?? undefined);
+}
+
+/** ETA / Arribo Mariel: prioriza fecha real. */
+function formatEtaArriboMariel(container: OperationContainer): string {
+  const raw = container.etaActual || container.etaEstimated;
+  return formatTableDate(raw ?? undefined);
+}
+
+/** Verde si la fecha de arribo es hoy o ya pasó (en Mariel o arribado). */
+function etaArriboMarielIsGreen(container: OperationContainer): boolean {
+  const raw = container.etaActual || container.etaEstimated;
+  if (!raw) return false;
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return false;
+  const today = startOfLocalDay(new Date());
+  const etaDay = startOfLocalDay(d);
+  return etaDay.getTime() <= today.getTime();
+}
+
+/** Días desde ETA/arribo hasta hoy; null si aún no aplica. >10 → resaltar en rojo. */
+function getDaysInMarielDisplay(container: OperationContainer): { text: string; danger: boolean } {
+  const refRaw = container.etaActual || container.etaEstimated;
+  if (!refRaw) {
+    return { text: "—", danger: false };
+  }
+  const arr = new Date(refRaw);
+  if (isNaN(arr.getTime())) {
+    return { text: "—", danger: false };
+  }
+  const today = startOfLocalDay(new Date());
+  const arrDay = startOfLocalDay(arr);
+  const diffMs = today.getTime() - arrDay.getTime();
+  const days = Math.floor(diffMs / 86400000);
+  if (days < 0) {
+    return { text: "—", danger: false };
+  }
+  return { text: String(days), danger: days > 10 };
+}
+
+function clienteNombreCompania(operation: Operation): string {
+  const c = operation.offerCustomer?.cliente;
+  if (!c) return "—";
+  const comp = c.nombreCompania?.trim();
+  if (comp) return comp;
+  return [c.nombre, c.apellidos].filter(Boolean).join(" ").trim() || "—";
+}
+
 export default function OperationsPage(): React.ReactElement {
   const router = useRouter();
+  const { usuario } = useAuth();
+  const isOperador = usuario?.rol?.toLowerCase() === "operador";
   const [operations, setOperations] = useState<Operation[]>([]);
   const [ofertasCliente, setOfertasCliente] = useState<OfertaCliente[]>([]);
   const [importadoras, setImportadoras] = useState<Importadora[]>([]);
@@ -155,6 +211,7 @@ export default function OperationsPage(): React.ReactElement {
     | "status"
     | "last-update"
     | "importadora"
+    | "cliente"
     | null;
   type SortDirection = "asc" | "desc";
   const [sortColumn, setSortColumn] = useState<SortColumn>("eta");
@@ -316,6 +373,11 @@ export default function OperationsPage(): React.ReactElement {
           break;
         }
 
+        case "cliente": {
+          comparison = clienteNombreCompania(a.operation).localeCompare(clienteNombreCompania(b.operation));
+          break;
+        }
+
         default:
           return 0;
       }
@@ -355,7 +417,7 @@ export default function OperationsPage(): React.ReactElement {
   // Cargar datos iniciales
   useEffect(() => {
     loadData();
-  }, [filterType, filterStatus, searchTerm]);
+  }, [filterType, filterStatus, searchTerm, isOperador]);
 
   // Resetear página al cambiar filtro "Solo activas"
   useEffect(() => {
@@ -387,11 +449,8 @@ export default function OperationsPage(): React.ReactElement {
       const data = await operationsApi.getAll(params);
       setOperations(data);
       
-      // Load ofertas and importadoras for creation dialog
-      const [ofertas, importadorasData] = await Promise.all([
-        ofertasClienteApi.getAll(),
-        importadorasApi.getAll(),
-      ]);
+      const importadorasData = await importadorasApi.getAll();
+      const ofertas = isOperador ? [] : await ofertasClienteApi.getAll();
       setOfertasCliente(ofertas);
       setImportadoras(importadorasData);
       if (importadorasData.length > 0 && !selectedImportadoraId) {
@@ -453,7 +512,7 @@ export default function OperationsPage(): React.ReactElement {
       await operationsApi.create({
         operationType,
         importadoraId: selectedImportadoraId,
-        status: "Draft",
+        status: "Pendiente",
         ...(operationType === "PARCEL" && parcelReferencia.trim()
           ? { referenciaOperacion: parcelReferencia.trim() }
           : {}),
@@ -582,6 +641,9 @@ export default function OperationsPage(): React.ReactElement {
               onOpenChange={(open) => {
                 setCreateDialogOpen(open);
                 if (!open) setParcelReferencia("");
+                if (open && isOperador) {
+                  setOperationType("PARCEL");
+                }
               }}
             >
               <DialogTrigger asChild>
@@ -595,25 +657,32 @@ export default function OperationsPage(): React.ReactElement {
                 <DialogTitle>Nueva Operación</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div>
-                  <Label>Tipo de Operación</Label>
-                  <Select
-                    value={operationType}
-                    onValueChange={(value) => {
-                      setOperationType(value as "COMMERCIAL" | "PARCEL");
-                      if (value === "COMMERCIAL") setParcelReferencia("");
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="COMMERCIAL">Comercial (desde Oferta)</SelectItem>
-                      <SelectItem value="PARCEL">Parcel (Manual)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
+                {!isOperador && (
+                  <div>
+                    <Label>Tipo de Operación</Label>
+                    <Select
+                      value={operationType}
+                      onValueChange={(value) => {
+                        setOperationType(value as "COMMERCIAL" | "PARCEL");
+                        if (value === "COMMERCIAL") setParcelReferencia("");
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="COMMERCIAL">Comercial (desde Oferta)</SelectItem>
+                        <SelectItem value="PARCEL">Parcel (Manual)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {isOperador && (
+                  <p className="text-sm text-slate-600">
+                    Nueva operación Parcel (importadora y referencia opcional).
+                  </p>
+                )}
+
                 <div>
                   <Label>Importadora *</Label>
                   <Select value={selectedImportadoraId} onValueChange={setSelectedImportadoraId}>
@@ -629,8 +698,8 @@ export default function OperationsPage(): React.ReactElement {
                     </SelectContent>
                   </Select>
                 </div>
-                
-                {operationType === "COMMERCIAL" ? (
+
+                {!isOperador && operationType === "COMMERCIAL" ? (
                   <div>
                     <Label>Oferta a Cliente *</Label>
                     <Select value={selectedOfertaId} onValueChange={setSelectedOfertaId}>
@@ -716,7 +785,7 @@ export default function OperationsPage(): React.ReactElement {
                 <SelectItem value="all">Todos</SelectItem>
                 {OPERATION_STATUSES.map((status) => (
                   <SelectItem key={status} value={status}>
-                    {status}
+                    {operationStatusLabelEs(status)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -742,10 +811,10 @@ export default function OperationsPage(): React.ReactElement {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50 text-[13px]">
+              <TableRow className="bg-slate-50 text-[12px]">
                 <TableHead className="w-8"></TableHead>
                 <TableHead
-                  className="min-w-[60px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[56px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("type")}
                 >
                   <div className="flex items-center gap-1">
@@ -759,7 +828,7 @@ export default function OperationsPage(): React.ReactElement {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[100px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[96px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("operation")}
                 >
                   <div className="flex items-center gap-1">
@@ -772,13 +841,62 @@ export default function OperationsPage(): React.ReactElement {
                       ))}
                   </div>
                 </TableHead>
-                <TableHead className="w-10 text-center text-[13px]">Seq</TableHead>
+                <TableHead className="min-w-[120px] max-w-[180px] text-[12px]">Descripción</TableHead>
                 <TableHead
-                  className="min-w-[110px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[200px] text-[12px] cursor-pointer hover:bg-slate-100 select-none whitespace-nowrap"
+                  onClick={() => handleSortClick("status")}
+                >
+                  <div className="flex items-center gap-1">
+                    Estado
+                    {sortColumn === "status" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead className="min-w-[88px] text-[12px] whitespace-nowrap">Fecha oferta</TableHead>
+                <TableHead className="min-w-[88px] text-[12px] whitespace-nowrap">Fecha contrato</TableHead>
+                <TableHead
+                  className="min-w-[88px] text-[12px] cursor-pointer hover:bg-slate-100 select-none whitespace-nowrap"
+                  onClick={() => handleSortClick("etd")}
+                >
+                  <div className="flex items-center gap-1">
+                    Fecha envío
+                    {sortColumn === "etd" &&
+                      (sortDirection === "asc" ? (
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="min-w-[100px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("eta")}
+                >
+                  <div className="flex flex-col gap-0.5 items-start">
+                    <span className="flex items-center gap-1">
+                      ETA / Arribo Mariel
+                      {sortColumn === "eta" &&
+                        (sortDirection === "asc" ? (
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        ))}
+                    </span>
+                  </div>
+                </TableHead>
+                <TableHead className="min-w-[72px] text-[12px] text-center">Días en Mariel</TableHead>
+                <TableHead className="min-w-[120px] text-[12px]">Origen / Destino</TableHead>
+                <TableHead className="w-10 text-center text-[12px]">Seq</TableHead>
+                <TableHead
+                  className="min-w-[100px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("container")}
                 >
                   <div className="flex items-center gap-1">
-                    Contenedor
+                    Nº contenedor
                     {sortColumn === "container" &&
                       (sortDirection === "asc" ? (
                         <ArrowUp className="h-3.5 w-3.5" />
@@ -788,7 +906,7 @@ export default function OperationsPage(): React.ReactElement {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[100px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[88px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("bl")}
                 >
                   <div className="flex items-center gap-1">
@@ -802,12 +920,12 @@ export default function OperationsPage(): React.ReactElement {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[110px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
-                  onClick={() => handleSortClick("status")}
+                  className="min-w-[110px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
+                  onClick={() => handleSortClick("cliente")}
                 >
                   <div className="flex items-center gap-1">
-                    Estado
-                    {sortColumn === "status" &&
+                    Cliente
+                    {sortColumn === "cliente" &&
                       (sortDirection === "asc" ? (
                         <ArrowUp className="h-3.5 w-3.5" />
                       ) : (
@@ -816,22 +934,7 @@ export default function OperationsPage(): React.ReactElement {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[80px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
-                  onClick={() => handleSortClick("eta")}
-                >
-                  <div className="flex items-center gap-1">
-                    ETA
-                    {sortColumn === "eta" &&
-                      (sortDirection === "asc" ? (
-                        <ArrowUp className="h-3.5 w-3.5" />
-                      ) : (
-                        <ArrowDown className="h-3.5 w-3.5" />
-                      ))}
-                  </div>
-                </TableHead>
-                <TableHead className="min-w-[140px] text-[13px]">Origen / Destino</TableHead>
-                <TableHead
-                  className="min-w-[120px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[110px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("importadora")}
                 >
                   <div className="flex items-center gap-1">
@@ -845,7 +948,7 @@ export default function OperationsPage(): React.ReactElement {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[100px] text-[13px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[88px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
                   onClick={() => handleSortClick("last-update")}
                 >
                   <div className="flex items-center gap-1">
@@ -863,13 +966,13 @@ export default function OperationsPage(): React.ReactElement {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8">
+                <TableCell colSpan={17} className="text-center py-8">
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : sortedContainerRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={17} className="text-center py-8 text-slate-500">
                   No hay contenedores para mostrar
                 </TableCell>
               </TableRow>
@@ -916,7 +1019,7 @@ export default function OperationsPage(): React.ReactElement {
                   {/* Tipo */}
                   <TableCell className="py-1.5">
                     <Badge
-                      className={`flex items-center gap-1 w-fit text-[13px] px-1.5 py-0.5 ${
+                      className={`flex items-center gap-1 w-fit text-[12px] px-1.5 py-0.5 ${
                         operation.operationType === "COMMERCIAL"
                           ? "bg-yellow-100 text-yellow-700"
                           : "bg-blue-100 text-blue-700"
@@ -935,58 +1038,97 @@ export default function OperationsPage(): React.ReactElement {
 
                   {/* Operación */}
                   <TableCell className="py-1.5">
-                    <span className={`text-[13px] ${isFirstContainer ? "font-semibold text-slate-900" : "text-slate-400"}`}>
+                    <span className={`text-[12px] ${isFirstContainer ? "font-semibold text-slate-900" : "text-slate-400"}`}>
                       {operationRowLabel(operation, container)}
                     </span>
                   </TableCell>
 
-                  {/* Seq */}
-                  <TableCell className="py-1.5 text-center">
-                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[13px] font-medium">
-                      {container.sequenceNo}
+                  {/* Descripción */}
+                  <TableCell className="py-1.5 align-top max-w-[180px]">
+                    <span
+                      className={`text-[11px] leading-snug line-clamp-3 ${isFirstContainer ? "text-slate-700" : "text-slate-400"}`}
+                      title={operationTableDescription(operation)}
+                    >
+                      {operationTableDescription(operation)}
                     </span>
                   </TableCell>
 
-                  {/* Contenedor */}
-                  <TableCell className="py-1.5">
-                    <span className="font-mono text-[13px] text-slate-800">
-                      {container.containerNo || <span className="text-slate-400">—</span>}
-                    </span>
+                  {/* Estado + nota (estado actual manual) */}
+                  <TableCell className="py-1.5 align-top min-w-[200px]">
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <Badge
+                        className={cn(
+                          operationStatusBadgeClass(container.status),
+                          "border-0 text-[11px] font-medium shadow-none",
+                          "inline-flex w-fit min-w-0 shrink items-center justify-start",
+                          "whitespace-nowrap rounded-md px-2 py-1"
+                        )}
+                      >
+                        {operationStatusLabelEs(container.status)}
+                      </Badge>
+                      {container.currentLocation?.trim() ? (
+                        <span className="text-[10px] text-slate-600 leading-snug line-clamp-3 break-words">
+                          {container.currentLocation.trim()}
+                        </span>
+                      ) : null}
+                    </div>
                   </TableCell>
 
-                  {/* BL */}
-                  <TableCell className="py-1.5">
-                    <span className="text-[13px] text-slate-700">
-                      {container.blNo || <span className="text-slate-400">—</span>}
-                    </span>
+                  {/* Fecha oferta (Oferta a Cliente) */}
+                  <TableCell className="py-1.5 whitespace-nowrap text-[12px] text-slate-700">
+                    {formatTableDate(operation.offerCustomer?.fecha)}
                   </TableCell>
 
-                  {/* Estado */}
-                  <TableCell className="py-1.5">
-                    <Badge className={`${statusColors[container.status] || "bg-slate-100 text-slate-700"} text-[13px] whitespace-nowrap px-2 py-0.5`}>
-                      {container.status}
-                    </Badge>
+                  {/* Fecha contrato importadora */}
+                  <TableCell className="py-1.5 whitespace-nowrap text-[12px] text-slate-700">
+                    {formatTableDate(operation.offerCustomer?.fechaContratoImportadora)}
                   </TableCell>
 
-                  {/* ETA */}
+                  {/* Fecha envío ETD */}
+                  <TableCell className="py-1.5 whitespace-nowrap text-[12px] text-slate-700">
+                    {formatFechaEnvio(container)}
+                  </TableCell>
+
+                  {/* ETA / Arribo Mariel */}
                   <TableCell className="py-1.5 whitespace-nowrap">
-                    {formatETA(container) ? (
-                      <span className="text-[13px] text-slate-900 font-medium">{formatETA(container)}</span>
+                    {formatEtaArriboMariel(container) !== "—" ? (
+                      <span
+                        className={cn(
+                          "text-[12px] font-semibold tabular-nums",
+                          etaArriboMarielIsGreen(container)
+                            ? "text-green-800 bg-green-100 border border-green-400/80 rounded-md px-2 py-0.5 shadow-sm"
+                            : "text-slate-900"
+                        )}
+                      >
+                        {formatEtaArriboMariel(container)}
+                      </span>
                     ) : (
-                      <span className="text-[13px] text-slate-300">—</span>
+                      <span className="text-[12px] text-slate-300">—</span>
                     )}
+                  </TableCell>
+
+                  {/* Días en Mariel */}
+                  <TableCell className="py-1.5 text-center text-[12px]">
+                    {(() => {
+                      const d = getDaysInMarielDisplay(container);
+                      return (
+                        <span className={d.danger ? "font-semibold text-red-600" : "text-slate-700"}>
+                          {d.text}
+                        </span>
+                      );
+                    })()}
                   </TableCell>
 
                   {/* Origen / Destino */}
                   <TableCell className="py-1.5">
-                    <div className="flex flex-col leading-tight gap-0.5 max-w-[170px]">
-                      <span className="flex items-center gap-1 truncate max-w-[140px] text-[13px] text-slate-700">
+                    <div className="flex flex-col leading-tight gap-0.5 max-w-[140px]">
+                      <span className="flex items-center gap-1 truncate max-w-[130px] text-[12px] text-slate-700">
                         <Anchor className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                         <span className="truncate">
                           {container.originPort || operation.originPort || "—"}
                         </span>
                       </span>
-                      <span className="flex items-center gap-1 truncate max-w-[140px] text-[13px] text-slate-700">
+                      <span className="flex items-center gap-1 truncate max-w-[130px] text-[12px] text-slate-700">
                         <Ship className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
                         <span className="truncate">
                           {container.destinationPort || operation.destinationPort || "—"}
@@ -995,15 +1137,46 @@ export default function OperationsPage(): React.ReactElement {
                     </div>
                   </TableCell>
 
+                  {/* Seq */}
+                  <TableCell className="py-1.5 text-center">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[12px] font-medium">
+                      {container.sequenceNo}
+                    </span>
+                  </TableCell>
+
+                  {/* Contenedor */}
+                  <TableCell className="py-1.5">
+                    <span className="font-mono text-[12px] text-slate-800">
+                      {container.containerNo || <span className="text-slate-400">—</span>}
+                    </span>
+                  </TableCell>
+
+                  {/* BL */}
+                  <TableCell className="py-1.5">
+                    <span className="text-[12px] text-slate-700">
+                      {container.blNo || <span className="text-slate-400">—</span>}
+                    </span>
+                  </TableCell>
+
+                  {/* Cliente */}
+                  <TableCell className="py-1.5">
+                    <span
+                      className={`text-[12px] truncate block max-w-[130px] ${isFirstContainer ? "text-slate-800" : "text-slate-400"}`}
+                      title={clienteNombreCompania(operation)}
+                    >
+                      {clienteNombreCompania(operation)}
+                    </span>
+                  </TableCell>
+
                   {/* Importadora */}
                   <TableCell className="py-1.5">
-                    <span className={`text-[13px] truncate block max-w-[140px] ${isFirstContainer ? "text-slate-700" : "text-slate-400"}`}>
+                    <span className={`text-[12px] truncate block max-w-[120px] ${isFirstContainer ? "text-slate-700" : "text-slate-400"}`}>
                       {operation.importadora?.nombre ?? "—"}
                     </span>
                   </TableCell>
 
                   {/* Últ. Actualización */}
-                  <TableCell className="py-1.5 text-[13px] text-slate-500 whitespace-nowrap">
+                  <TableCell className="py-1.5 text-[12px] text-slate-500 whitespace-nowrap">
                     {getLastUpdate(container)}
                   </TableCell>
                 </TableRow>
@@ -1049,19 +1222,3 @@ export default function OperationsPage(): React.ReactElement {
     </div>
   );
 }
-
-const OPERATION_STATUSES = [
-  "Draft",
-  "Booking Confirmed",
-  "Container Assigned",
-  "Loaded",
-  "Gate In (Port)",
-  "BL Final Issued",
-  "Departed US",
-  "Arrived Cuba",
-  "Customs",
-  "Released",
-  "Delivered",
-  "Closed",
-  "Cancelled",
-] as const;

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { syncOperationSummaryFromContainers } from '../lib/operation-summary.js';
+import { INACTIVE_CONTAINER_STATUSES } from '../lib/operation-status.js';
 import { createContainerEvent } from './operation.controller.js';
 
 type WebhookPayload = {
@@ -32,23 +33,23 @@ function parseWebhookTimestamp(ts: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-/** Mapeo evento de transporte Terminal49 → estado nuestro (solo si aplica). */
+/** Mapeo evento de transporte Terminal49 → estado nuestro (español). */
 const TRANSPORT_EVENT_TO_STATUS: Record<string, string> = {
-  'container.transport.full_in': 'Loaded',
-  'container.transport.vessel_loaded': 'Loaded',
-  'container.transport.vessel_departed': 'Departed US',
-  'container.transport.rail_departed': 'Departed US',
-  'container.transport.vessel_arrived': 'Arrived Cuba',
-  'container.transport.vessel_discharged': 'Arrived Cuba',
-  'container.transport.feeder_departed': 'Departed US',
-  'container.transport.feeder_arrived': 'Arrived Cuba',
-  'container.transport.feeder_discharged': 'Arrived Cuba',
-  'container.transport.transshipment_departed': 'Departed US',
-  'container.transport.transshipment_arrived': 'Arrived Cuba',
-  'container.transport.transshipment_discharged': 'Arrived Cuba',
-  'container.transport.available': 'Released',
-  'container.transport.arrived_at_inland_destination': 'Delivered',
-  'container.transport.empty_in': 'Delivered',
+  'container.transport.full_in': 'Cargando',
+  'container.transport.vessel_loaded': 'Cargando',
+  'container.transport.vessel_departed': 'En Tránsito al Puerto del Mariel',
+  'container.transport.rail_departed': 'En Tránsito al Puerto del Mariel',
+  'container.transport.vessel_arrived': 'En Puerto del Mariel',
+  'container.transport.vessel_discharged': 'Descargado en Puerto del Mariel',
+  'container.transport.feeder_departed': 'En Tránsito al Puerto del Mariel',
+  'container.transport.feeder_arrived': 'En Puerto del Mariel',
+  'container.transport.feeder_discharged': 'Descargado en Puerto del Mariel',
+  'container.transport.transshipment_departed': 'En Tránsito al Puerto del Mariel',
+  'container.transport.transshipment_arrived': 'En Puerto del Mariel',
+  'container.transport.transshipment_discharged': 'Descargado en Puerto del Mariel',
+  'container.transport.available': 'Liberado Aduana',
+  'container.transport.arrived_at_inland_destination': 'Completado',
+  'container.transport.empty_in': 'Completado',
 };
 
 /** Evento webhook (ej. tracking_request.succeeded) → terminal49Status. */
@@ -195,7 +196,7 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
   }
 }
 
-const INACTIVE_STATUSES = ['Delivered', 'Closed', 'Cancelled'];
+const INACTIVE_STATUSES = [...INACTIVE_CONTAINER_STATUSES];
 
 /** Devuelve los terminal49RequestId y blNo de contenedores activos para que el global-sync filtre antes de llamar a la API. */
 export async function handleGetActiveIds(req: import('express').Request, res: import('express').Response): Promise<void> {

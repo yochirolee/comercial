@@ -22,16 +22,26 @@ import {
   Search,
 } from "lucide-react";
 
+type AppRole = "admin" | "comercial" | "operador";
+
+/** Si no se indica, solo admin y comercial (no operador). */
 interface NavItem {
   name: string;
   href?: string;
   icon: React.ComponentType<{ className?: string }>;
-  children?: { name: string; href: string; icon: React.ComponentType<{ className?: string }>; adminOnly?: boolean }[];
+  children?: {
+    name: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    adminOnly?: boolean;
+    roles?: AppRole[];
+  }[];
   adminOnly?: boolean;
+  roles?: AppRole[];
 }
 
 const navigation: NavItem[] = [
-  { name: "Dashboard", href: "/", icon: Home },
+  { name: "Dashboard", href: "/", icon: Home, roles: ["admin", "comercial", "operador"] },
   { name: "Empresa", href: "/empresa", icon: Building2 },
   { name: "Clientes", href: "/clientes", icon: Users },
   { name: "Importadoras", href: "/importadoras", icon: Ship },
@@ -46,14 +56,14 @@ const navigation: NavItem[] = [
     ]
   },
   { name: "Facturas", href: "/facturas", icon: Receipt },
-  { name: "Operaciones", href: "/operations", icon: MapPin },
+  { name: "Operaciones", href: "/operations", icon: MapPin, roles: ["admin", "comercial", "operador"] },
   { name: "Buscar", href: "/importadoras/buscar", icon: Search },
   { name: "Documentación", href: "/documentacion", icon: FileCheck, adminOnly: true },
   { 
     name: "Configuración", 
     icon: Settings,
     children: [
-      { name: "Mi Perfil", href: "/settings", icon: User },
+      { name: "Mi Perfil", href: "/settings", icon: User, roles: ["admin", "comercial", "operador"] },
       { name: "Usuarios", href: "/settings/usuarios", icon: UserCog, adminOnly: true },
           { name: "Ajustes generales", href: "/settings/dashboard", icon: Settings, adminOnly: true },
     ]
@@ -63,6 +73,18 @@ const navigation: NavItem[] = [
 interface SidebarProps {
   onNavigate?: () => void;
   isMobile?: boolean;
+}
+
+function userCanSeeNavItem(
+  usuarioRol: string | undefined,
+  item: { adminOnly?: boolean; roles?: AppRole[] }
+): boolean {
+  if (item.adminOnly && usuarioRol !== "admin") {
+    return false;
+  }
+  const r = (usuarioRol ?? "comercial").toLowerCase() as AppRole;
+  const allowed: AppRole[] = item.roles ?? ["admin", "comercial"];
+  return allowed.includes(r);
 }
 
 export function Sidebar({ onNavigate, isMobile }: SidebarProps): React.ReactElement {
@@ -93,9 +115,7 @@ export function Sidebar({ onNavigate, isMobile }: SidebarProps): React.ReactElem
         {navigation.map((item) => {
           if (item.children) {
             // Filtrar children según permisos de admin
-            const visibleChildren = item.children.filter(
-              (child) => !child.adminOnly || usuario?.rol === "admin"
-            );
+            const visibleChildren = item.children.filter((child) => userCanSeeNavItem(usuario?.rol, child));
 
             if (visibleChildren.length === 0) return null;
 
@@ -130,8 +150,7 @@ export function Sidebar({ onNavigate, isMobile }: SidebarProps): React.ReactElem
             );
           }
 
-          // Filtrar items según permisos de admin
-          if (item.adminOnly && usuario?.rol !== "admin") {
+          if (!userCanSeeNavItem(usuario?.rol, item)) {
             return null;
           }
 

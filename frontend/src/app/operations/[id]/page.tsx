@@ -27,23 +27,13 @@ import { ArrowLeft, Plus, Pencil, Save, Package, Ship, Clock, Trash2, ArrowUpDow
 import { operationsApi, importadorasApi, carriersApi } from "@/lib/api";
 import type { Operation, OperationContainer, OperationEvent, ContainerEvent, Carrier } from "@/lib/api";
 import { operationParcelDetailTitle } from "@/lib/operation-display";
-
-const OPERATION_STATUSES = [
-  "Draft",
-  "Booking Confirmed",
-  "Container Assigned",
-  "Loaded",
-  "Gate In (Port)",
-  "BL Final Issued",
-  "Departed US",
-  "Departed Brazil",
-  "Arrived Cuba",
-  "Customs",
-  "Released",
-  "Delivered",
-  "Closed",
-  "Cancelled",
-] as const;
+import {
+  OPERATION_STATUSES,
+  operationStatusBadgeClass,
+  operationStatusLabelEs,
+  operationStatusSelectValue,
+} from "@/lib/operation-status";
+import { cn } from "@/lib/utils";
 
 function formatDateTime(dateString?: string): string {
   if (!dateString) return "-";
@@ -184,7 +174,7 @@ export default function OperationDetailPage(): React.ReactElement {
       const data = await operationsApi.getById(operationId);
       setOperation(data);
       setOperationForm({
-        status: data.status,
+        status: operationStatusSelectValue(data.status),
         currentLocation: data.currentLocation || "",
         originPort: data.originPort || "",
         destinationPort: data.destinationPort || "MARIEL, Cuba",
@@ -231,7 +221,7 @@ export default function OperationDetailPage(): React.ReactElement {
     try {
       await operationsApi.addContainer(operationId, {
         ...containerForm,
-        status: containerForm.status || "Draft",
+        status: containerForm.status || "Pendiente",
         itnValue: containerForm.itnValue ? parseFloat(containerForm.itnValue) : undefined,
         itnWeight: containerForm.itnWeight ? parseFloat(containerForm.itnWeight) : undefined,
         itn: containerForm.itn || undefined,
@@ -248,7 +238,7 @@ export default function OperationDetailPage(): React.ReactElement {
         etaEstimated: "",
         etdActual: "",
         etaActual: "",
-        status: "Draft",
+        status: "Pendiente",
         currentLocation: "",
         itn: "",
         itnValue: "",
@@ -312,7 +302,7 @@ export default function OperationDetailPage(): React.ReactElement {
       etaEstimated: container.etaEstimated ? container.etaEstimated.slice(0, 16) : "",
       etdActual: container.etdActual ? container.etdActual.slice(0, 16) : "",
       etaActual: container.etaActual ? container.etaActual.slice(0, 16) : "",
-      status: container.status,
+      status: operationStatusSelectValue(container.status),
       currentLocation: container.currentLocation || "",
       itn: container.itn || "",
       itnValue: container.itnValue != null ? String(container.itnValue) : "",
@@ -504,7 +494,7 @@ export default function OperationDetailPage(): React.ReactElement {
               </div>
               <div>
                 <Label className="text-slate-500">Estado</Label>
-                <p className="font-medium mt-1">{operation.status}</p>
+                <p className="font-medium mt-1">{operationStatusLabelEs(operation.status)}</p>
               </div>
               <div>
                 <Label className="text-slate-500">Importadora</Label>
@@ -575,7 +565,15 @@ export default function OperationDetailPage(): React.ReactElement {
                         <span className="font-medium truncate max-w-[200px] sm:max-w-none">
                           {container.containerNo || `Contenedor ${container.sequenceNo}`}
                         </span>
-                        <Badge>{container.status}</Badge>
+                        <Badge
+                          className={cn(
+                            operationStatusBadgeClass(container.status),
+                            "border-0 text-xs font-medium shadow-none w-fit min-w-0",
+                            "inline-flex items-center justify-start whitespace-nowrap rounded-md px-2 py-1"
+                          )}
+                        >
+                          {operationStatusLabelEs(container.status)}
+                        </Badge>
                       </div>
                       <div className="flex items-center gap-1">
                         <Button
@@ -623,7 +621,7 @@ export default function OperationDetailPage(): React.ReactElement {
                         <span className="truncate">{formatDateTime(container.etaEstimated || container.etaActual)}</span>
                       </div>
                       <div className="truncate">
-                        <span className="text-slate-500">Ubicación:</span> <span className="truncate">{container.currentLocation || "-"}</span>
+                        <span className="text-slate-500">Estado actual:</span> <span className="truncate">{container.currentLocation || "-"}</span>
                       </div>
                       <div className="truncate">
                         <span className="text-slate-500">ITN:</span> <span className="truncate">{container.itn || "-"}</span>
@@ -879,7 +877,7 @@ export default function OperationDetailPage(): React.ReactElement {
                 <SelectContent>
                   {OPERATION_STATUSES.map((status) => (
                     <SelectItem key={status} value={status}>
-                      {status}
+                      {operationStatusLabelEs(status)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -959,7 +957,7 @@ export default function OperationDetailPage(): React.ReactElement {
               etaEstimated: "",
               etdActual: "",
               etaActual: "",
-              status: "Draft",
+              status: "Pendiente",
               currentLocation: "",
               itn: "",
               itnValue: "",
@@ -993,7 +991,7 @@ export default function OperationDetailPage(): React.ReactElement {
                   <SelectContent>
                     {OPERATION_STATUSES.map((status) => (
                       <SelectItem key={status} value={status}>
-                        {status}
+                        {operationStatusLabelEs(status)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1051,7 +1049,7 @@ export default function OperationDetailPage(): React.ReactElement {
               </div>
             </div>
             <div>
-              <Label>Ubicación Actual</Label>
+              <Label>Estado actual</Label>
               <Input
                 value={containerForm.currentLocation}
                 onChange={(e) => setContainerForm((p) => ({ ...p, currentLocation: e.target.value }))}
@@ -1121,7 +1119,7 @@ export default function OperationDetailPage(): React.ReactElement {
                   <SelectContent>
                     {OPERATION_STATUSES.map((status) => (
                       <SelectItem key={status} value={status}>
-                        {status}
+                        {operationStatusLabelEs(status)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -1197,7 +1195,7 @@ export default function OperationDetailPage(): React.ReactElement {
               </div>
             </div>
             <div>
-              <Label>Ubicación Actual</Label>
+              <Label>Estado actual</Label>
               <Input
                 value={containerForm.currentLocation}
                 onChange={(e) => setContainerForm((p) => ({ ...p, currentLocation: e.target.value }))}

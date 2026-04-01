@@ -247,17 +247,24 @@ export const ImportadoraController = {
       },
     });
     
-    const containersEnTransito = containers.filter(c => 
-      ['Departed US', 'Arrived Cuba'].includes(c.status)
-    ).length;
-    
-    const containersEnAduana = containers.filter(c => 
-      c.status === 'Customs'
-    ).length;
-    
-    const containersEntregados = containers.filter(c => 
-      ['Delivered', 'Closed'].includes(c.status)
-    ).length;
+    const ST_TRANSITO = [
+      'En Tránsito al Puerto del Mariel',
+      'En Transito al Puerto del Mariel',
+      'En puerto US',
+      'En puerto Brazil',
+      'Cargando',
+      'Sellado',
+      'Departed US',
+      'Departed Brazil',
+    ];
+    const ST_ADUANA = ['En Aduana', 'Retenido en Aduana', 'Customs'];
+    const ST_ENTREGADOS = ['Completado', 'Delivered', 'Closed', 'Cancelado', 'Cancelled'];
+
+    const containersEnTransito = containers.filter((c) => ST_TRANSITO.includes(c.status)).length;
+
+    const containersEnAduana = containers.filter((c) => ST_ADUANA.includes(c.status)).length;
+
+    const containersEntregados = containers.filter((c) => ST_ENTREGADOS.includes(c.status)).length;
     
     // ========== Obtener clientes con actividad real ==========
     // 1. Clientes de las ofertas a importadora

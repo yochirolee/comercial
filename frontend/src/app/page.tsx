@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { Header } from "@/components/layout/Header";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   Users, 
   Package, 
@@ -13,11 +15,34 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
-  Ship
+  Ship,
+  Loader2,
 } from "lucide-react";
 import { clientesApi, productosApi, ofertasClienteApi, ofertasImportadoraApi, ofertasGeneralesApi, facturasApi, operationsApi } from "@/lib/api";
 import type { Producto, Factura, OfertaCliente, OfertaImportadora, Cliente, Operation } from "@/lib/api";
 import { cn } from "@/lib/utils";
+
+/** Contadores dashboard: tránsito hacia Mariel (incluye valores legacy en inglés hasta migrar BD). */
+const DASHBOARD_ESTADOS_TRANSITO = [
+  "Cargando",
+  "Sellado",
+  "En puerto US",
+  "En puerto Brazil",
+  "En Tránsito al Puerto del Mariel",
+  "En Transito al Puerto del Mariel", // legacy guardado sin tilde
+  "Departed US",
+  "Departed Brazil",
+];
+const DASHBOARD_ESTADOS_MARIEL = [
+  "En Puerto del Mariel",
+  "En Aduana",
+  "Retenido en Aduana",
+  "Liberado Aduana",
+  "Descargado en Puerto del Mariel",
+  "Arrived Cuba",
+  "Customs",
+  "Released",
+];
 
 // ==========================================
 // TIPOS
@@ -247,6 +272,8 @@ function CommercialPanel({
 // ==========================================
 
 export default function Dashboard(): React.ReactElement {
+  const { usuario, loading: authLoading } = useAuth();
+  const isOperador = usuario?.rol?.toLowerCase() === "operador";
   const MAX_PRODUCT_CATEGORIES = 3;
   const [stats, setStats] = useState({
     clientes: 0,
@@ -276,8 +303,52 @@ export default function Dashboard(): React.ReactElement {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     async function loadStats(): Promise<void> {
       try {
+        if (isOperador) {
+          const operations = await operationsApi.getAll();
+          const estadosTransito = DASHBOARD_ESTADOS_TRANSITO;
+          const estadosMariel = DASHBOARD_ESTADOS_MARIEL;
+          let contenedoresTransitoCommercial = 0;
+          let contenedoresTransitoParcel = 0;
+          let contenedoresMarielCommercial = 0;
+          let contenedoresMarielParcel = 0;
+          operations.forEach((op: Operation) => {
+            const containers = op.containers || [];
+            containers.forEach((container) => {
+              if (estadosTransito.includes(container.status)) {
+                if (op.operationType === "COMMERCIAL") {
+                  contenedoresTransitoCommercial++;
+                } else {
+                  contenedoresTransitoParcel++;
+                }
+              } else if (estadosMariel.includes(container.status)) {
+                if (op.operationType === "COMMERCIAL") {
+                  contenedoresMarielCommercial++;
+                } else {
+                  contenedoresMarielParcel++;
+                }
+              }
+            });
+          });
+          setStats((prev) => ({
+            ...prev,
+            yearConfig: new Date().getFullYear(),
+            contenedoresTransitoCommercial,
+            contenedoresTransitoParcel,
+            contenedoresMarielCommercial,
+            contenedoresMarielParcel,
+          }));
+          setFunnel([]);
+          setAgingBuckets([]);
+          setProductosBreakdown([]);
+          return;
+        }
+
         // Leer configuración del dashboard
         let yearConfig = new Date().getFullYear();
         try {
@@ -349,8 +420,8 @@ export default function Dashboard(): React.ReactElement {
         }).length;
 
         // Calcular contenedores por estado y tipo
-        const estadosTransito = ["Departed US", "Departed Brazil"];
-        const estadosMariel = ["Arrived Cuba", "Customs", "Released"];
+        const estadosTransito = DASHBOARD_ESTADOS_TRANSITO;
+        const estadosMariel = DASHBOARD_ESTADOS_MARIEL;
         
         let contenedoresTransitoCommercial = 0;
         let contenedoresTransitoParcel = 0;
@@ -493,7 +564,7 @@ export default function Dashboard(): React.ReactElement {
     }
 
     loadStats();
-  }, []);
+  }, [authLoading, isOperador]);
 
   // Helper para nombre de mes
   function getNombreMes(mes: number): string {
@@ -558,6 +629,89 @@ export default function Dashboard(): React.ReactElement {
   const conversionRate = stats.ofertas > 0 
     ? Math.round((stats.facturas / stats.ofertas) * 100) 
     : 0;
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="h-10 w-10 animate-spin text-brand-gold" />
+      </div>
+    );
+  }
+
+  if (isOperador) {
+    return (
+      <div>
+        <Header
+          title="Dashboard"
+          description="Resumen de operaciones y contenedores"
+        />
+        <div className="p-4 sm:p-5 md:p-6 lg:p-8 bg-slate-50 min-h-screen space-y-6">
+          <p className="text-sm text-slate-600 max-w-xl">
+            Vista resumida para tu rol: indicadores de contenedores. Usa el menú para abrir Operaciones o Mi perfil.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5 lg:gap-6">
+            <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200">
+              <div className="flex items-start justify-between mb-3 md:mb-4">
+                <h3 className="text-xs sm:text-sm font-medium text-slate-600">Contenedores en Tránsito</h3>
+                <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-cyan-100 flex items-center justify-center">
+                  <Ship className="h-4 w-4 sm:h-5 sm:w-5 text-cyan-600" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4">
+                {loading ? "..." : totalTransito}
+              </div>
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">Commercial</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-700">
+                    {stats.contenedoresTransitoCommercial}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">Parcel</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
+                    {stats.contenedoresTransitoParcel}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white/80 backdrop-blur border border-slate-200 shadow-sm rounded-2xl p-4 sm:p-5 md:p-6 hover:shadow-md hover:-translate-y-[1px] transition-all duration-200">
+              <div className="flex items-start justify-between mb-3 md:mb-4">
+                <h3 className="text-xs sm:text-sm font-medium text-slate-600">Contenedores en Mariel</h3>
+                <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-green-100 flex items-center justify-center">
+                  <Ship className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3 md:mb-4">
+                {loading ? "..." : totalMariel}
+              </div>
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">Commercial</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-yellow-100 text-yellow-700">
+                    {stats.contenedoresMarielCommercial}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-slate-600">Parcel</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-blue-100 text-blue-700">
+                    {stats.contenedoresMarielParcel}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <Link
+            href="/operations"
+            className="inline-flex items-center gap-2 rounded-lg bg-[#0C0A04] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1a1610] transition-colors"
+          >
+            Abrir Operations Board
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

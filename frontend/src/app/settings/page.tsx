@@ -148,18 +148,28 @@ export default function SettingsPage(): React.ReactElement {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  usuario.rol === "admin" 
-                    ? "bg-amber-100 text-amber-800" 
-                    : "bg-blue-100 text-blue-800"
-                }`}>
-                  {usuario.rol === "admin" ? "Administrador" : "Comercial"}
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    usuario.rol === "admin"
+                      ? "bg-amber-100 text-amber-800"
+                      : usuario.rol === "operador"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-blue-100 text-blue-800"
+                  }`}
+                >
+                  {usuario.rol === "admin"
+                    ? "Administrador"
+                    : usuario.rol === "operador"
+                      ? "Operador"
+                      : "Comercial"}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                {usuario.rol === "admin" 
+                {usuario.rol === "admin"
                   ? "Tienes acceso completo a todas las funcionalidades del sistema."
-                  : "Tienes acceso a las funcionalidades comerciales del sistema."}
+                  : usuario.rol === "operador"
+                    ? "Acceso al dashboard de contenedores, Operations Board y tu perfil."
+                    : "Tienes acceso a las funcionalidades comerciales del sistema."}
               </p>
             </CardContent>
           </Card>
