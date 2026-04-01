@@ -1282,10 +1282,10 @@ function OperationsPageContent(): React.ReactElement {
                     </span>
                   </TableCell>
 
-                  {/* Descripción */}
-                  <TableCell className="py-1.5 align-top max-w-[180px]">
+                  {/* Descripción (misma alineación vertical que fechas / ETA) */}
+                  <TableCell className="py-1.5 align-middle max-w-[180px] whitespace-normal">
                     <span
-                      className={`text-[11px] leading-snug line-clamp-3 ${isFirstContainer ? "text-slate-700" : "text-slate-400"}`}
+                      className={`block text-[12px] leading-snug line-clamp-3 ${isFirstContainer ? "text-slate-700" : "text-slate-400"}`}
                       title={operationTableDescription(operation)}
                     >
                       {operationTableDescription(operation)}
