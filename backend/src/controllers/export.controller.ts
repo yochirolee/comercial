@@ -1,6 +1,9 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { formatStoredDateOnlyEs } from '../lib/date-only.js';
+import { buildOperationsBoardExcelBuffer } from '../lib/operations-board-excel.js';
+import { sendOperationsBoardExcelEmail } from '../services/email.service.js';
+import { z } from 'zod';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
@@ -4072,6 +4075,61 @@ export const ExportController = {
     } catch (error) {
       console.error('Error al exportar resumen de operaciones:', error);
       res.status(500).json({ error: 'Error al exportar el resumen de operaciones' });
+    }
+  },
+
+  /** Excel Operations Board: hojas Comercial y Parcel (misma lógica de columnas que la UI). */
+  async exportOperacionesTablero(req: Request, res: Response): Promise<void> {
+    try {
+      const soloActivas =
+        req.query.soloActivas !== '0' && String(req.query.soloActivas).toLowerCase() !== 'false';
+      const buffer = await buildOperationsBoardExcelBuffer({ soloActivas });
+      const day = new Date().toISOString().split('T')[0];
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="operations_board_${day}.xlsx"`
+      );
+      res.send(buffer);
+    } catch (error) {
+      console.error('Error al exportar operations board:', error);
+      res.status(500).json({ error: 'Error al exportar el tablero de operaciones' });
+    }
+  },
+
+  /** Envía por correo el Excel del Operations Board (Resend + adjunto). */
+  async emailOperacionesTablero(req: Request, res: Response): Promise<void> {
+    const bodySchema = z.object({
+      to: z.string().email('Email destino inválido'),
+      soloActivas: z.boolean().optional().default(true),
+    });
+
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten() });
+      return;
+    }
+
+    const { to, soloActivas } = parsed.data;
+
+    try {
+      const buffer = await buildOperationsBoardExcelBuffer({ soloActivas });
+      const sendResult = await sendOperationsBoardExcelEmail(to, buffer);
+
+      if (!sendResult.ok) {
+        console.error('[export] email tablero operaciones:', sendResult.reason);
+        res.status(500).json({
+          error: 'No se pudo enviar el correo. Revisa Resend y el remitente (dominio verificado).',
+        });
+        return;
+      }
+
+      res.json({
+        message: 'Informe enviado. Revisa la bandeja de entrada (y spam) del destinatario.',
+      });
+    } catch (error) {
+      console.error('Error al generar o enviar tablero por email:', error);
+      res.status(500).json({ error: 'Error al generar o enviar el informe' });
     }
   },
 };

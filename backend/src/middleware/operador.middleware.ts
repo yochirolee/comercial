@@ -40,6 +40,11 @@ export async function operadorApiGuard(req: Request, res: Response, next: NextFu
     const path = req.originalUrl.split('?')[0];
     const method = req.method.toUpperCase();
 
+    if (path.startsWith('/api/export/operaciones-tablero')) {
+      next();
+      return;
+    }
+
     if (path.startsWith('/api/operations')) {
       if (method === 'POST' && (path === '/api/operations/from-offer' || path.endsWith('/from-offer'))) {
         res.status(403).json({ error: 'Los operadores no pueden crear operaciones comerciales desde oferta.' });

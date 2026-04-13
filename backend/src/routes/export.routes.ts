@@ -43,3 +43,7 @@ exportRouter.get('/facturas/all', ExportController.exportFacturas);
 
 // Resumen de operaciones — comercial y Parcel (Excel)
 exportRouter.get('/operaciones-comerciales', ExportController.exportOperacionesComerciales);
+
+// Tablero Operations Board (Excel: hojas Comercial + Parcel; columnas como la UI)
+exportRouter.get('/operaciones-tablero', ExportController.exportOperacionesTablero);
+exportRouter.post('/operaciones-tablero/email', ExportController.emailOperacionesTablero);

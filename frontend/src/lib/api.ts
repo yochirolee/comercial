@@ -659,6 +659,63 @@ export const exportApi = {
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
   },
+
+  /** Excel tipo Operations Board: hojas Comercial y Parcel (columnas como la pantalla Operaciones). */
+  exportOperacionesTablero: async (options?: { soloActivas?: boolean }): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+    if (!token) throw new Error('No hay token de autenticación');
+
+    const params = new URLSearchParams();
+    if (options?.soloActivas === false) params.append('soloActivas', '0');
+    const query = params.toString() ? `?${params.toString()}` : '';
+
+    const response = await fetch(`${API_URL}/export/operaciones-tablero${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Error al exportar' }));
+      throw new Error(typeof err.error === 'string' ? err.error : 'Error al exportar tablero');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `operations_board_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+
+  /** Envía por correo el Excel del Operations Board (requiere Resend configurado). */
+  emailOperacionesTablero: async (payload: {
+    to: string;
+    soloActivas?: boolean;
+  }): Promise<void> => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
+    if (!token) throw new Error('No hay token de autenticación');
+
+    const response = await fetch(`${API_URL}/export/operaciones-tablero/email`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: payload.to.trim(),
+        soloActivas: payload.soloActivas !== false,
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        typeof data.error === 'string' ? data.error : 'Error al enviar el informe por correo'
+      );
+    }
+  },
 };
 
 // ==========================================

@@ -31,7 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, Anchor, CalendarDays } from "lucide-react";
+import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, Anchor, CalendarDays, FileSpreadsheet, Mail, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,7 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
-import { operationsApi, ofertasClienteApi, importadorasApi } from "@/lib/api";
+import { operationsApi, ofertasClienteApi, importadorasApi, exportApi } from "@/lib/api";
 import type { Operation, OperationContainer, OfertaCliente, Importadora } from "@/lib/api";
 import { operationRowLabel, operationTableDescription } from "@/lib/operation-display";
 import {
@@ -58,6 +58,9 @@ const INACTIVE_STATUSES = [
   "Closed",
   "Cancelled",
 ];
+
+/** Sincronización global Terminal49 en cabecera; activar cuando lo vuelvan a usar. */
+const SHOW_TRACKING_GLOBAL_BUTTON = false;
 
 // Helper para obtener ubicación sugerida basada en estado
 function getSuggestedLocation(status: string): string {
@@ -702,6 +705,10 @@ function OperationsPageContent(): React.ReactElement {
 
   const [syncingTerminal49, setSyncingTerminal49] = useState(false);
   const [syncingGlobal, setSyncingGlobal] = useState(false);
+  const [downloadingBoardExcel, setDownloadingBoardExcel] = useState(false);
+  const [reportEmailOpen, setReportEmailOpen] = useState(false);
+  const [reportEmailTo, setReportEmailTo] = useState("");
+  const [sendingBoardReport, setSendingBoardReport] = useState(false);
 
   async function handleGlobalSync(): Promise<void> {
     setSyncingGlobal(true);
@@ -742,6 +749,37 @@ function OperationsPageContent(): React.ReactElement {
     }
   }
 
+  async function handleDownloadBoardExcel(): Promise<void> {
+    setDownloadingBoardExcel(true);
+    try {
+      await exportApi.exportOperacionesTablero({ soloActivas: showOnlyActive });
+      toast.success("Excel descargado (Comercial y Parcel)");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al descargar");
+    } finally {
+      setDownloadingBoardExcel(false);
+    }
+  }
+
+  async function handleSendBoardReportEmail(): Promise<void> {
+    const to = reportEmailTo.trim();
+    if (!to) {
+      toast.error("Indica un correo destino");
+      return;
+    }
+    setSendingBoardReport(true);
+    try {
+      await exportApi.emailOperacionesTablero({ to, soloActivas: showOnlyActive });
+      toast.success("Informe enviado");
+      setReportEmailOpen(false);
+      setReportEmailTo("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al enviar");
+    } finally {
+      setSendingBoardReport(false);
+    }
+  }
+
   async function handleDeleteClick(operationId: string): Promise<void> {
     const operation = operations.find(op => op.id === operationId);
     const confirmMessage = operation
@@ -768,16 +806,83 @@ function OperationsPageContent(): React.ReactElement {
         title="Operations Board"
         description="Tracking de operaciones (comercial y Parcel)"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              variant="outline"
-              onClick={handleGlobalSync}
-              disabled={syncingGlobal}
-              title="Sincronización global con Terminal49 (tracking requests actualizados desde LAST_SYNC)"
+              variant="ghost"
+              size="icon"
+              onClick={handleDownloadBoardExcel}
+              disabled={downloadingBoardExcel}
+              title="Descargar Excel del tablero (Comercial y Parcel)"
+              aria-label="Descargar Excel del tablero"
+              className="text-slate-600 hover:text-slate-900"
             >
-              <Ship className="h-4 w-4 mr-2" />
-              {syncingGlobal ? "Sincronizando…" : "Tracking global"}
+              {downloadingBoardExcel ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4" />
+              )}
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                setReportEmailTo(usuario?.email?.trim() ?? "");
+                setReportEmailOpen(true);
+              }}
+              title="Enviar informe por correo"
+              aria-label="Enviar informe por correo"
+              className="text-slate-600 hover:text-slate-900"
+            >
+              <Mail className="h-4 w-4" />
+            </Button>
+            <Dialog open={reportEmailOpen} onOpenChange={setReportEmailOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Enviar tablero por correo</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-slate-600">
+                  Se adjunta un Excel con hojas <strong>Comercial</strong> y <strong>Parcel</strong>,
+                  respetando el filtro &quot;Solo activas&quot; si está activo.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="board-report-email">Correo destino</Label>
+                  <Input
+                    id="board-report-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="ejemplo@correo.com"
+                    value={reportEmailTo}
+                    onChange={(e) => setReportEmailTo(e.target.value)}
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button variant="outline" type="button" onClick={() => setReportEmailOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button type="button" disabled={sendingBoardReport} onClick={handleSendBoardReportEmail}>
+                    {sendingBoardReport ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Enviando…
+                      </>
+                    ) : (
+                      "Enviar"
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+            {SHOW_TRACKING_GLOBAL_BUTTON ? (
+              <Button
+                variant="outline"
+                onClick={handleGlobalSync}
+                disabled={syncingGlobal}
+                title="Sincronización global con Terminal49 (tracking requests actualizados desde LAST_SYNC)"
+              >
+                <Ship className="h-4 w-4 mr-2" />
+                {syncingGlobal ? "Sincronizando…" : "Tracking global"}
+              </Button>
+            ) : null}
             <Dialog
               open={createDialogOpen}
               onOpenChange={(open) => {

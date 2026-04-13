@@ -122,3 +122,51 @@ export async function sendPasswordResetEmail(
   }
 }
 
+export type SendEmailResult = { ok: true } | { ok: false; reason: string };
+
+/** Informe Excel del Operations Board (dos hojas: Comercial y Parcel). */
+export async function sendOperationsBoardExcelEmail(
+  to: string,
+  excelBuffer: Buffer
+): Promise<SendEmailResult> {
+  const resend = getResend();
+  if (!resend) {
+    return { ok: false, reason: 'RESEND_API_KEY no configurada' };
+  }
+
+  const from = getFromAddress();
+  const day = new Date().toISOString().split('T')[0];
+  const filename = `operations_board_${day}.xlsx`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to,
+      subject: `Operations Board — ${day} — ZAS`,
+      html: `<p>Adjunto: tablero de operaciones con las hojas <strong>Comercial</strong> y <strong>Parcel</strong> (mismas columnas que la pantalla Operations Board).</p><p><strong>Fecha:</strong> ${day}</p>`,
+      text: `Tablero de operaciones ZAS (${day}). Archivo: ${filename}`,
+      attachments: [
+        {
+          filename,
+          content: excelBuffer,
+          contentType:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        },
+      ],
+    });
+
+    if (error) {
+      const reason = formatResendError(error);
+      console.error('[email] Resend rechazó informe operaciones:', reason, error);
+      return { ok: false, reason };
+    }
+
+    console.log('[email] Operations board Excel enviado a', to);
+    return { ok: true };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : formatResendError(error);
+    console.error('[email] Excepción al enviar informe operaciones:', error);
+    return { ok: false, reason };
+  }
+}
+
