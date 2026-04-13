@@ -217,10 +217,10 @@ function parseOperationsListParams(sp: URLSearchParams): {
   const showOnlyActive = sp.get("soloActivas") !== "0";
 
   const page = Math.max(1, parseInt(sp.get("page") ?? "1", 10) || 1);
-  const psRaw = parseInt(sp.get("pageSize") ?? "10", 10);
+  const psRaw = parseInt(sp.get("pageSize") ?? "25", 10);
   const pageSize = PAGE_SIZE_OPTIONS.includes(psRaw as (typeof PAGE_SIZE_OPTIONS)[number])
     ? psRaw
-    : 10;
+    : 25;
 
   return { filterType, filterStatus, searchTerm, showOnlyActive, currentPage: page, pageSize };
 }

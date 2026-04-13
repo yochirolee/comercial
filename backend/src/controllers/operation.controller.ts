@@ -4,6 +4,10 @@ import { buildOperationSearchOr } from '../lib/search-utils.js';
 import { z } from 'zod';
 import { syncOperationSummaryFromContainers } from '../lib/operation-summary.js';
 import {
+  applyTransitToMarielIfEtaReached,
+  maybeMarielStatusFromEta,
+} from '../lib/container-eta-mariel.js';
+import {
   DEFAULT_OPERATION_STATUS,
   INACTIVE_CONTAINER_STATUSES,
   statusFilterValuesForQuery,
@@ -194,6 +198,7 @@ export const OperationController = {
             where: { id: c.id },
             data: updateData,
           });
+          await applyTransitToMarielIfEtaReached(c.id);
           await syncOperationSummaryFromContainers(c.operationId);
 
           // Log en el timeline del contenedor
@@ -1122,7 +1127,21 @@ export const OperationController = {
         }
       }
     });
-    
+
+    const mergedEtaEstimated =
+      data.etaEstimated !== undefined ? data.etaEstimated : oldContainer.etaEstimated;
+    const mergedEtaActual = data.etaActual !== undefined ? data.etaActual : oldContainer.etaActual;
+    const mergedStatusForEta = data.status !== undefined ? data.status : oldContainer.status;
+
+    const autoMariel = maybeMarielStatusFromEta({
+      status: mergedStatusForEta,
+      etaEstimated: mergedEtaEstimated ?? null,
+      etaActual: mergedEtaActual ?? null,
+    });
+    if (autoMariel) {
+      data.status = autoMariel;
+    }
+
     const updated = await prisma.operationContainer.update({
       where: { id: containerId },
       data,
@@ -1310,7 +1329,9 @@ export const OperationController = {
         },
       },
     });
-    
+
+    await syncOperationSummaryFromContainers(oldContainer.operationId);
+
     res.json(result);
   },
   

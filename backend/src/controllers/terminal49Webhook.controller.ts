@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { syncOperationSummaryFromContainers } from '../lib/operation-summary.js';
+import { applyTransitToMarielIfEtaReached } from '../lib/container-eta-mariel.js';
 import { INACTIVE_CONTAINER_STATUSES } from '../lib/operation-status.js';
 import { createContainerEvent } from './operation.controller.js';
 
@@ -162,6 +163,7 @@ export async function handleWebhook(req: Request, res: Response): Promise<void> 
         where: { id: container.id },
         data: updateData as any,
       });
+      await applyTransitToMarielIfEtaReached(container.id);
       await syncOperationSummaryFromContainers(container.operationId);
 
       // Log en el timeline del contenedor
@@ -320,6 +322,7 @@ export async function handleGlobalSyncUpdate(req: Request, res: Response): Promi
           where: { id: container.id },
           data: updateData as Parameters<typeof prisma.operationContainer.update>[0]['data'],
         });
+        await applyTransitToMarielIfEtaReached(container.id);
         await syncOperationSummaryFromContainers(container.operationId);
 
         // Log en el timeline del contenedor
