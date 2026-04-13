@@ -9,26 +9,49 @@ import path from 'path';
 // Cache para imágenes descargadas (evita descargar múltiples veces)
 const imageCache: Map<string, Buffer> = new Map();
 
+/** URL absoluta (p. ej. protocolo relativo //cdn...) */
+function normalizeImageSource(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+  if (s.startsWith('//')) return `https:${s}`;
+  return s;
+}
+
+/**
+ * PDFKit / Excel suelen fallar con WebP. En Cloudinary forzamos entrega PNG en el fetch.
+ */
+function cloudinaryFetchUrl(url: string): string {
+  const basePath = url.split('?')[0].split('#')[0];
+  if (!/cloudinary\.com\/.+\/image\/upload\//i.test(url)) return url;
+  if (!/\.webp(\?|$)/i.test(basePath)) return url;
+  if (/\/image\/upload\/[^/]*\bf_(png|jpg|jpeg)\b/i.test(url)) return url;
+  return url.replace(/\/image\/upload\//i, '/image/upload/f_png,q_auto/');
+}
+
 // Función para descargar imagen remota y obtener buffer
 async function fetchImageBuffer(url: string): Promise<Buffer | null> {
+  const normalized = normalizeImageSource(url) ?? url.trim();
+  const fetchUrl = cloudinaryFetchUrl(normalized);
   try {
-    // Verificar cache
-    if (imageCache.has(url)) {
-      return imageCache.get(url)!;
+    if (imageCache.has(fetchUrl)) {
+      return imageCache.get(fetchUrl)!;
     }
-    
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    
+
+    const response = await fetch(fetchUrl);
+    if (!response.ok) {
+      console.warn('[export] fetch imagen HTTP', response.status, fetchUrl.slice(0, 120));
+      return null;
+    }
+
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(new Uint8Array(arrayBuffer));
-    
-    // Guardar en cache
-    imageCache.set(url, buffer);
-    
+
+    imageCache.set(fetchUrl, buffer);
+
     return buffer;
   } catch (error) {
-    console.error('Error fetching image:', url, error);
+    console.error('[export] Error fetching image:', fetchUrl.slice(0, 120), error);
     return null;
   }
 }
@@ -42,15 +65,19 @@ async function addImageToExcel(
   size: { width: number; height: number }
 ): Promise<void> {
   if (!imagePath) return;
-  
+
   try {
-    const isRemote = imagePath.startsWith('http://') || imagePath.startsWith('https://');
-    
+    const resolved = normalizeImageSource(imagePath) ?? imagePath.trim();
+    const isRemote = resolved.startsWith('http://') || resolved.startsWith('https://');
+
     if (isRemote) {
-      const buffer = await fetchImageBuffer(imagePath);
-      if (!buffer) return;
-      
-      const ext = getImageExtension(imagePath);
+      const buffer = await fetchImageBuffer(resolved);
+      if (!buffer) {
+        console.warn('[export] Excel: imagen remota no disponible:', resolved.slice(0, 100));
+        return;
+      }
+
+      const ext = getImageExtension(cloudinaryFetchUrl(resolved));
       const imageId = workbook.addImage({
         // @ts-expect-error - Buffer type compatibility issue with exceljs
         buffer,
@@ -61,12 +88,11 @@ async function addImageToExcel(
         ext: size,
       });
     } else {
-      // Archivo local
-      if (!fs.existsSync(imagePath)) return;
-      
+      if (!fs.existsSync(resolved)) return;
+
       const imageId = workbook.addImage({
-        filename: imagePath,
-        extension: getImageExtension(imagePath),
+        filename: resolved,
+        extension: getImageExtension(resolved),
       });
       worksheet.addImage(imageId, {
         tl: position,
@@ -136,15 +162,15 @@ function getItemUnidadAbrev(item: any, unidadAbrevMap?: Map<string, string>): st
 
 async function getImageForPdf(imagePath: string): Promise<Buffer | string | null> {
   if (!imagePath) return null;
-  
-  const isRemote = imagePath.startsWith('http://') || imagePath.startsWith('https://');
-  
+
+  const resolved = normalizeImageSource(imagePath) ?? imagePath.trim();
+  const isRemote = resolved.startsWith('http://') || resolved.startsWith('https://');
+
   if (isRemote) {
-    return await fetchImageBuffer(imagePath);
+    return await fetchImageBuffer(resolved);
   } else {
-    // Archivo local
-    if (fs.existsSync(imagePath)) {
-      return imagePath;
+    if (fs.existsSync(resolved)) {
+      return resolved;
     }
     return null;
   }
@@ -172,7 +198,9 @@ interface EmpresaInfo {
 }
 
 async function getEmpresaInfo(): Promise<EmpresaInfo> {
-  const empresa = await prisma.empresa.findFirst();
+  const empresa = await prisma.empresa.findFirst({
+    orderBy: { updatedAt: 'desc' },
+  });
   return {
     nombre: empresa?.nombre || DEFAULT_COMPANY.nombre,
     direccion: empresa?.direccion || DEFAULT_COMPANY.direccion,
@@ -188,32 +216,37 @@ async function getEmpresaInfo(): Promise<EmpresaInfo> {
 }
 
 function getImagePath(imagePath: string | null): string | null {
-  if (!imagePath) return null;
-  
-  // Si es una URL de Cloudinary u otra URL remota, devolverla tal cual
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return imagePath;
+  const normalized = normalizeImageSource(imagePath);
+  if (!normalized) return null;
+
+  if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
+    return normalized;
   }
-  
-  // Si es un path local, buscar en uploads/
-  const fullPath = path.join(process.cwd(), 'uploads', imagePath);
-  if (fs.existsSync(fullPath)) {
-    return fullPath;
+
+  const rel = normalized.replace(/^[/\\]+/, '');
+  const candidates = [
+    path.join(process.cwd(), 'uploads', rel),
+    path.join(process.cwd(), rel),
+    path.join(process.cwd(), 'uploads', path.basename(rel)),
+  ];
+  for (const fullPath of candidates) {
+    if (fs.existsSync(fullPath)) return fullPath;
   }
   return null;
 }
 
 function getImageExtension(imagePath: string): 'png' | 'jpeg' | 'gif' {
-  // Extraer extensión de URL o path
+  if (/\/image\/upload\/[^/]*\bf_png\b/i.test(imagePath)) return 'png';
+  if (/\/image\/upload\/[^/]*\bf_jpe?g\b/i.test(imagePath)) return 'jpeg';
   let ext = '';
   if (imagePath.includes('?')) {
-    // URL con query params
     ext = path.extname(imagePath.split('?')[0]).toLowerCase();
   } else {
     ext = path.extname(imagePath).toLowerCase();
   }
   if (ext === '.jpg' || ext === '.jpeg') return 'jpeg';
   if (ext === '.gif') return 'gif';
+  if (ext === '.webp') return 'png';
   return 'png';
 }
 
@@ -226,14 +259,17 @@ async function addImageToPdf(
   options: { width?: number; height?: number }
 ): Promise<void> {
   if (!imagePath) return;
-  
+
   try {
-    const isRemote = imagePath.startsWith('http://') || imagePath.startsWith('https://');
-    
+    const resolved = normalizeImageSource(imagePath) ?? imagePath;
+    const isRemote = resolved.startsWith('http://') || resolved.startsWith('https://');
+
     if (isRemote) {
-      const buffer = await fetchImageBuffer(imagePath);
+      const buffer = await fetchImageBuffer(resolved);
       if (buffer) {
         doc.image(buffer, x, y, options);
+      } else {
+        console.warn('[export] PDF: imagen remota no disponible:', resolved.slice(0, 100));
       }
     } else {
       // Archivo local
@@ -338,14 +374,9 @@ function buildDynamicColumns(items: any[]): DynamicColumns {
   // Campos opcionales dinámicos (por label), justo después de UM
   for (const label of dynamicLabels) {
     const trimmed = label.trim();
-    // Evitar headers larguísimos que se parten feo en PDF:
-    // recortamos a ~12 caracteres y agregamos punto si se truncó.
-    let headerLabel = trimmed;
-    if (headerLabel.length > 12) {
-      headerLabel = headerLabel.slice(0, 11) + '.';
-    }
-    headers.push(headerLabel.toUpperCase());
-    widthsPdf.push(45);
+    headers.push(trimmed ? trimmed.toUpperCase() : '');
+    // Ancho base amplio para valores largos (se ajusta abajo si la tabla excede la página)
+    widthsPdf.push(72);
     widthsExcel.push(12);
   }
 
@@ -392,15 +423,38 @@ function buildDynamicColumns(items: any[]): DynamicColumns {
   widthsExcel.push(11, 11, 13);
 
   // Ajustar anchos PDF si la tabla se pasa del ancho disponible
-  // (por ejemplo cuando hay muchos campos dinámicos)
-  const maxTableWidth = 520; // ~ ancho útil en carta con márgenes
+  const maxTableWidth = 532; // carta 612 − márgenes 40×2
   const totalWidth = widthsPdf.reduce((sum, w) => sum + w, 0);
   if (totalWidth > maxTableWidth) {
+    const nDyn = dynamicLabels.length;
+    const idxLast3 = widthsPdf.length - 3;
+    const minW = (i: number): number => {
+      if (i === 0) return 22;
+      if (i === 1) return 88;
+      if (i === 2) return 26;
+      if (i >= 3 && i < 3 + nDyn) return 50;
+      if (i >= idxLast3) {
+        const k = i - idxLast3;
+        return k === 0 ? 42 : k === 1 ? 42 : 52;
+      }
+      return 34;
+    };
     const scale = maxTableWidth / totalWidth;
     for (let i = 0; i < widthsPdf.length; i++) {
-      // Mantener un mínimo para que las columnas sigan siendo legibles
-      const minWidth = i === 0 ? 20 : 25; // ITEM puede ser un poco más angosto
-      widthsPdf[i] = Math.max(minWidth, Math.round(widthsPdf[i] * scale));
+      widthsPdf[i] = Math.max(minW(i), Math.round(widthsPdf[i] * scale));
+    }
+    let sumW = widthsPdf.reduce((a, b) => a + b, 0);
+    while (sumW > maxTableWidth) {
+      let progressed = false;
+      for (let i = widthsPdf.length - 1; i >= 0; i--) {
+        if (widthsPdf[i] > minW(i)) {
+          widthsPdf[i]--;
+          sumW--;
+          progressed = true;
+          if (sumW <= maxTableWidth) break;
+        }
+      }
+      if (!progressed) break;
     }
   }
 
@@ -451,24 +505,29 @@ function renderPdfTable(
   
   const tableTop = doc.y;
   const tableWidth = widthsPdf.reduce((a, b) => a + b, 0);
-  // Tabla alineada a la izquierda
   const tableLeft = margin;
-  const HEADER_HEIGHT = 28;
   const lastColWidth = widthsPdf[widthsPdf.length - 1];
+
+  doc.font('Helvetica-Bold').fontSize(7);
+  let headerContentH = 0;
+  headers.forEach((header, i) => {
+    const w = Math.max(1, widthsPdf[i] - 4);
+    const align = i <= 1 ? 'left' : 'center';
+    const h = doc.heightOfString(header, { width: w, lineGap: 1, align });
+    headerContentH = Math.max(headerContentH, h);
+  });
+  const HEADER_HEIGHT = Math.max(30, Math.ceil(headerContentH) + 10);
   
   // Fondo gris para encabezados
   doc.rect(tableLeft, tableTop, tableWidth, HEADER_HEIGHT).fill('#e8e8e8');
   doc.fillColor('#000');
   
-  // Encabezados
-  doc.font('Helvetica-Bold').fontSize(7);
   let xPos = tableLeft;
-  const headerTextY = tableTop + 4;
+  const headerTextY = tableTop + 5;
   
   headers.forEach((header, i) => {
     const align = i <= 1 ? 'left' : 'center';
-    // lineBreak: false para que no corte las palabras del header en varias líneas
-    doc.text(header, xPos + 2, headerTextY, { width: widthsPdf[i] - 4, align, lineGap: 1, lineBreak: false });
+    doc.text(header, xPos + 2, headerTextY, { width: widthsPdf[i] - 4, align, lineGap: 1 });
     xPos += widthsPdf[i];
   });
   
@@ -477,6 +536,9 @@ function renderPdfTable(
   
   // Items
   doc.font('Helvetica').fontSize(8);
+  const pdfRowLineGap = 1;
+  const pdfRowVPad = 4;
+  const pdfMinRowHeight = 15;
   let yPos = tableTop + HEADER_HEIGHT + 6;
   let itemNum = 1;
   let totalImporte = 0;
@@ -486,22 +548,68 @@ function renderPdfTable(
     const precioXLb = usePrecioAjustado ? (item.precioAjustado || item.precioUnitario) : item.precioUnitario;
     const importe = cantidadLbs * precioXLb;
     totalImporte += importe;
-    
+
+    const itemNombrePdf = (item as any).producto?.nombre ?? (item as any).nombreProducto ?? '';
+    const descColInnerW = Math.max(1, widthsPdf[1] - 6);
+    let rowHeight = Math.max(
+      pdfMinRowHeight,
+      doc.heightOfString(itemNombrePdf, { width: descColInnerW, lineGap: pdfRowLineGap }) + pdfRowVPad
+    );
+
+    let measureCol = 3;
+    if (dynamicLabels.length > 0) {
+      const camposM = getCamposOpcionalesArray(item);
+      for (const label of dynamicLabels) {
+        const campo = camposM.find((c: any) => typeof c?.label === 'string' && c.label.trim() === label);
+        const val =
+          campo && campo.value != null && String(campo.value).trim() !== '' ? String(campo.value) : '-';
+        const inner = Math.max(1, widthsPdf[measureCol] - 6);
+        rowHeight = Math.max(
+          rowHeight,
+          doc.heightOfString(val, { width: inner, lineGap: pdfRowLineGap, align: 'left' }) + pdfRowVPad
+        );
+        measureCol++;
+      }
+    }
+    if (optionalFields.codigoArancelario) {
+      const val = (item as any).codigoArancelario ? String((item as any).codigoArancelario) : '-';
+      const inner = Math.max(1, widthsPdf[measureCol] - 6);
+      rowHeight = Math.max(
+        rowHeight,
+        doc.heightOfString(val, { width: inner, lineGap: pdfRowLineGap }) + pdfRowVPad
+      );
+    }
+
+    if (yPos + rowHeight > 650) {
+      doc.addPage();
+      yPos = 50;
+    }
+
     xPos = tableLeft;
     let colIndex = 0;
-    
+
     // ITEM
-    doc.text(String(itemNum), xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
+    doc.text(String(itemNum), xPos + 3, yPos, {
+      width: widthsPdf[colIndex] - 6,
+      align: 'center',
+      lineGap: pdfRowLineGap,
+    });
     xPos += widthsPdf[colIndex++];
-    
-    // DESCRIPCION
-    const itemNombrePdf = (item as any).producto?.nombre ?? (item as any).nombreProducto ?? '';
-    doc.text(itemNombrePdf, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6 });
+
+    // DESCRIPCION (wrap; altura de fila ya calculada)
+    doc.text(itemNombrePdf, xPos + 3, yPos, {
+      width: widthsPdf[colIndex] - 6,
+      lineGap: pdfRowLineGap,
+    });
     xPos += widthsPdf[colIndex++];
 
     // UNIDAD DE MEDIDA
     const unidadMedidaAbrev = getItemUnidadAbrev(item, unidadAbrevMap);
-    doc.text(unidadMedidaAbrev, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
+    doc.text(unidadMedidaAbrev, xPos + 3, yPos, {
+      width: widthsPdf[colIndex] - 6,
+      align: 'center',
+      lineGap: pdfRowLineGap,
+    });
     xPos += widthsPdf[colIndex++];
 
     // Campos opcionales dinámicos (por label), se muestran en el orden detectado
@@ -510,15 +618,23 @@ function renderPdfTable(
       for (const label of dynamicLabels) {
         const campo = campos.find((c: any) => typeof c?.label === 'string' && c.label.trim() === label);
         const val = campo && campo.value != null && String(campo.value).trim() !== '' ? String(campo.value) : '-';
-        doc.text(val, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
+        doc.text(val, xPos + 3, yPos, {
+          width: widthsPdf[colIndex] - 6,
+          align: 'left',
+          lineGap: pdfRowLineGap,
+        });
         xPos += widthsPdf[colIndex++];
       }
     }
-    
+
     // Campos opcionales
     if (optionalFields.codigoArancelario) {
       const val = (item as any).codigoArancelario ? String((item as any).codigoArancelario) : '-';
-      doc.text(val, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'center' });
+      doc.text(val, xPos + 3, yPos, {
+        width: widthsPdf[colIndex] - 6,
+        align: 'center',
+        lineGap: pdfRowLineGap,
+      });
       xPos += widthsPdf[colIndex++];
     }
     if (optionalFields.cantidadSacos) {
@@ -563,13 +679,8 @@ function renderPdfTable(
     // IMPORTE
     doc.text(`$${formatCurrency(importe)}`, xPos + 3, yPos, { width: widthsPdf[colIndex] - 6, align: 'right' });
     
-    yPos += 16;
+    yPos += rowHeight;
     itemNum++;
-    
-    if (yPos > 650) {
-      doc.addPage();
-      yPos = 50;
-    }
   }
 
   // Línea separadora antes del total
@@ -2047,33 +2158,26 @@ export const ExportController = {
     const margin = 40;
     const contentWidth = pageWidth - margin * 2;
 
-    // TÍTULO: FACTURA - PACKING LIST {solo número, sin prefijo FAC-}
+    // Mismo orden que oferta a cliente: logo + datos empresa, luego título del documento
     const tituloNumero = (numeroOfertaCliente || '').replace(/^FAC-/i, '');
-    doc.fontSize(16).font('Helvetica-Bold');
-    doc.text(`FACTURA- PACKING LIST ${tituloNumero}`, { align: 'center' });
-    doc.moveDown(0.5);
-
-    // LOGO (si existe) a la izquierda
     const headerY = doc.y;
+
     const logoPath = getImagePath(empresa.logo);
     if (logoPath) {
-      const logoData = await getImageForPdf(logoPath);
-      if (logoData) {
-        doc.image(logoData, margin, headerY, { width: 120, height: 45 });
-      }
+      await addImageToPdf(doc, logoPath, margin, headerY, { width: 70 });
     }
 
-    // DATOS DE EMPRESA (centrado)
-    doc.fontSize(12).font('Helvetica-Bold');
+    doc.fontSize(14).font('Helvetica-Bold');
     doc.text(empresa.nombre, margin, headerY, { width: contentWidth, align: 'center' });
-    
-    doc.fontSize(10).font('Helvetica');
-    doc.text(empresa.direccion, margin, headerY + 16, { width: contentWidth, align: 'center' });
-    doc.text(empresa.telefono, margin, headerY + 28, { width: contentWidth, align: 'center' });
-    doc.text(empresa.email, margin, headerY + 40, { width: contentWidth, align: 'center' });
 
-    doc.y = headerY + 60;
-    doc.moveDown(0.5);
+    doc.fontSize(10).font('Helvetica');
+    doc.text(empresa.direccion, margin, headerY + 18, { width: contentWidth, align: 'center' });
+    doc.text(`${empresa.telefono}, ${empresa.email}`, margin, headerY + 32, { width: contentWidth, align: 'center' });
+
+    doc.y = headerY + 55;
+    doc.fontSize(16).font('Helvetica-Bold');
+    doc.text(`FACTURA- PACKING LIST ${tituloNumero}`, { align: 'center' });
+    doc.moveDown(0.8);
 
     // CODIGO MINCEX Y FECHA (sin borde)
     const codigoMincex = (factura as any).codigoMincex || empresa.codigoMincex;
@@ -2120,15 +2224,11 @@ export const ExportController = {
     const descWidthPdf = numOptionalTotal >= 6 ? 90 : numOptionalTotal >= 4 ? 120 : numOptionalTotal >= 2 ? 150 : 190;
     const facturaWidths = [descWidthPdf, 30];
     
-    // Campos opcionales dinámicos (por label) después de UM
+    // Campos opcionales dinámicos (por label) después de UM — sin truncar título
     for (const label of dynamicLabels) {
       const trimmed = label.trim();
-      let headerLabel = trimmed;
-      if (headerLabel.length > 12) {
-        headerLabel = headerLabel.slice(0, 11) + '.';
-      }
-      facturaHeaders.push(headerLabel.toUpperCase());
-      facturaWidths.push(45);
+      facturaHeaders.push(trimmed ? trimmed.toUpperCase() : '');
+      facturaWidths.push(68);
     }
 
     if (optionalFields.codigoArancelario) {
@@ -2164,22 +2264,63 @@ export const ExportController = {
     // Columnas finales fijas
     facturaHeaders.push(`CANT.\n${unidadMedida}`, 'PESO\nNETO', 'PESO\nBRUTO', `PRECIO\n/${unidadMedida}`, 'IMPORTE');
     facturaWidths.push(45, 45, 45, 50, 60);
+
+    const maxFacturaTableW = 532;
+    const totalFacturaW = facturaWidths.reduce((a, b) => a + b, 0);
+    const nDynFac = dynamicLabels.length;
+    const nColsFac = facturaWidths.length;
+    const idxLast5Fac = nColsFac - 5;
+    if (totalFacturaW > maxFacturaTableW) {
+      const minWF = (i: number): number => {
+        if (i === 0) return 76;
+        if (i === 1) return 26;
+        if (i >= 2 && i < 2 + nDynFac) return 48;
+        if (i >= idxLast5Fac) {
+          const k = i - idxLast5Fac;
+          return [40, 40, 40, 44, 52][k];
+        }
+        return 32;
+      };
+      const scaleF = maxFacturaTableW / totalFacturaW;
+      for (let i = 0; i < facturaWidths.length; i++) {
+        facturaWidths[i] = Math.max(minWF(i), Math.round(facturaWidths[i] * scaleF));
+      }
+      let sumWF = facturaWidths.reduce((a, b) => a + b, 0);
+      while (sumWF > maxFacturaTableW) {
+        let progressed = false;
+        for (let i = facturaWidths.length - 1; i >= 0; i--) {
+          if (facturaWidths[i] > minWF(i)) {
+            facturaWidths[i]--;
+            sumWF--;
+            progressed = true;
+            if (sumWF <= maxFacturaTableW) break;
+          }
+        }
+        if (!progressed) break;
+      }
+    }
     
     const tableWidth = facturaWidths.reduce((a, b) => a + b, 0);
     const tableLeft = margin;
-    const HEADER_HEIGHT = 28;
+
+    doc.font('Helvetica-Bold').fontSize(7);
+    let facturaHeaderH = 0;
+    facturaHeaders.forEach((header, i) => {
+      const w = Math.max(1, facturaWidths[i] - 4);
+      const h = doc.heightOfString(header, { width: w, lineGap: 1, align: 'center' });
+      facturaHeaderH = Math.max(facturaHeaderH, h);
+    });
+    const HEADER_HEIGHT = Math.max(30, Math.ceil(facturaHeaderH) + 10);
     
     // Fondo gris para encabezados
     doc.rect(tableLeft, tableTop, tableWidth, HEADER_HEIGHT).fill('#e8e8e8');
     doc.fillColor('#000');
     
-    // Encabezados
-    doc.font('Helvetica-Bold').fontSize(7);
     let xPos = tableLeft;
-    const headerTextY = tableTop + 4;
+    const headerTextY = tableTop + 5;
     
     facturaHeaders.forEach((header, i) => {
-      doc.text(header, xPos + 2, headerTextY, { width: facturaWidths[i] - 4, align: 'center', lineGap: 1, lineBreak: false });
+      doc.text(header, xPos + 2, headerTextY, { width: facturaWidths[i] - 4, align: 'center', lineGap: 1 });
       xPos += facturaWidths[i];
     });
     
@@ -2187,6 +2328,9 @@ export const ExportController = {
     
     // Items
     doc.font('Helvetica').fontSize(8);
+    const facLineGap = 1;
+    const facVPad = 4;
+    const facMinRow = 15;
     let yPos = tableTop + HEADER_HEIGHT + 6;
     let totalImporte = 0;
     let totalPesoNeto = 0;
@@ -2199,21 +2343,55 @@ export const ExportController = {
       totalImporte += importe;
       totalPesoNeto += pesoNeto;
       totalPesoBruto += pesoBruto;
-      
-      xPos = tableLeft;
-      
-      // Calcular altura de fila basada en la descripción
-      const descWidth = facturaWidths[0] - 6;
+
       const itemNombreFactPdf = (item as any).producto?.nombre ?? (item as any).nombreProducto ?? '';
-      const descHeight = doc.heightOfString(itemNombreFactPdf, { width: descWidth });
-      const rowHeight = Math.max(16, descHeight + 4);
-      
+      const descInner = Math.max(1, facturaWidths[0] - 4);
+      let rowHeight = Math.max(
+        facMinRow,
+        doc.heightOfString(itemNombreFactPdf, { width: descInner, lineGap: facLineGap }) + facVPad
+      );
+
+      let measureIdx = 2;
+      if (dynamicLabels.length > 0) {
+        const camposM = getCamposOpcionalesArray(item);
+        for (const label of dynamicLabels) {
+          const campo = camposM.find((c: any) => typeof c?.label === 'string' && c.label.trim() === label);
+          const val =
+            campo && campo.value != null && String(campo.value).trim() !== '' ? String(campo.value) : '-';
+          const inner = Math.max(1, facturaWidths[measureIdx] - 4);
+          rowHeight = Math.max(
+            rowHeight,
+            doc.heightOfString(val, { width: inner, lineGap: facLineGap, align: 'left' }) + facVPad
+          );
+          measureIdx++;
+        }
+      }
+      if (optionalFields.codigoArancelario) {
+        const val = String((item as any).codigoArancelario ?? '-');
+        const inner = Math.max(1, facturaWidths[measureIdx] - 4);
+        rowHeight = Math.max(
+          rowHeight,
+          doc.heightOfString(val, { width: inner, lineGap: facLineGap, align: 'center' }) + facVPad
+        );
+      }
+
+      if (yPos + rowHeight > 650) {
+        doc.addPage();
+        yPos = 50;
+      }
+
+      xPos = tableLeft;
+
       // PRODUCTO
-      doc.text(itemNombreFactPdf, xPos + 2, yPos, { width: facturaWidths[0] - 4 });
+      doc.text(itemNombreFactPdf, xPos + 2, yPos, { width: facturaWidths[0] - 4, lineGap: facLineGap });
       xPos += facturaWidths[0];
       
       // UM
-      doc.text(getItemUnidadAbrev(item, facturaUnidadAbrevMap), xPos + 2, yPos, { width: facturaWidths[1] - 4, align: 'center' });
+      doc.text(getItemUnidadAbrev(item, facturaUnidadAbrevMap), xPos + 2, yPos, {
+        width: facturaWidths[1] - 4,
+        align: 'center',
+        lineGap: facLineGap,
+      });
       xPos += facturaWidths[1];
       
       let colIdx = 2;
@@ -2224,7 +2402,11 @@ export const ExportController = {
         for (const label of dynamicLabels) {
           const campo = campos.find((c: any) => typeof c?.label === 'string' && c.label.trim() === label);
           const val = campo && campo.value != null && String(campo.value).trim() !== '' ? String(campo.value) : '-';
-          doc.text(val, xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'center' });
+          doc.text(val, xPos + 2, yPos, {
+            width: facturaWidths[colIdx] - 4,
+            align: 'left',
+            lineGap: facLineGap,
+          });
           xPos += facturaWidths[colIdx++];
         }
       }
@@ -2279,11 +2461,6 @@ export const ExportController = {
       doc.text(`$${formatCurrency(importe)}`, xPos + 2, yPos, { width: facturaWidths[colIdx] - 4, align: 'right' });
       
       yPos += rowHeight;
-      
-      if (yPos > 650) {
-        doc.addPage();
-        yPos = 50;
-      }
     }
 
     // Línea separadora
@@ -2514,10 +2691,10 @@ export const ExportController = {
     worksheet.getRow(row).height = 22;
     row++;
 
-    // LOGO
+    // LOGO (mismo tamaño que otros Excel de export)
     const logoPath = getImagePath(empresa.logo);
     if (logoPath) {
-      await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: row - 1 }, { width: 130, height: 45 });
+      await addImageToExcel(workbook, worksheet, logoPath, { col: 0, row: row - 1 }, { width: 70, height: 50 });
     }
 
     // DATOS DE EMPRESA (centrado en toda la fila)

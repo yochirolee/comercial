@@ -109,8 +109,18 @@ export default function EmpresaPage() {
       }
 
       const data = await response.json();
-      setEmpresa((prev) => ({ ...prev, [campo]: data.path }));
-      toast.success('Imagen subida correctamente');
+      const imageUrl = (data.url ?? data.path) as string;
+      const updated = { ...empresa, [campo]: imageUrl };
+      setEmpresa(updated);
+      try {
+        await empresaApi.upsert(updated);
+        toast.success('Imagen subida y guardada');
+      } catch (saveErr) {
+        console.error(saveErr);
+        toast.error(
+          'La imagen está en Cloudinary pero no se guardó la URL. Pulsa «Guardar cambios».'
+        );
+      }
     } catch (error) {
       toast.error('Error al subir la imagen');
       console.error(error);
@@ -125,12 +135,11 @@ export default function EmpresaPage() {
 
   function getImageUrl(path: string | undefined): string {
     if (!path) return '';
-    // Si ya es una URL completa (Cloudinary), devolverla tal cual
-    if (path.startsWith('http://') || path.startsWith('https://')) {
-      return path;
-    }
-    // Si es un path relativo (imágenes antiguas), construir URL del API
-    return `${API_BASE}/uploads/${path}`;
+    const p = path.trim();
+    if (p.startsWith('//')) return `https:${p}`;
+    if (p.startsWith('http://') || p.startsWith('https://')) return p;
+    const rel = p.replace(/^[/\\]+/, '');
+    return `${API_BASE}/uploads/${rel}`;
   }
 
   if (loading) {

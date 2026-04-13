@@ -8,8 +8,7 @@ Sistema de gestión de ofertas y facturas - Backend API
 
 - Node.js 18+ 
 - npm o yarn
-- Para desarrollo local: SQLite (incluido)
-- Para producción: PostgreSQL
+- PostgreSQL (local con Docker o instancia remota)
 
 ### Instalación
 
@@ -17,7 +16,7 @@ Sistema de gestión de ofertas y facturas - Backend API
 # Instalar dependencias
 npm install
 
-# Configurar base de datos local (SQLite)
+# Aplicar schema a PostgreSQL (DATABASE_URL en .env)
 npm run local:setup
 
 # (Opcional) Poblar con datos de ejemplo
@@ -55,36 +54,24 @@ npm start
 ### Utilidades
 
 ```bash
-# Configurar schema según entorno (automático)
-npm run setup
-
 # Regenerar Prisma Client
 npm run db:generate
 
-# Aplicar cambios de schema a la BD (solo local)
+# Aplicar cambios de schema a la BD
 npm run db:push
 ```
 
 ## 🔧 Configuración de Entornos
 
-El sistema detecta automáticamente el entorno:
-
-- **Local**: Usa `schema.local.prisma` (SQLite)
-- **Producción**: Usa `schema.prod.prisma` (PostgreSQL)
-
-La detección se basa en:
-- `NODE_ENV=production`
-- `DATABASE_URL` contiene "postgres"
-- `RENDER=true` (para Render.com)
+El schema vive en un solo archivo: `prisma/schema.prisma` (PostgreSQL). Edítalo ahí y luego `npm run db:push` o migraciones según tu flujo.
 
 ### Variables de Entorno
 
 Crea un archivo `.env` en la raíz del proyecto:
 
 ```env
-# Base de datos
-DATABASE_URL="file:./prisma/dev.db"  # Local (SQLite)
-# DATABASE_URL="postgresql://..."     # Producción (PostgreSQL)
+# Base de datos (PostgreSQL)
+DATABASE_URL="postgresql://usuario:password@localhost:5432/nombre_bd"
 
 # JWT
 JWT_SECRET="tu-secret-key-aqui"
@@ -110,36 +97,20 @@ backend/
 │   ├── services/        # Servicios (email, cloudinary)
 │   └── lib/             # Utilidades (prisma client)
 ├── prisma/
-│   ├── schema.prisma           # Schema activo (generado automáticamente)
-│   ├── schema.local.prisma     # Schema para desarrollo (SQLite)
-│   ├── schema.prod.prisma      # Schema para producción (PostgreSQL)
-│   └── migrate_*.sql           # Scripts de migración SQL
-├── scripts/
-│   └── setup-schema.js         # Script de configuración automática
+│   ├── schema.prisma           # Schema Prisma (PostgreSQL)
+│   └── migrate_*.sql           # Scripts de migración SQL (si aplica)
 └── dist/                        # Código compilado (generado)
 ```
 
 ## 🗄️ Base de Datos
 
-### Desarrollo Local (SQLite)
-
-El schema se configura automáticamente al ejecutar cualquier comando. Los cambios se aplican con:
+Define `DATABASE_URL` apuntando a PostgreSQL. Para sincronizar el schema en desarrollo:
 
 ```bash
 npm run db:push
 ```
 
-### Producción (PostgreSQL)
-
-**IMPORTANTE**: Antes de desplegar, ejecuta los scripts SQL de migración:
-
-1. Verifica que todos los campos existan en la BD
-2. Ejecuta los scripts en `prisma/migrate_*.sql`
-3. El build en Render ejecutará `npm run build` que automáticamente:
-   - Detecta el entorno de producción
-   - Copia `schema.prod.prisma` a `schema.prisma`
-   - Genera el Prisma Client
-   - Compila TypeScript
+**IMPORTANTE** en despliegues: si usas scripts SQL manuales, ejecuta los de `prisma/migrate_*.sql` según corresponda. El build (`npm run build`) ejecuta `prisma generate` y compila TypeScript.
 
 ## 🔐 Autenticación
 
@@ -155,13 +126,8 @@ Para instrucciones detalladas de despliegue, ver [DEPLOY_NOTES.md](../DEPLOY_NOT
 
 ## 🐛 Troubleshooting
 
-### Error: "Schema not found"
-Ejecuta `npm run setup` para configurar el schema correcto.
-
 ### Error: "Prisma Client not generated"
 Ejecuta `npm run db:generate` para regenerar el cliente.
 
 ### Error en producción: "Unknown field"
-Asegúrate de:
-1. Ejecutar los scripts SQL de migración
-2. Que el Build Command en Render use `npm run build` (detecta automáticamente)
+Asegúrate de ejecutar los scripts SQL de migración y de que el build use `npm run build`.

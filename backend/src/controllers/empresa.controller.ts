@@ -20,9 +20,12 @@ const empresaSchema = z.object({
   campoExtra4: z.string().optional(),
 });
 
+/** Misma fila en lectura y escritura si hay varios registros legacy. */
+const empresaFindFirstArgs = { orderBy: { updatedAt: 'desc' as const } };
+
 export const EmpresaController = {
   async get(_req: Request, res: Response): Promise<void> {
-    const empresa = await prisma.empresa.findFirst();
+    const empresa = await prisma.empresa.findFirst(empresaFindFirstArgs);
     res.json(empresa);
   },
 
@@ -34,7 +37,7 @@ export const EmpresaController = {
       return;
     }
 
-    const existingEmpresa = await prisma.empresa.findFirst();
+    const existingEmpresa = await prisma.empresa.findFirst(empresaFindFirstArgs);
     
     if (existingEmpresa) {
       const empresa = await prisma.empresa.update({

@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import morgan from 'morgan';
 import path from 'path';
 import authRouter from './routes/auth.routes.js';
 import { empresaRouter } from './routes/empresa.routes.js';
@@ -31,6 +32,8 @@ app.use(cors({
   credentials: true,
   exposedHeaders: ['Content-Disposition'],
 }));
+
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 app.use(express.json());
 app.use('/api', operadorApiGuard);

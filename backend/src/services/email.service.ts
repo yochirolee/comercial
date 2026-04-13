@@ -1,15 +1,25 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 const FROM_EMAIL = 'ZAS by JMC <onboarding@resend.dev>'; // Cambia a tu dominio verificado en Resend
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+function getResend(): Resend | null {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
+}
 
 export async function sendPasswordResetEmail(
   email: string,
   token: string,
   nombre: string
 ): Promise<boolean> {
+  const resend = getResend();
+  if (!resend) {
+    console.warn('RESEND_API_KEY no configurada; no se envía el correo de recuperación');
+    return false;
+  }
+
   const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}`;
 
   try {

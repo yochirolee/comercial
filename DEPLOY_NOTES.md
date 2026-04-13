@@ -115,37 +115,12 @@ Se agregó el campo opcional `codigoArancelario` al modelo Producto y se impleme
    ```
    
    **Cómo funciona:**
-   - El script `setup-schema.js` detecta automáticamente que es producción (por `NODE_ENV=production` o `DATABASE_URL` con "postgres")
-   - Copia automáticamente `schema.prod.prisma` a `schema.prisma`
-   - Genera el Prisma Client con el schema correcto
-   - Compila TypeScript
+   - El schema único está en `backend/prisma/schema.prisma` (PostgreSQL).
+   - `npm run build` ejecuta `prisma generate` y compila TypeScript.
    
-   **Nota:** Si necesitas forzar el uso del schema de producción, puedes usar:
+   **Regenerar solo el cliente Prisma (sin compilar todo):**
    ```bash
-   NODE_ENV=production npm run build
-   ```
-   
-   Este proceso automáticamente:
-   - Copia `schema.prod.prisma` a `schema.prisma`
-   - Regenera el cliente de Prisma con el schema correcto
-   - Compila TypeScript
-   
-   **O si prefieres hacerlo manualmente:**
-   ```bash
-   # Copiar el schema de producción (PostgreSQL)
-   cp prisma/schema.prod.prisma prisma/schema.prisma
-   
-   # Regenerar el cliente de Prisma (IMPORTANTE: solo generate, NO db push)
-   prisma generate
-   
-   # Compilar el código
-   npm run build
-   ```
-   
-   **O usar el script npm:**
-   ```bash
-   npm run prod:restore
-   npm run build
+   cd backend && npx prisma generate
    ```
 
 3. **Reiniciar la aplicación:**
@@ -165,7 +140,7 @@ Se agregó el campo opcional `codigoArancelario` al modelo Producto y se impleme
 - `backend/src/controllers/ofertaCliente.controller.ts`
 - `backend/src/controllers/producto.controller.ts`
 - `backend/src/controllers/export.controller.ts`
-- `backend/prisma/schema.prod.prisma`
+- `backend/prisma/schema.prisma`
 - `frontend/src/app/ofertas/generales/page.tsx`
 - `frontend/src/app/ofertas/cliente/page.tsx`
 
