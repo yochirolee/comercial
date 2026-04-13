@@ -76,9 +76,12 @@ DATABASE_URL="postgresql://usuario:password@localhost:5432/nombre_bd"
 # JWT
 JWT_SECRET="tu-secret-key-aqui"
 
-# Email (Resend)
-RESEND_API_KEY="tu-api-key"
+# Email (Resend) — recuperación de contraseña
+RESEND_API_KEY="re_..."           # API key del panel de Resend
+# Remitente: con dominio verificado en Resend (recomendado). Si omites, se usa onboarding@resend.dev (solo pruebas: destinatarios muy limitados).
 FROM_EMAIL="noreply@tudominio.com"
+# URL del front para el enlace del correo (debe coincidir con donde abres la app)
+FRONTEND_URL="http://localhost:3000"
 
 # Cloudinary (opcional)
 CLOUDINARY_CLOUD_NAME="tu-cloud-name"
@@ -131,3 +134,8 @@ Ejecuta `npm run db:generate` para regenerar el cliente.
 
 ### Error en producción: "Unknown field"
 Asegúrate de ejecutar los scripts SQL de migración y de que el build use `npm run build`.
+
+### Recuperación de contraseña: no llega el correo o error 500
+- Comprueba `RESEND_API_KEY` y `FRONTEND_URL` en `backend/.env`.
+- En desarrollo, si el envío falla, el servidor imprime en consola el enlace `reset-password?token=...` para probar el flujo sin correo.
+- Resend con remitente de prueba limita destinatarios; verifica un dominio y usa `FROM_EMAIL` de ese dominio para enviar a cualquier dirección.

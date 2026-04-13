@@ -264,14 +264,19 @@ export const AuthController = {
     }
 
     const { email } = validation.data;
+    const emailTrim = email.trim();
 
-    // Buscar usuario
-    const usuario = await prisma.usuario.findUnique({
-      where: { email },
+    // Misma base de datos puede tener mezcla de mayúsculas; el login exige coincidencia exacta,
+    // pero recuperación es más usable si coincide sin importar mayúsculas (PostgreSQL).
+    const usuario = await prisma.usuario.findFirst({
+      where: { email: { equals: emailTrim, mode: 'insensitive' } },
     });
 
     // Siempre responder con éxito para no revelar si el email existe
     if (!usuario) {
+      console.warn(
+        '[auth] forgot-password: sin envío — no hay usuario con ese email en esta BD (revisa mayúsculas/espacios o que el usuario exista en prod)'
+      );
       res.json({ message: 'Si el email existe, recibirás un correo con instrucciones' });
       return;
     }
@@ -299,14 +304,27 @@ export const AuthController = {
       },
     });
 
-    // Enviar email
-    const emailSent = await sendPasswordResetEmail(email, token, usuario.nombre);
+    const frontendBase = process.env.FRONTEND_URL?.trim()?.replace(/\/$/, '') || 'http://localhost:3000';
+    const resetUrlForDev = `${frontendBase}/reset-password?token=${token}`;
 
-    if (!emailSent) {
-      res.status(500).json({ error: 'Error al enviar el correo. Intenta de nuevo.' });
+    const sendResult = await sendPasswordResetEmail(usuario.email, token, usuario.nombre);
+
+    if (!sendResult.ok) {
+      console.error('[auth] forgot-password: Resend falló:', sendResult.reason);
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[auth] Enlace de prueba (solo dev, no compartas):', resetUrlForDev);
+      }
+      res.status(500).json({
+        error:
+          'No se pudo enviar el correo. Comprueba Resend (API key, dominio verificado y destinatario permitido). En desarrollo, revisa la consola del servidor para el detalle y un enlace de prueba.',
+      });
       return;
     }
 
+    console.log(
+      '[auth] forgot-password: correo encolado por Resend; FRONTEND_URL en enlace:',
+      frontendBase
+    );
     res.json({ message: 'Si el email existe, recibirás un correo con instrucciones' });
   },
 

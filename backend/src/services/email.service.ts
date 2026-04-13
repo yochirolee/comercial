@@ -1,30 +1,60 @@
 import { Resend } from 'resend';
 
-const FROM_EMAIL = 'ZAS by JMC <onboarding@resend.dev>'; // Cambia a tu dominio verificado en Resend
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
+/** Remitente: dominio verificado en Resend, o onboarding@resend.dev solo para pruebas (destinatario limitado). */
+const DEFAULT_FROM = 'ZAS by JMC <onboarding@resend.dev>';
+
+function getFrontendBaseUrl(): string {
+  const u = process.env.FRONTEND_URL?.trim();
+  if (u) return u.replace(/\/$/, '');
+  return 'http://localhost:3000';
+}
+
+function getFromAddress(): string {
+  const raw = process.env.FROM_EMAIL?.trim();
+  if (!raw) return DEFAULT_FROM;
+  if (raw.includes('<')) return raw;
+  return `ZAS by JMC <${raw}>`;
+}
 
 function getResend(): Resend | null {
-  const key = process.env.RESEND_API_KEY;
+  const key = process.env.RESEND_API_KEY?.trim();
   if (!key) return null;
   return new Resend(key);
 }
+
+function formatResendError(error: unknown): string {
+  if (error == null) return 'Error desconocido de Resend';
+  if (typeof error === 'string') return error;
+  if (typeof error === 'object' && 'message' in error && typeof (error as { message: unknown }).message === 'string') {
+    return (error as { message: string }).message;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+}
+
+export type SendPasswordResetResult = { ok: true } | { ok: false; reason: string };
 
 export async function sendPasswordResetEmail(
   email: string,
   token: string,
   nombre: string
-): Promise<boolean> {
+): Promise<SendPasswordResetResult> {
   const resend = getResend();
   if (!resend) {
-    console.warn('RESEND_API_KEY no configurada; no se envía el correo de recuperación');
-    return false;
+    const reason = 'RESEND_API_KEY no configurada en backend/.env';
+    console.warn(`[email] ${reason}`);
+    return { ok: false, reason };
   }
 
-  const resetUrl = `${FRONTEND_URL}/reset-password?token=${token}`;
+  const resetUrl = `${getFrontendBaseUrl()}/reset-password?token=${token}`;
+  const from = getFromAddress();
 
   try {
     const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+      from,
       to: email,
       subject: 'Recuperar contraseña - ZAS by JMC',
       html: `
@@ -78,14 +108,17 @@ export async function sendPasswordResetEmail(
     });
 
     if (error) {
-      console.error('Error enviando email:', error);
-      return false;
+      const reason = formatResendError(error);
+      console.error('[email] Resend rechazó el envío:', reason, error);
+      return { ok: false, reason };
     }
 
-    return true;
+    console.log('[email] Recuperación enviada a', email);
+    return { ok: true };
   } catch (error) {
-    console.error('Error enviando email:', error);
-    return false;
+    const reason = error instanceof Error ? error.message : formatResendError(error);
+    console.error('[email] Excepción al enviar:', error);
+    return { ok: false, reason };
   }
 }
 
