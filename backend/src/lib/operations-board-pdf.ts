@@ -261,14 +261,14 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
     { key: 'tipo', label: 'Tipo', width: 26 },
     { key: 'op', label: 'Operacion', width: 58 },
     { key: 'desc', label: 'Descripcion', width: 176 },
-    { key: 'estado', label: 'Estado', width: 102 },
+    { key: 'estado', label: 'Estado', width: 124 },
     { key: 'fof', label: 'F. Oferta', width: 44 },
     { key: 'fct', label: 'F. Contrato', width: 48 },
     { key: 'etd', label: 'ETD', width: 42 },
     { key: 'eta', label: 'ETA', width: 42 },
     { key: 'dias', label: 'Dias Mrl', width: 40 },
     { key: 'seq', label: 'Seq', width: 24 },
-    { key: 'cont', label: 'Contenedor', width: 96 },
+    { key: 'cont', label: 'Contenedor', width: 74 },
     { key: 'bl', label: 'BL', width: 86 },
     { key: 'cliente', label: 'Cliente', width: 74 },
     { key: 'imp', label: 'Importadora', width: 98 },
@@ -347,7 +347,7 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
       const clienteColIndex = 12;
       const multilineMaxLines: Record<number, number> = {
         2: 2,  // descripcion
-        3: 3,  // estado + nota (currentLocation)
+        3: 6,  // estado + nota (currentLocation) sin truncado agresivo
         10: 3, // contenedor
         11: 3, // BL
         12: 2, // cliente
