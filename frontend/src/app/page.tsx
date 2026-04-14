@@ -58,6 +58,7 @@ const DASHBOARD_ESTADOS_TRANSITO = [
 ];
 const DASHBOARD_ESTADOS_MARIEL = [
   "En Puerto del Mariel",
+  "En Aeropuerto de Cuba",
   "En Aduana",
   "Retenido en Aduana",
   "Liberado Aduana",
@@ -354,7 +355,7 @@ function DashboardOperationsPipelineTable({
               <Ship className="h-3.5 w-3.5 text-emerald-700" />
             </span>
             <div className="min-w-0">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Mariel</p>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Mariel/Cuba</p>
               <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
                 <span className="text-lg font-bold tabular-nums text-slate-900 leading-none">
                   {loading ? "…" : containerCounts.marielTotal}
@@ -389,7 +390,7 @@ function DashboardOperationsPipelineTable({
                 <tr className="border-b border-slate-200 text-slate-500">
                   <th className="py-1 pr-2 font-medium">Operación</th>
                   <th className="py-1 pr-2 font-medium">Estado</th>
-                  <th className="py-1 pr-2 font-medium whitespace-nowrap">ETA Mariel</th>
+                  <th className="py-1 pr-2 font-medium whitespace-nowrap">ETA Mariel/Cuba</th>
                   <th className="py-1 pr-2 font-medium">Origen/Destino</th>
                   <th className="py-1 font-medium whitespace-nowrap">Actualizado</th>
                 </tr>

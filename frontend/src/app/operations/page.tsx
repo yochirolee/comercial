@@ -73,6 +73,7 @@ function getSuggestedLocation(status: string): string {
     "En Tránsito al Puerto del Mariel": "En tránsito a Mariel",
     "En Transito al Puerto del Mariel": "En tránsito a Mariel",
     "En Puerto del Mariel": "Puerto Mariel",
+    "En Aeropuerto de Cuba": "Aeropuerto Cuba",
     "En Aduana": "Aduana",
     "Retenido en Aduana": "Aduana (retenido)",
     "Liberado Aduana": "Aduana liberada",
@@ -138,7 +139,7 @@ function formatFechaEnvio(container: OperationContainer): string {
   return formatTableDate(raw ?? undefined);
 }
 
-/** ETA / Arribo Mariel: prioriza fecha real. */
+/** ETA Mariel/Cuba (fecha estimada o real de arribo). */
 function formatEtaArriboMariel(container: OperationContainer): string {
   const raw = container.etaActual || container.etaEstimated;
   return formatTableDate(raw ?? undefined);
@@ -709,7 +710,7 @@ function OperationsPageContent(): React.ReactElement {
   const [downloadingBoardPdf, setDownloadingBoardPdf] = useState(false);
   const [reportEmailOpen, setReportEmailOpen] = useState(false);
   const [reportEmailTo, setReportEmailTo] = useState("");
-  const [reportEmailFormat, setReportEmailFormat] = useState<"excel" | "pdf">("excel");
+  const [reportEmailFormat, setReportEmailFormat] = useState<"excel" | "pdf">("pdf");
   const [sendingBoardReport, setSendingBoardReport] = useState(false);
 
   async function handleGlobalSync(): Promise<void> {
@@ -836,7 +837,7 @@ function OperationsPageContent(): React.ReactElement {
     <>
       <Header
         title="Operations Board"
-        description="Tracking de operaciones (comercial y Parcel)"
+        description="Tracking de operaciones (Comercial y Parcel)"
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -872,8 +873,8 @@ function OperationsPageContent(): React.ReactElement {
             <Button
               variant="ghost"
               onClick={() => {
-                setReportEmailTo(usuario?.email?.trim() ?? "");
-                setReportEmailFormat("excel");
+                setReportEmailTo("");
+                setReportEmailFormat("pdf");
                 setReportEmailOpen(true);
               }}
               title="Enviar informe por correo"
@@ -889,7 +890,7 @@ function OperationsPageContent(): React.ReactElement {
                   <DialogTitle>Enviar tablero por correo</DialogTitle>
                 </DialogHeader>
                 <p className="text-sm text-slate-600">
-                  Adjunta el informe en <strong>Excel</strong> o <strong>PDF</strong> (Comercial y Parcel),
+                  Adjunta el informe en <strong>PDF</strong> o <strong>Excel</strong> (Comercial y Parcel),
                   respetando los filtros actuales.
                 </p>
                 <div className="space-y-2">
@@ -902,8 +903,8 @@ function OperationsPageContent(): React.ReactElement {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="excel">Excel</SelectItem>
                       <SelectItem value="pdf">PDF</SelectItem>
+                      <SelectItem value="excel">Excel</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1242,28 +1243,12 @@ function OperationsPageContent(): React.ReactElement {
                   </div>
                 </TableHead>
                 <TableHead
-                  className="min-w-[100px] text-[12px] cursor-pointer hover:bg-slate-100 select-none"
+                  className="min-w-[92px] text-[12px] cursor-pointer hover:bg-slate-100 select-none whitespace-nowrap"
                   onClick={() => handleSortClick("eta")}
                 >
-                  <div className="flex flex-col gap-0.5 items-start">
-                    <span className="flex items-center gap-1">
-                      ETA / Arribo Mariel
-                      {sortColumn === "eta" &&
-                        (sortDirection === "asc" ? (
-                          <ArrowUp className="h-3.5 w-3.5" />
-                        ) : (
-                          <ArrowDown className="h-3.5 w-3.5" />
-                        ))}
-                    </span>
-                  </div>
-                </TableHead>
-                <TableHead
-                  className="min-w-[72px] text-[12px] text-center cursor-pointer hover:bg-slate-100 select-none"
-                  onClick={() => handleSortClick("days-mariel")}
-                >
-                  <div className="flex items-center justify-center gap-1">
-                    Días en Mariel
-                    {sortColumn === "days-mariel" &&
+                  <div className="flex items-center gap-1">
+                    ETA Mariel/Cuba
+                    {sortColumn === "eta" &&
                       (sortDirection === "asc" ? (
                         <ArrowUp className="h-3.5 w-3.5" />
                       ) : (
@@ -1374,13 +1359,13 @@ function OperationsPageContent(): React.ReactElement {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={17} className="text-center py-8">
+                <TableCell colSpan={16} className="text-center py-8">
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : sortedContainerRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={17} className="text-center py-8 text-slate-500">
+                <TableCell colSpan={16} className="text-center py-8 text-slate-500">
                   No hay contenedores para mostrar
                 </TableCell>
               </TableRow>
@@ -1500,46 +1485,46 @@ function OperationsPageContent(): React.ReactElement {
                     {formatFechaEnvio(container)}
                   </TableCell>
 
-                  {/* ETA / Arribo Mariel */}
-                  <TableCell className="py-1.5 whitespace-nowrap">
-                    {formatEtaArriboMariel(container) !== "—" ? (
-                      <span
-                        className={cn(
-                          "text-[12px] font-semibold tabular-nums",
-                          etaArriboMarielIsGreen(container)
-                            ? "text-green-800 bg-green-100 border border-green-400/80 rounded-md px-2 py-0.5 shadow-sm"
-                            : "text-slate-900"
-                        )}
-                      >
-                        {formatEtaArriboMariel(container)}
-                      </span>
-                    ) : (
-                      <span className="text-[12px] text-slate-300">—</span>
-                    )}
-                  </TableCell>
-
-                  {/* Días en Mariel */}
-                  <TableCell className="py-1.5 text-center text-[12px]">
-                    {(() => {
-                      const d = getDaysInMarielDisplay(container);
-                      if (d.text === "—") {
-                        return <span className="text-slate-400">—</span>;
-                      }
-                      return (
+                  {/* ETA + días apilados (mismo criterio visual que el resumen del dashboard) */}
+                  <TableCell className="py-1.5 align-top whitespace-nowrap">
+                    <div className="flex flex-col gap-0.5 items-start">
+                      {formatEtaArriboMariel(container) !== "—" ? (
                         <span
                           className={cn(
-                            "inline-flex items-center justify-center gap-1 tabular-nums",
-                            d.danger ? "font-semibold text-red-600" : "text-slate-700"
+                            "text-[12px] font-semibold tabular-nums",
+                            etaArriboMarielIsGreen(container)
+                              ? "text-green-800 bg-green-100 border border-green-400/80 rounded-md px-2 py-0.5 shadow-sm"
+                              : "text-slate-900"
                           )}
                         >
-                          <CalendarDays
-                            className="h-3.5 w-3.5 shrink-0 text-slate-400"
-                            aria-hidden
-                          />
-                          {d.text}
+                          {formatEtaArriboMariel(container)}
                         </span>
-                      );
-                    })()}
+                      ) : (
+                        <span className="text-[12px] text-slate-300">—</span>
+                      )}
+                      <div className="mt-0.5">
+                        {(() => {
+                          const d = getDaysInMarielDisplay(container);
+                          if (d.text === "—") {
+                            return <span className="text-[11px] text-slate-400">—</span>;
+                          }
+                          return (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-0.5 tabular-nums text-[11px]",
+                                d.danger ? "font-semibold text-red-600" : "text-slate-700"
+                              )}
+                            >
+                              <CalendarDays
+                                className="h-3 w-3 shrink-0 text-slate-400"
+                                aria-hidden
+                              />
+                              {d.text} d
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   </TableCell>
 
                   {/* Origen / Destino */}

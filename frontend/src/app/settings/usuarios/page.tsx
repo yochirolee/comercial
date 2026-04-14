@@ -63,14 +63,15 @@ export default function UsuariosPage(): React.ReactElement {
   // Estado para crear usuario
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [newUser, setNewUser] = useState({
+  const emptyNewUser = {
     nombre: "",
     apellidos: "",
     email: "",
     telefono: "",
     password: "",
-    rol: "comercial" as "admin" | "comercial" | "operador",
-  });
+    rol: "" as "" | "admin" | "comercial" | "operador",
+  };
+  const [newUser, setNewUser] = useState(emptyNewUser);
 
   // Verificar que el usuario es admin
   useEffect(() => {
@@ -159,20 +160,24 @@ export default function UsuariosPage(): React.ReactElement {
       return;
     }
 
+    if (!newUser.rol) {
+      toast.error("Selecciona un rol");
+      return;
+    }
+
     setCreating(true);
     try {
-      const created = await authApi.createUser(newUser);
+      const created = await authApi.createUser({
+        nombre: newUser.nombre,
+        apellidos: newUser.apellidos,
+        email: newUser.email,
+        telefono: newUser.telefono.trim() !== "" ? newUser.telefono : undefined,
+        password: newUser.password,
+        rol: newUser.rol,
+      });
       setUsuarios((prev) => [...prev, created]);
       toast.success(`Usuario ${created.nombre} creado exitosamente`);
       setCreateDialogOpen(false);
-      setNewUser({
-        nombre: "",
-        apellidos: "",
-        email: "",
-        telefono: "",
-        password: "",
-        rol: "comercial",
-      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al crear usuario");
     } finally {
@@ -207,7 +212,13 @@ export default function UsuariosPage(): React.ReactElement {
                 Gestiona los roles de los usuarios.
               </CardDescription>
             </div>
-            <Button onClick={() => setCreateDialogOpen(true)} className="w-full sm:w-auto">
+            <Button
+              onClick={() => {
+                setNewUser({ ...emptyNewUser });
+                setCreateDialogOpen(true);
+              }}
+              className="w-full sm:w-auto"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Usuario
             </Button>
@@ -399,7 +410,15 @@ export default function UsuariosPage(): React.ReactElement {
       </Dialog>
 
       {/* Dialog para crear nuevo usuario */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+      <Dialog
+        open={createDialogOpen}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (!open) {
+            setNewUser({ ...emptyNewUser });
+          }
+        }}
+      >
         <DialogContent className="w-[95vw] max-w-[425px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Crear Nuevo Usuario</DialogTitle>
@@ -407,7 +426,7 @@ export default function UsuariosPage(): React.ReactElement {
               Completa los datos para crear un nuevo usuario.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleCreateUser} className="space-y-3 sm:space-y-4">
+          <form onSubmit={handleCreateUser} className="space-y-3 sm:space-y-4" autoComplete="off">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label htmlFor="nombre">Nombre *</Label>
@@ -462,13 +481,13 @@ export default function UsuariosPage(): React.ReactElement {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="rol">Rol</Label>
+              <Label htmlFor="rol">Rol *</Label>
               <Select
-                value={newUser.rol}
+                value={newUser.rol || undefined}
                 onValueChange={(value) => setNewUser({ ...newUser, rol: value as "admin" | "comercial" | "operador" })}
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger id="rol">
+                  <SelectValue placeholder="Seleccionar rol" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="comercial">

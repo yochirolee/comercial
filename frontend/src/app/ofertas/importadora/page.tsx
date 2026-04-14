@@ -95,6 +95,20 @@ const defaultMetodoPagoDocumentoTexto = [
   "Dirección de la Empresa: 7081 NW 82 AVE MIAMI FL 33166",
 ].join("\n");
 
+/** Colores de estado en la tabla (alineado con ofertas a cliente). */
+const estadoBadgeOfertaImportadora: Record<
+  string,
+  { variant: "default" | "secondary" | "outline"; className?: string }
+> = {
+  pendiente: { variant: "outline" },
+  aceptada: { variant: "default" },
+  rechazada: {
+    variant: "outline",
+    className: "border-rose-200/80 bg-rose-50 text-rose-800",
+  },
+  vencida: { variant: "secondary" },
+};
+
 export default function OfertasImportadoraPage(): React.ReactElement {
   const [ofertas, setOfertas] = useState<OfertaImportadora[]>([]);
   const [ofertasCliente, setOfertasCliente] = useState<OfertaCliente[]>([]);
@@ -1331,74 +1345,78 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedOfertas.map((oferta) => (
-                  <TableRow
-                    key={oferta.id}
-                    className="cursor-pointer hover:bg-muted/60"
-                    onClick={() => openDetailDialog(oferta)}
-                  >
-                    <TableCell className="font-medium">{oferta.numero}</TableCell>
-                    <TableCell>
-                      {oferta.ofertaCliente ? (
-                        <Badge variant="secondary" className="font-mono">
-                          {oferta.ofertaCliente.numero}
+                paginatedOfertas.map((oferta) => {
+                  const estBadge =
+                    estadoBadgeOfertaImportadora[oferta.estado] ?? { variant: "outline" as const };
+                  return (
+                    <TableRow
+                      key={oferta.id}
+                      className="cursor-pointer hover:bg-muted/60"
+                      onClick={() => openDetailDialog(oferta)}
+                    >
+                      <TableCell className="font-medium">{oferta.numero}</TableCell>
+                      <TableCell>
+                        {oferta.ofertaCliente ? (
+                          <Badge variant="secondary" className="font-mono">
+                            {oferta.ofertaCliente.numero}
+                          </Badge>
+                        ) : "-"}
+                      </TableCell>
+                      <TableCell>
+                        {`${oferta.cliente?.nombre ?? ""} ${oferta.cliente?.apellidos ?? ""}`.trim()}
+                      </TableCell>
+                      <TableCell>
+                        {oferta.importadora?.nombre || "-"}
+                      </TableCell>
+                      <TableCell className="max-w-[200px]">
+                        <div className="text-sm text-slate-700 truncate" title={formatProductos(oferta.items)}>
+                          {formatProductos(oferta.items)}
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatDate(oferta.fecha)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(oferta.subtotalProductos)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(oferta.flete)}</TableCell>
+                      <TableCell className="text-right">{oferta.tieneSeguro ? formatCurrency(oferta.seguro) : '-'}</TableCell>
+                      <TableCell className="text-right font-bold text-emerald-600">
+                        {formatCurrency(oferta.precioCIF)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={estBadge.variant} className={estBadge.className}>
+                          {oferta.estado}
                         </Badge>
-                      ) : "-"}
-                    </TableCell>
-                    <TableCell>
-                      {`${oferta.cliente?.nombre ?? ""} ${oferta.cliente?.apellidos ?? ""}`.trim()}
-                    </TableCell>
-                    <TableCell>
-                      {oferta.importadora?.nombre || "-"}
-                    </TableCell>
-                    <TableCell className="max-w-[200px]">
-                      <div className="text-sm text-slate-700 truncate" title={formatProductos(oferta.items)}>
-                        {formatProductos(oferta.items)}
-                      </div>
-                    </TableCell>
-                    <TableCell>{formatDate(oferta.fecha)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(oferta.subtotalProductos)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(oferta.flete)}</TableCell>
-                    <TableCell className="text-right">{oferta.tieneSeguro ? formatCurrency(oferta.seguro) : '-'}</TableCell>
-                    <TableCell className="text-right font-bold text-emerald-600">
-                      {formatCurrency(oferta.precioCIF)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={oferta.estado === "aceptada" ? "default" : "outline"}>
-                        {oferta.estado}
-                      </Badge>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => exportApi.previewPdf("ofertas-importadora", oferta.id)}
-                          title="Vista previa"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => exportApi.downloadPdf("ofertas-importadora", oferta.id)}
-                        >
-                          <FileDown className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => exportApi.downloadExcel("ofertas-importadora", oferta.id)}
-                        >
-                          <FileSpreadsheet className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(oferta.id)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => exportApi.previewPdf("ofertas-importadora", oferta.id)}
+                            title="Vista previa"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => exportApi.downloadPdf("ofertas-importadora", oferta.id)}
+                          >
+                            <FileDown className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => exportApi.downloadExcel("ofertas-importadora", oferta.id)}
+                          >
+                            <FileSpreadsheet className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(oferta.id)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

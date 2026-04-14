@@ -92,6 +92,7 @@ export default function OfertasClientePage(): React.ReactElement {
     fechaContratoImportadora: "",
     clienteId: "",
     observaciones: "",
+    estado: "pendiente",
     campoExtra1: "OFERTA VALIDA POR 30 DIAS",
     terminosDocumentoTexto: defaultTerminosTexto,
     metodoPagoDocumentoTexto: defaultMetodoPagoTexto,
@@ -105,7 +106,6 @@ export default function OfertasClientePage(): React.ReactElement {
   const [itemFormStrings, setItemFormStrings] = useState({
     productoId: "",
     nombreProducto: "",
-    codigoProducto: "",
     unidadMedidaId: "",
     cantidad: "",
     precioUnitario: "",
@@ -138,7 +138,6 @@ export default function OfertasClientePage(): React.ReactElement {
     precioXCaja: "",
     codigoArancelario: "",
     nombreProducto: "",
-    codigoProducto: "",
     unidadMedidaId: "",
   });
   const [editExtraFields, setEditExtraFields] = useState<ExtraFieldForm[]>([]);
@@ -208,6 +207,7 @@ export default function OfertasClientePage(): React.ReactElement {
         fechaContratoImportadora: "",
         clienteId: clientes[0]?.id || "",
         observaciones: "",
+        estado: "pendiente",
         campoExtra1: "OFERTA VALIDA POR 30 DIAS",
         terminosDocumentoTexto: defaultTerminosTexto,
         metodoPagoDocumentoTexto: defaultMetodoPagoTexto,
@@ -229,7 +229,6 @@ export default function OfertasClientePage(): React.ReactElement {
     setItemFormStrings({
       productoId: "",
       nombreProducto: "",
-      codigoProducto: "",
       unidadMedidaId: "",
       cantidad: "",
       precioUnitario: "",
@@ -258,7 +257,6 @@ export default function OfertasClientePage(): React.ReactElement {
     setItemFormStrings({
       productoId: item.productoId || "",
       nombreProducto: item.nombreProducto || "",
-      codigoProducto: item.codigoProducto || "",
       unidadMedidaId: item.unidadMedidaId || "",
       cantidad: item.cantidad != null ? String(item.cantidad) : "",
       precioUnitario: item.precioUnitario != null ? String(item.precioUnitario) : "",
@@ -289,7 +287,6 @@ export default function OfertasClientePage(): React.ReactElement {
     setItemFormStrings({
       productoId,
       nombreProducto: "",
-      codigoProducto: "",
       unidadMedidaId: "",
       cantidad: prod?.cantidad?.toString() || "",
       precioUnitario: prod?.precioBase?.toString() || "",
@@ -316,7 +313,7 @@ export default function OfertasClientePage(): React.ReactElement {
     return {
       productoId: itemModoLibre ? null : (itemFormStrings.productoId || null),
       nombreProducto: itemModoLibre ? (itemFormStrings.nombreProducto.trim() || null) : null,
-      codigoProducto: itemModoLibre ? (itemFormStrings.codigoProducto.trim() || null) : null,
+      codigoProducto: null,
       unidadMedidaId: itemModoLibre ? (itemFormStrings.unidadMedidaId || null) : null,
       cantidad: parseFloat(itemFormStrings.cantidad) || 0,
       precioUnitario: parseFloat(itemFormStrings.precioUnitario) || 0,
@@ -555,7 +552,6 @@ export default function OfertasClientePage(): React.ReactElement {
       precioXCaja: item.precioXCaja?.toString() || "",
       codigoArancelario: item.codigoArancelario || "",
       nombreProducto: item.nombreProducto || "",
-      codigoProducto: item.codigoProducto || "",
       unidadMedidaId: item.unidadMedidaId || "",
     });
     setEditExtraFields(
@@ -609,7 +605,7 @@ export default function OfertasClientePage(): React.ReactElement {
         camposOpcionales: cleanedExtra.length > 0 ? cleanedExtra : null,
         ...(editItemModoLibre ? {
           nombreProducto: editItemFormStrings.nombreProducto.trim() || null,
-          codigoProducto: editItemFormStrings.codigoProducto.trim() || null,
+          codigoProducto: null,
           unidadMedidaId: editItemFormStrings.unidadMedidaId || null,
         } : {}),
       };
@@ -671,11 +667,20 @@ export default function OfertasClientePage(): React.ReactElement {
     return nombres;
   }
 
-  const estadoColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-    pendiente: "outline",
-    aceptada: "default",
-    rechazada: "destructive",
-    vencida: "secondary",
+  const estadoBadgeStyle: Record<
+    string,
+    {
+      variant: "default" | "secondary" | "destructive" | "outline";
+      className?: string;
+    }
+  > = {
+    pendiente: { variant: "outline" },
+    aceptada: { variant: "default" },
+    rechazada: {
+      variant: "outline",
+      className: "border-rose-200/80 bg-rose-50 text-rose-800",
+    },
+    vencida: { variant: "secondary" },
   };
 
   const totalTemp = itemsTemp.reduce(
@@ -749,57 +754,62 @@ export default function OfertasClientePage(): React.ReactElement {
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedOfertas.map((oferta) => (
-                  <TableRow
-                    key={oferta.id}
-                    className="cursor-pointer hover:bg-muted/60"
-                    onClick={() => void openDetailDialog(oferta)}
-                  >
-                    <TableCell className="font-medium">{oferta.numero}</TableCell>
-                    <TableCell>{oferta.cliente?.nombre ?? ""} {oferta.cliente?.apellidos ?? ""}</TableCell>
-                    <TableCell className="max-w-[200px]">
-                      <div className="text-sm text-slate-700 truncate" title={formatProductos(oferta.items)}>
-                        {formatProductos(oferta.items)}
-                      </div>
-                    </TableCell>
-                    <TableCell>{formatDate(oferta.fecha)}</TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(oferta.total)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={estadoColors[oferta.estado]}>{oferta.estado}</Badge>
-                    </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => exportApi.previewPdf("ofertas-cliente", oferta.id)}
-                          title="Vista previa"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => exportApi.downloadPdf("ofertas-cliente", oferta.id)}
-                        >
-                          <FileDown className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => exportApi.downloadExcel("ofertas-cliente", oferta.id)}
-                        >
-                          <FileSpreadsheet className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(oferta.id)}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                paginatedOfertas.map((oferta) => {
+                  const estStyle = estadoBadgeStyle[oferta.estado] ?? { variant: "outline" as const };
+                  return (
+                    <TableRow
+                      key={oferta.id}
+                      className="cursor-pointer hover:bg-muted/60"
+                      onClick={() => void openDetailDialog(oferta)}
+                    >
+                      <TableCell className="font-medium">{oferta.numero}</TableCell>
+                      <TableCell>{oferta.cliente?.nombre ?? ""} {oferta.cliente?.apellidos ?? ""}</TableCell>
+                      <TableCell className="max-w-[200px]">
+                        <div className="text-sm text-slate-700 truncate" title={formatProductos(oferta.items)}>
+                          {formatProductos(oferta.items)}
+                        </div>
+                      </TableCell>
+                      <TableCell>{formatDate(oferta.fecha)}</TableCell>
+                      <TableCell className="text-right font-medium">
+                        {formatCurrency(oferta.total)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={estStyle.variant} className={estStyle.className}>
+                          {oferta.estado}
+                        </Badge>
+                      </TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => exportApi.previewPdf("ofertas-cliente", oferta.id)}
+                            title="Vista previa"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => exportApi.downloadPdf("ofertas-cliente", oferta.id)}
+                          >
+                            <FileDown className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => exportApi.downloadExcel("ofertas-cliente", oferta.id)}
+                          >
+                            <FileSpreadsheet className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(oferta.id)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -913,6 +923,23 @@ export default function OfertasClientePage(): React.ReactElement {
                   className="mt-1 h-9 sm:h-10 text-sm w-full min-w-0"
                 />
               </div>
+              <div className="min-w-0">
+                <Label className="text-slate-500 text-xs sm:text-sm">Estado</Label>
+                <Select
+                  value={formData.estado}
+                  onValueChange={(value) => setFormData((p) => ({ ...p, estado: value }))}
+                >
+                  <SelectTrigger className="mt-1 h-9 sm:h-10 text-sm w-full min-w-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendiente">Pendiente</SelectItem>
+                    <SelectItem value="aceptada">Aceptada</SelectItem>
+                    <SelectItem value="rechazada">Rechazada</SelectItem>
+                    <SelectItem value="vencida">Vencida</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="sm:col-span-2 lg:col-span-5">
                 <Label className="text-slate-500 text-xs sm:text-sm">Observaciones</Label>
                 <Input
@@ -989,42 +1016,29 @@ export default function OfertasClientePage(): React.ReactElement {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <div className="grid grid-cols-1 gap-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs sm:text-sm">Nombre del producto *</Label>
-                          <Input
-                            placeholder="Ej: Aceite de cocina"
-                            value={itemFormStrings.nombreProducto}
-                            onChange={(e) => setItemFormStrings((prev) => ({ ...prev, nombreProducto: e.target.value }))}
-                            className="h-10 text-sm"
-                          />
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs sm:text-sm">Código (opcional)</Label>
-                            <Input
-                              placeholder="Código interno"
-                              value={itemFormStrings.codigoProducto}
-                              onChange={(e) => setItemFormStrings((prev) => ({ ...prev, codigoProducto: e.target.value }))}
-                              className="h-10 text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs sm:text-sm">Unidad de medida</Label>
-                            <Select value={itemFormStrings.unidadMedidaId} onValueChange={(v) => setItemFormStrings((prev) => ({ ...prev, unidadMedidaId: v }))}>
-                              <SelectTrigger className="h-10 text-sm w-full">
-                                <SelectValue placeholder="Seleccionar UM" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {unidades.map((u) => (
-                                  <SelectItem key={u.id} value={u.id}>
-                                    {u.nombre} ({u.abreviatura})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs sm:text-sm">Nombre del producto *</Label>
+                        <Input
+                          placeholder="Ej: Aceite de cocina"
+                          value={itemFormStrings.nombreProducto}
+                          onChange={(e) => setItemFormStrings((prev) => ({ ...prev, nombreProducto: e.target.value }))}
+                          className="h-10 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs sm:text-sm">Unidad de medida</Label>
+                        <Select value={itemFormStrings.unidadMedidaId} onValueChange={(v) => setItemFormStrings((prev) => ({ ...prev, unidadMedidaId: v }))}>
+                          <SelectTrigger className="h-10 text-sm w-full">
+                            <SelectValue placeholder="Seleccionar UM" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {unidades.map((u) => (
+                              <SelectItem key={u.id} value={u.id}>
+                                {u.nombre} ({u.abreviatura})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
@@ -1401,6 +1415,8 @@ export default function OfertasClientePage(): React.ReactElement {
                     <SelectContent>
                       <SelectItem value="pendiente">Pendiente</SelectItem>
                       <SelectItem value="aceptada">Aceptada</SelectItem>
+                      <SelectItem value="rechazada">Rechazada</SelectItem>
+                      <SelectItem value="vencida">Vencida</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1472,7 +1488,7 @@ export default function OfertasClientePage(): React.ReactElement {
                             </p>
                           </div>
                         ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-3">
                             <div className="space-y-2">
                               <Label>Nombre del producto *</Label>
                               <Input placeholder="Ej: Aceite de cocina"
@@ -1480,12 +1496,6 @@ export default function OfertasClientePage(): React.ReactElement {
                                 onChange={(e) => setItemFormStrings((prev) => ({ ...prev, nombreProducto: e.target.value }))} />
                             </div>
                             <div className="space-y-2">
-                              <Label>Código (opcional)</Label>
-                              <Input placeholder="Código"
-                                value={itemFormStrings.codigoProducto}
-                                onChange={(e) => setItemFormStrings((prev) => ({ ...prev, codigoProducto: e.target.value }))} />
-                            </div>
-                            <div className="space-y-2 sm:col-span-2">
                               <Label>Unidad de medida</Label>
                               <Select value={itemFormStrings.unidadMedidaId} onValueChange={(v) => setItemFormStrings((prev) => ({ ...prev, unidadMedidaId: v }))}>
                                 <SelectTrigger><SelectValue placeholder="Seleccionar UM" /></SelectTrigger>

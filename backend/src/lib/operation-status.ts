@@ -10,6 +10,7 @@ export const STATUS_ORDER = [
   'En puerto Brazil',
   'En Tránsito al Puerto del Mariel',
   'En Puerto del Mariel',
+  'En Aeropuerto de Cuba',
   'En Aduana',
   'Retenido en Aduana',
   'Liberado Aduana',

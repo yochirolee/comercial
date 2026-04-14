@@ -10,6 +10,7 @@ function getSuggestedLocation(status: string): string {
     "En Tránsito al Puerto del Mariel": "En tránsito a Mariel",
     "En Transito al Puerto del Mariel": "En tránsito a Mariel",
     "En Puerto del Mariel": "Puerto Mariel",
+    "En Aeropuerto de Cuba": "Aeropuerto Cuba",
     "En Aduana": "Aduana",
     "Retenido en Aduana": "Aduana (retenido)",
     "Liberado Aduana": "Aduana liberada",

@@ -10,7 +10,7 @@ import {
 
 const GIFT_PARCEL = 'Gift Parcel';
 
-/** Columnas alineadas al board (sin Ubicación). Índices 1-based: ETA = 8, Días Mariel = 9. */
+/** Columnas alineadas al board (sin Ubicación). Índices 1-based: ETA = 8, Días = 9. */
 const HEADERS = [
   'Tipo',
   'Operación',
@@ -19,8 +19,8 @@ const HEADERS = [
   'Fecha oferta',
   'Fecha contrato',
   'Fecha envío (ETD)',
-  'ETA / Arribo Mariel',
-  'Días en Mariel',
+  'ETA Mariel/Cuba',
+  'Días en Mariel/Cuba',
   'Origen',
   'Destino',
   'Seq',
