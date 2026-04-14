@@ -1,7 +1,11 @@
 import PDFDocument from 'pdfkit';
 import { prisma } from './prisma.js';
 import { buildOperationSearchOr } from './search-utils.js';
-import { statusFilterValuesForQuery, INACTIVE_CONTAINER_STATUSES } from './operation-status.js';
+import {
+  statusFilterValuesForQuery,
+  INACTIVE_CONTAINER_STATUSES,
+  normalizeContainerStatus,
+} from './operation-status.js';
 
 type FilterType = 'COMMERCIAL' | 'PARCEL' | 'all';
 
@@ -306,7 +310,7 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
         o.operationType === 'COMMERCIAL' ? 'COM' : 'PKG',
         operationRowLabel(o, c),
         operationDescription(o),
-        c.status || o.status || '—',
+        normalizeContainerStatus(c.status || o.status || '—'),
         formatDateShort(o.offerCustomer?.fecha),
         formatDateShort(o.offerCustomer?.fechaContratoImportadora),
         formatDateShort(c.etdActual || c.etdEstimated),
