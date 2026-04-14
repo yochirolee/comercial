@@ -157,6 +157,24 @@ function fitLines(doc: any, value: string, maxWidth: number, maxLines: number): 
   return lines.slice(0, maxLines);
 }
 
+/** Estado principal + nota (ubicación/nota de estado) separadas visualmente. */
+function buildEstadoLines(
+  doc: any,
+  status: string,
+  nota: string | null | undefined,
+  maxWidth: number,
+  maxLines: number
+): string[] {
+  const lines: string[] = [];
+  const statusOne = fitOneLine(doc, status, maxWidth);
+  lines.push(statusOne || '—');
+  const note = String(nota ?? '').trim();
+  if (!note || maxLines <= 1) return lines.slice(0, maxLines);
+  const noteLines = fitLines(doc, note, maxWidth, Math.max(0, maxLines - 1));
+  for (const ln of noteLines) lines.push(ln);
+  return lines.slice(0, maxLines);
+}
+
 async function loadOperationsForBoard(filters: ExportFilters) {
   const where: any = {};
   if (filters.tipo !== 'all') where.operationType = filters.tipo;
@@ -329,7 +347,7 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
       const clienteColIndex = 12;
       const multilineMaxLines: Record<number, number> = {
         2: 2,  // descripcion
-        3: 3,  // estado
+        3: 3,  // estado + nota (currentLocation)
         10: 3, // contenedor
         11: 3, // BL
         12: 2, // cliente
@@ -340,7 +358,10 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
       for (const [idxRaw, max] of Object.entries(multilineMaxLines)) {
         const idx = Number(idxRaw);
         const w = columns[idx].width - 4;
-        const lines = fitLines(doc, String(cells[idx]), w, max);
+        const lines =
+          idx === 3
+            ? buildEstadoLines(doc, String(cells[idx]), c.currentLocation, w, max)
+            : fitLines(doc, String(cells[idx]), w, max);
         linesCache.set(idx, lines);
         if (lines.length > maxLinesThisRow) maxLinesThisRow = lines.length;
       }
@@ -374,20 +395,29 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
 
       let x = x0 + 2;
       for (let i = 0; i < columns.length; i++) {
-        if (i === 3 && statusRetenido) {
-          doc.fillColor('#92400E').font('Helvetica-Bold').fontSize(8);
-        } else if (i === 7 && etaGreen) {
-          doc.fillColor('#166534').font('Helvetica-Bold').fontSize(8);
-        } else if (i === 7 && etaNear) {
-          doc.fillColor('#854D0E').font('Helvetica-Bold').fontSize(8);
-        } else if (i === 8 && daysDanger) {
-          doc.fillColor('#B91C1C').font('Helvetica-Bold').fontSize(8);
-        } else {
-          doc.fillColor('#111827').font('Helvetica').fontSize(8);
-        }
         const cellWidth = columns[i].width - 4;
         const lines = linesCache.get(i) ?? fitLines(doc, String(cells[i]), cellWidth, 1);
         for (let li = 0; li < lines.length; li++) {
+          if (i === 3) {
+            // Línea 1 = estado; líneas siguientes = nota/ubicación.
+            if (li === 0) {
+              if (statusRetenido) {
+                doc.fillColor('#92400E').font('Helvetica-Bold').fontSize(8);
+              } else {
+                doc.fillColor('#111827').font('Helvetica').fontSize(8);
+              }
+            } else {
+              doc.fillColor('#64748B').font('Helvetica-Oblique').fontSize(7);
+            }
+          } else if (i === 7 && etaGreen) {
+            doc.fillColor('#166534').font('Helvetica-Bold').fontSize(8);
+          } else if (i === 7 && etaNear) {
+            doc.fillColor('#854D0E').font('Helvetica-Bold').fontSize(8);
+          } else if (i === 8 && daysDanger) {
+            doc.fillColor('#B91C1C').font('Helvetica-Bold').fontSize(8);
+          } else {
+            doc.fillColor('#111827').font('Helvetica').fontSize(8);
+          }
           doc.text(lines[li], x, y + rowTopPad + li * lineStep, {
             width: cellWidth,
             lineBreak: false,

@@ -142,9 +142,9 @@ export async function sendOperationsBoardExcelEmail(
     const { error } = await resend.emails.send({
       from,
       to,
-      subject: `Operations Board — ${day} — ZAS`,
-      html: `<p>Adjunto: tablero de operaciones con las hojas <strong>Comercial</strong> y <strong>Parcel</strong> (mismas columnas que la pantalla Operations Board).</p><p><strong>Fecha:</strong> ${day}</p>`,
-      text: `Tablero de operaciones ZAS (${day}). Archivo: ${filename}`,
+      subject: 'Operaciones ZAS BY JMC',
+      html: `<p>Adjunto listado de operaciones Comerciales y Gift Parcel actualizadas ${day}.</p><p>Saludos</p>`,
+      text: `Adjunto listado de operaciones Comerciales y Gift Parcel actualizadas ${day}.\n\nSaludos`,
       attachments: [
         {
           filename,
@@ -188,9 +188,9 @@ export async function sendOperationsBoardPdfEmail(
     const { error } = await resend.emails.send({
       from,
       to,
-      subject: `Operations Board (PDF) — ${day} — ZAS`,
-      html: `<p>Adjunto: tablero de operaciones en PDF (<strong>Comercial</strong> y <strong>Parcel</strong>) respetando los filtros seleccionados.</p><p><strong>Fecha:</strong> ${day}</p>`,
-      text: `Tablero de operaciones ZAS (${day}) en PDF. Archivo: ${filename}`,
+      subject: 'Operaciones ZAS BY JMC',
+      html: `<p>Adjunto listado de operaciones Comerciales y Gift Parcel actualizadas ${day}.</p><p>Saludos</p>`,
+      text: `Adjunto listado de operaciones Comerciales y Gift Parcel actualizadas ${day}.\n\nSaludos`,
       attachments: [
         {
           filename,
