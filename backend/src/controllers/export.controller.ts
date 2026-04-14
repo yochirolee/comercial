@@ -4146,16 +4146,27 @@ export const ExportController = {
     }
 
     const { to, soloActivas, format, tipo, status, search } = parsed.data;
+    const statusFilter = status?.trim() === 'all' ? undefined : status;
 
     try {
       const sendResult =
         format === 'pdf'
           ? await (async () => {
-              const buffer = await buildOperationsBoardPdfBuffer({ soloActivas, tipo, status, search });
+              const buffer = await buildOperationsBoardPdfBuffer({
+                soloActivas,
+                tipo,
+                status: statusFilter,
+                search,
+              });
               return sendOperationsBoardPdfEmail(to, buffer);
             })()
           : await (async () => {
-              const buffer = await buildOperationsBoardExcelBuffer({ soloActivas, tipo, status, search });
+              const buffer = await buildOperationsBoardExcelBuffer({
+                soloActivas,
+                tipo,
+                status: statusFilter,
+                search,
+              });
               return sendOperationsBoardExcelEmail(to, buffer);
             })();
 

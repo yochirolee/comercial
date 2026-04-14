@@ -757,7 +757,10 @@ export const exportApi = {
         soloActivas: payload.soloActivas !== false,
         format: payload.format ?? "excel",
         tipo: payload.tipo ?? "all",
-        status: payload.status?.trim() ? payload.status.trim() : undefined,
+        status:
+          payload.status?.trim() && payload.status.trim() !== "all"
+            ? payload.status.trim()
+            : undefined,
         search: payload.search?.trim() ? payload.search.trim() : undefined,
       }),
     });
