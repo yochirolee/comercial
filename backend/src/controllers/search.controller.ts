@@ -62,6 +62,7 @@ export const SearchController = {
           OR: [
             { nombre: containsFilter },
             { codigo: containsFilter },
+            { descripcion: containsFilter },
             { codigoArancelario: containsFilter },
           ],
         },
@@ -96,8 +97,10 @@ export const SearchController = {
           OR: [
             { numero: containsFilter },
             { observaciones: containsFilter },
-            // Permitir buscar facturas por nombre de importadora
             { importadora: { nombre: containsFilter } },
+            { cliente: { nombre: containsFilter } },
+            { cliente: { apellidos: containsFilter } },
+            { cliente: { nombreCompania: containsFilter } },
           ],
         },
         select: {
