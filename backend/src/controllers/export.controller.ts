@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { formatStoredDateOnlyEs } from '../lib/date-only.js';
 import { buildOperationsBoardExcelBuffer } from '../lib/operations-board-excel.js';
+import { buildOperationsBoardPdfBuffer } from '../lib/operations-board-pdf.js';
 import { sendOperationsBoardExcelEmail } from '../services/email.service.js';
 import { z } from 'zod';
 import ExcelJS from 'exceljs';
@@ -4083,7 +4084,11 @@ export const ExportController = {
     try {
       const soloActivas =
         req.query.soloActivas !== '0' && String(req.query.soloActivas).toLowerCase() !== 'false';
-      const buffer = await buildOperationsBoardExcelBuffer({ soloActivas });
+      const tipoRaw = String(req.query.tipo || '').toUpperCase();
+      const tipo = tipoRaw === 'COMMERCIAL' || tipoRaw === 'PARCEL' ? tipoRaw : 'all';
+      const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+      const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+      const buffer = await buildOperationsBoardExcelBuffer({ soloActivas, tipo, status, search });
       const day = new Date().toISOString().split('T')[0];
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader(
@@ -4094,6 +4099,32 @@ export const ExportController = {
     } catch (error) {
       console.error('Error al exportar operations board:', error);
       res.status(500).json({ error: 'Error al exportar el tablero de operaciones' });
+    }
+  },
+
+  /** PDF Operations Board en un solo archivo: Comercial primero, Parcel después. */
+  async exportOperacionesTableroPdf(req: Request, res: Response): Promise<void> {
+    try {
+      const soloActivas =
+        req.query.soloActivas !== '0' && String(req.query.soloActivas).toLowerCase() !== 'false';
+      const tipoRaw = String(req.query.tipo || '').toUpperCase();
+      const tipo = tipoRaw === 'COMMERCIAL' || tipoRaw === 'PARCEL' ? tipoRaw : 'all';
+      const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+      const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+
+      const buffer = await buildOperationsBoardPdfBuffer({
+        soloActivas,
+        tipo,
+        status,
+        search,
+      });
+      const day = new Date().toISOString().split('T')[0];
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="operations_board_${day}.pdf"`);
+      res.send(buffer);
+    } catch (error) {
+      console.error('Error al exportar operations board PDF:', error);
+      res.status(500).json({ error: 'Error al exportar PDF del tablero de operaciones' });
     }
   },
 
@@ -4113,7 +4144,7 @@ export const ExportController = {
     const { to, soloActivas } = parsed.data;
 
     try {
-      const buffer = await buildOperationsBoardExcelBuffer({ soloActivas });
+      const buffer = await buildOperationsBoardExcelBuffer({ soloActivas, tipo: 'all' });
       const sendResult = await sendOperationsBoardExcelEmail(to, buffer);
 
       if (!sendResult.ok) {

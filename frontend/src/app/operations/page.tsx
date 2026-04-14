@@ -31,7 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, Anchor, CalendarDays, FileSpreadsheet, Mail, Loader2 } from "lucide-react";
+import { Plus, Eye, Search, Package, Ship, Trash2, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, MoreHorizontal, RefreshCw, Anchor, CalendarDays, FileSpreadsheet, FileDown, Mail, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -706,6 +706,7 @@ function OperationsPageContent(): React.ReactElement {
   const [syncingTerminal49, setSyncingTerminal49] = useState(false);
   const [syncingGlobal, setSyncingGlobal] = useState(false);
   const [downloadingBoardExcel, setDownloadingBoardExcel] = useState(false);
+  const [downloadingBoardPdf, setDownloadingBoardPdf] = useState(false);
   const [reportEmailOpen, setReportEmailOpen] = useState(false);
   const [reportEmailTo, setReportEmailTo] = useState("");
   const [sendingBoardReport, setSendingBoardReport] = useState(false);
@@ -752,12 +753,34 @@ function OperationsPageContent(): React.ReactElement {
   async function handleDownloadBoardExcel(): Promise<void> {
     setDownloadingBoardExcel(true);
     try {
-      await exportApi.exportOperacionesTablero({ soloActivas: showOnlyActive });
+      await exportApi.exportOperacionesTablero({
+        soloActivas: showOnlyActive,
+        tipo: filterType,
+        status: filterStatus,
+        search: searchTerm,
+      });
       toast.success("Excel descargado (Comercial y Parcel)");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al descargar");
     } finally {
       setDownloadingBoardExcel(false);
+    }
+  }
+
+  async function handleDownloadBoardPdf(): Promise<void> {
+    setDownloadingBoardPdf(true);
+    try {
+      await exportApi.exportOperacionesTableroPdf({
+        soloActivas: showOnlyActive,
+        tipo: filterType,
+        status: filterStatus,
+        search: searchTerm,
+      });
+      toast.success("PDF descargado (Comercial y Parcel)");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error al descargar PDF");
+    } finally {
+      setDownloadingBoardPdf(false);
     }
   }
 
@@ -801,7 +824,7 @@ function OperationsPageContent(): React.ReactElement {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-[1920px]">
+    <>
       <Header
         title="Operations Board"
         description="Tracking de operaciones (comercial y Parcel)"
@@ -809,31 +832,46 @@ function OperationsPageContent(): React.ReactElement {
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="ghost"
-              size="icon"
               onClick={handleDownloadBoardExcel}
               disabled={downloadingBoardExcel}
               title="Descargar Excel del tablero (Comercial y Parcel)"
               aria-label="Descargar Excel del tablero"
-              className="text-slate-600 hover:text-slate-900"
+              className="text-slate-600 hover:text-slate-900 h-9 w-9 shrink-0 p-0 md:h-9 md:w-auto md:shrink md:px-3 md:gap-2"
             >
               {downloadingBoardExcel ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
               ) : (
-                <FileSpreadsheet className="h-4 w-4" />
+                <FileSpreadsheet className="h-4 w-4 shrink-0" />
               )}
+              <span className="hidden md:inline">Excel</span>
             </Button>
             <Button
               variant="ghost"
-              size="icon"
+              onClick={handleDownloadBoardPdf}
+              disabled={downloadingBoardPdf}
+              title="Descargar PDF del tablero (Comercial y Parcel, respetando filtros)"
+              aria-label="Descargar PDF del tablero"
+              className="text-slate-600 hover:text-slate-900 h-9 w-9 shrink-0 p-0 md:h-9 md:w-auto md:shrink md:px-3 md:gap-2"
+            >
+              {downloadingBoardPdf ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4 shrink-0" />
+              )}
+              <span className="hidden md:inline">PDF</span>
+            </Button>
+            <Button
+              variant="ghost"
               onClick={() => {
                 setReportEmailTo(usuario?.email?.trim() ?? "");
                 setReportEmailOpen(true);
               }}
               title="Enviar informe por correo"
               aria-label="Enviar informe por correo"
-              className="text-slate-600 hover:text-slate-900"
+              className="text-slate-600 hover:text-slate-900 h-9 w-9 shrink-0 p-0 md:h-9 md:w-auto md:shrink md:px-3 md:gap-2"
             >
-              <Mail className="h-4 w-4" />
+              <Mail className="h-4 w-4 shrink-0" />
+              <span className="hidden md:inline">Enviar informe</span>
             </Button>
             <Dialog open={reportEmailOpen} onOpenChange={setReportEmailOpen}>
               <DialogContent className="sm:max-w-md">
@@ -991,8 +1029,9 @@ function OperationsPageContent(): React.ReactElement {
         }
       />
 
-      {/* Filters — apilado en móvil; grid en tablet; fila flexible en desktop */}
-      <div className="mb-6 space-y-4 rounded-lg bg-slate-50 p-4 sm:p-5 md:p-6">
+      <div className="container mx-auto max-w-[1920px] px-4 py-6">
+        {/* Filters — apilado en móvil; grid en tablet; fila flexible en desktop */}
+        <div className="mb-6 space-y-4 rounded-lg bg-slate-50 p-4 sm:p-5 md:p-6">
         <div className="w-full min-w-0">
           <Label className="mb-2 block text-sm font-medium">Buscar</Label>
           <div className="relative">
@@ -1611,7 +1650,8 @@ function OperationsPageContent(): React.ReactElement {
         )}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

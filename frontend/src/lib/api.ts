@@ -661,12 +661,20 @@ export const exportApi = {
   },
 
   /** Excel tipo Operations Board: hojas Comercial y Parcel (columnas como la pantalla Operaciones). */
-  exportOperacionesTablero: async (options?: { soloActivas?: boolean }): Promise<void> => {
+  exportOperacionesTablero: async (options?: {
+    soloActivas?: boolean;
+    tipo?: "COMMERCIAL" | "PARCEL" | "all";
+    status?: string;
+    search?: string;
+  }): Promise<void> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
     if (!token) throw new Error('No hay token de autenticación');
 
     const params = new URLSearchParams();
     if (options?.soloActivas === false) params.append('soloActivas', '0');
+    if (options?.tipo && options.tipo !== "all") params.append("tipo", options.tipo);
+    if (options?.status?.trim() && options.status !== "all") params.append("status", options.status.trim());
+    if (options?.search?.trim()) params.append("search", options.search.trim());
     const query = params.toString() ? `?${params.toString()}` : '';
 
     const response = await fetch(`${API_URL}/export/operaciones-tablero${query}`, {
@@ -683,6 +691,43 @@ export const exportApi = {
     const a = document.createElement('a');
     a.href = url;
     a.download = `operations_board_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  },
+
+  /** PDF tipo Operations Board (un solo archivo: Comercial y luego Parcel). */
+  exportOperacionesTableroPdf: async (options?: {
+    soloActivas?: boolean;
+    tipo?: "COMMERCIAL" | "PARCEL" | "all";
+    status?: string;
+    search?: string;
+  }): Promise<void> => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("zas_token") : null;
+    if (!token) throw new Error("No hay token de autenticación");
+
+    const params = new URLSearchParams();
+    if (options?.soloActivas === false) params.append("soloActivas", "0");
+    if (options?.tipo && options.tipo !== "all") params.append("tipo", options.tipo);
+    if (options?.status?.trim() && options.status !== "all") params.append("status", options.status.trim());
+    if (options?.search?.trim()) params.append("search", options.search.trim());
+    const query = params.toString() ? `?${params.toString()}` : "";
+
+    const response = await fetch(`${API_URL}/export/operaciones-tablero/pdf${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: "Error al exportar PDF" }));
+      throw new Error(typeof err.error === "string" ? err.error : "Error al exportar PDF del tablero");
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `operations_board_${new Date().toISOString().split("T")[0]}.pdf`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);

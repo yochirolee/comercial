@@ -46,4 +46,5 @@ exportRouter.get('/operaciones-comerciales', ExportController.exportOperacionesC
 
 // Tablero Operations Board (Excel: hojas Comercial + Parcel; columnas como la UI)
 exportRouter.get('/operaciones-tablero', ExportController.exportOperacionesTablero);
+exportRouter.get('/operaciones-tablero/pdf', ExportController.exportOperacionesTableroPdf);
 exportRouter.post('/operaciones-tablero/email', ExportController.emailOperacionesTablero);

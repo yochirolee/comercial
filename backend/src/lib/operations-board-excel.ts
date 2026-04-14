@@ -1,9 +1,11 @@
 import ExcelJS from 'exceljs';
 import { prisma } from './prisma.js';
 import { formatStoredDateOnlyEs } from './date-only.js';
+import { buildOperationSearchOr } from './search-utils.js';
 import {
   INACTIVE_CONTAINER_STATUSES,
   normalizeContainerStatus,
+  statusFilterValuesForQuery,
 } from './operation-status.js';
 
 const GIFT_PARCEL = 'Gift Parcel';
@@ -34,6 +36,7 @@ const COL_DIAS_MARIEL = 9;
 
 type BoardOperation = Awaited<ReturnType<typeof loadOperationsForBoard>>[number];
 type BoardContainer = BoardOperation['containers'][number];
+type FilterType = 'COMMERCIAL' | 'PARCEL' | 'all';
 
 function formatEsDate(d: Date | string | null | undefined): string {
   if (!d) return '';
@@ -136,8 +139,29 @@ function etaSortKey(container: BoardContainer): number {
   return Number.isNaN(t) ? Number.POSITIVE_INFINITY : t;
 }
 
-async function loadOperationsForBoard() {
+async function loadOperationsForBoard(filters: {
+  tipo: FilterType;
+  status?: string;
+  search?: string;
+}) {
+  const where: any = {};
+  if (filters.tipo !== 'all') where.operationType = filters.tipo;
+
+  const andParts: any[] = [];
+  if (filters.status?.trim()) {
+    const values = statusFilterValuesForQuery(filters.status.trim());
+    andParts.push({
+      OR: [{ status: { in: values } }, { containers: { some: { status: { in: values } } } }],
+    });
+  }
+  if (filters.search?.trim()) {
+    andParts.push({ OR: buildOperationSearchOr(filters.search.trim()) });
+  }
+  if (andParts.length === 1) Object.assign(where, andParts[0]);
+  if (andParts.length > 1) where.AND = andParts;
+
   return prisma.operation.findMany({
+    where,
     include: {
       offerCustomer: {
         select: {
@@ -289,19 +313,15 @@ function addSheet(
   const n = HEADERS.length;
   const lastColLetter = String.fromCharCode('A'.charCodeAt(0) + n - 1);
 
-  const legend =
-    'Leyenda: celda ETA en verde = fecha de arribo hoy o ya pasada (prioriza ETA real). ' +
-    'Días en Mariel en rojo negrita = más de 10 días desde esa fecha.';
-
   sheet.mergeCells(`A1:${lastColLetter}1`);
-  sheet.getCell('A1').value = `${titleLine}\n${legend}`;
+  sheet.getCell('A1').value = titleLine;
   sheet.getCell('A1').font = { bold: true, size: 11 };
   sheet.getCell('A1').alignment = {
-    wrapText: true,
+    wrapText: false,
     vertical: 'middle',
     horizontal: 'center',
   };
-  sheet.getRow(1).height = 52;
+  sheet.getRow(1).height = 24;
 
   const headerRow = sheet.getRow(2);
   HEADERS.forEach((h, i) => {
@@ -329,8 +349,15 @@ function addSheet(
  */
 export async function buildOperationsBoardExcelBuffer(options: {
   soloActivas: boolean;
+  tipo: FilterType;
+  status?: string;
+  search?: string;
 }): Promise<Buffer> {
-  const operations = await loadOperationsForBoard();
+  const operations = await loadOperationsForBoard({
+    tipo: options.tipo,
+    status: options.status,
+    search: options.search,
+  });
   const commercialRows = collectRowsForType(operations, 'COMMERCIAL', options.soloActivas);
   const parcelRows = collectRowsForType(operations, 'PARCEL', options.soloActivas);
 
