@@ -170,3 +170,48 @@ export async function sendOperationsBoardExcelEmail(
   }
 }
 
+/** Informe PDF del Operations Board (Comercial y Parcel en un solo documento). */
+export async function sendOperationsBoardPdfEmail(
+  to: string,
+  pdfBuffer: Buffer
+): Promise<SendEmailResult> {
+  const resend = getResend();
+  if (!resend) {
+    return { ok: false, reason: 'RESEND_API_KEY no configurada' };
+  }
+
+  const from = getFromAddress();
+  const day = new Date().toISOString().split('T')[0];
+  const filename = `operations_board_${day}.pdf`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to,
+      subject: `Operations Board (PDF) — ${day} — ZAS`,
+      html: `<p>Adjunto: tablero de operaciones en PDF (<strong>Comercial</strong> y <strong>Parcel</strong>) respetando los filtros seleccionados.</p><p><strong>Fecha:</strong> ${day}</p>`,
+      text: `Tablero de operaciones ZAS (${day}) en PDF. Archivo: ${filename}`,
+      attachments: [
+        {
+          filename,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    });
+
+    if (error) {
+      const reason = formatResendError(error);
+      console.error('[email] Resend rechazó informe PDF operaciones:', reason, error);
+      return { ok: false, reason };
+    }
+
+    console.log('[email] Operations board PDF enviado a', to);
+    return { ok: true };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : formatResendError(error);
+    console.error('[email] Excepción al enviar informe PDF operaciones:', error);
+    return { ok: false, reason };
+  }
+}
+

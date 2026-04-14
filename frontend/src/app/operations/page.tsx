@@ -709,6 +709,7 @@ function OperationsPageContent(): React.ReactElement {
   const [downloadingBoardPdf, setDownloadingBoardPdf] = useState(false);
   const [reportEmailOpen, setReportEmailOpen] = useState(false);
   const [reportEmailTo, setReportEmailTo] = useState("");
+  const [reportEmailFormat, setReportEmailFormat] = useState<"excel" | "pdf">("excel");
   const [sendingBoardReport, setSendingBoardReport] = useState(false);
 
   async function handleGlobalSync(): Promise<void> {
@@ -792,10 +793,18 @@ function OperationsPageContent(): React.ReactElement {
     }
     setSendingBoardReport(true);
     try {
-      await exportApi.emailOperacionesTablero({ to, soloActivas: showOnlyActive });
-      toast.success("Informe enviado");
+      await exportApi.emailOperacionesTablero({
+        to,
+        soloActivas: showOnlyActive,
+        format: reportEmailFormat,
+        tipo: filterType,
+        status: filterStatus,
+        search: searchTerm,
+      });
+      toast.success(`Informe ${reportEmailFormat.toUpperCase()} enviado`);
       setReportEmailOpen(false);
       setReportEmailTo("");
+      setReportEmailFormat("excel");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Error al enviar");
     } finally {
@@ -864,6 +873,7 @@ function OperationsPageContent(): React.ReactElement {
               variant="ghost"
               onClick={() => {
                 setReportEmailTo(usuario?.email?.trim() ?? "");
+                setReportEmailFormat("excel");
                 setReportEmailOpen(true);
               }}
               title="Enviar informe por correo"
@@ -879,9 +889,24 @@ function OperationsPageContent(): React.ReactElement {
                   <DialogTitle>Enviar tablero por correo</DialogTitle>
                 </DialogHeader>
                 <p className="text-sm text-slate-600">
-                  Se adjunta un Excel con hojas <strong>Comercial</strong> y <strong>Parcel</strong>,
-                  respetando el filtro &quot;Solo activas&quot; si está activo.
+                  Adjunta el informe en <strong>Excel</strong> o <strong>PDF</strong> (Comercial y Parcel),
+                  respetando los filtros actuales.
                 </p>
+                <div className="space-y-2">
+                  <Label>Formato</Label>
+                  <Select
+                    value={reportEmailFormat}
+                    onValueChange={(v) => setReportEmailFormat(v as "excel" | "pdf")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="excel">Excel</SelectItem>
+                      <SelectItem value="pdf">PDF</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="board-report-email">Correo destino</Label>
                   <Input

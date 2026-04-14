@@ -738,6 +738,10 @@ export const exportApi = {
   emailOperacionesTablero: async (payload: {
     to: string;
     soloActivas?: boolean;
+    format?: "excel" | "pdf";
+    tipo?: "COMMERCIAL" | "PARCEL" | "all";
+    status?: string;
+    search?: string;
   }): Promise<void> => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('zas_token') : null;
     if (!token) throw new Error('No hay token de autenticación');
@@ -751,6 +755,10 @@ export const exportApi = {
       body: JSON.stringify({
         to: payload.to.trim(),
         soloActivas: payload.soloActivas !== false,
+        format: payload.format ?? "excel",
+        tipo: payload.tipo ?? "all",
+        status: payload.status?.trim() ? payload.status.trim() : undefined,
+        search: payload.search?.trim() ? payload.search.trim() : undefined,
       }),
     });
 

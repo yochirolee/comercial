@@ -3,7 +3,7 @@ import { prisma } from '../lib/prisma.js';
 import { formatStoredDateOnlyEs } from '../lib/date-only.js';
 import { buildOperationsBoardExcelBuffer } from '../lib/operations-board-excel.js';
 import { buildOperationsBoardPdfBuffer } from '../lib/operations-board-pdf.js';
-import { sendOperationsBoardExcelEmail } from '../services/email.service.js';
+import { sendOperationsBoardExcelEmail, sendOperationsBoardPdfEmail } from '../services/email.service.js';
 import { z } from 'zod';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
@@ -4133,6 +4133,10 @@ export const ExportController = {
     const bodySchema = z.object({
       to: z.string().email('Email destino inválido'),
       soloActivas: z.boolean().optional().default(true),
+      format: z.enum(['excel', 'pdf']).optional().default('excel'),
+      tipo: z.enum(['COMMERCIAL', 'PARCEL', 'all']).optional().default('all'),
+      status: z.string().optional(),
+      search: z.string().optional(),
     });
 
     const parsed = bodySchema.safeParse(req.body);
@@ -4141,11 +4145,19 @@ export const ExportController = {
       return;
     }
 
-    const { to, soloActivas } = parsed.data;
+    const { to, soloActivas, format, tipo, status, search } = parsed.data;
 
     try {
-      const buffer = await buildOperationsBoardExcelBuffer({ soloActivas, tipo: 'all' });
-      const sendResult = await sendOperationsBoardExcelEmail(to, buffer);
+      const sendResult =
+        format === 'pdf'
+          ? await (async () => {
+              const buffer = await buildOperationsBoardPdfBuffer({ soloActivas, tipo, status, search });
+              return sendOperationsBoardPdfEmail(to, buffer);
+            })()
+          : await (async () => {
+              const buffer = await buildOperationsBoardExcelBuffer({ soloActivas, tipo, status, search });
+              return sendOperationsBoardExcelEmail(to, buffer);
+            })();
 
       if (!sendResult.ok) {
         console.error('[export] email tablero operaciones:', sendResult.reason);
@@ -4156,7 +4168,7 @@ export const ExportController = {
       }
 
       res.json({
-        message: 'Informe enviado. Revisa la bandeja de entrada (y spam) del destinatario.',
+        message: `Informe ${format.toUpperCase()} enviado. Revisa la bandeja de entrada (y spam) del destinatario.`,
       });
     } catch (error) {
       console.error('Error al generar o enviar tablero por email:', error);
