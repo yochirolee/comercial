@@ -224,7 +224,7 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
   const commercialRows = collectRows(operations, 'COMMERCIAL', filters.soloActivas);
   const parcelRows = collectRows(operations, 'PARCEL', filters.soloActivas);
 
-  const doc = new PDFDocument({ size: 'LEGAL', layout: 'landscape', margin: 20 });
+  const doc = new PDFDocument({ size: 'LEGAL', layout: 'landscape', margin: 14 });
   const chunks: Buffer[] = [];
   doc.on('data', (c: Buffer) => chunks.push(c));
 
@@ -236,20 +236,20 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
   let y = doc.y;
 
   const columns = [
-    { key: 'tipo', label: 'Tipo', width: 34 },
-    { key: 'op', label: 'Operacion', width: 72 },
-    { key: 'desc', label: 'Descripcion', width: 180 },
-    { key: 'estado', label: 'Estado', width: 88 },
+    { key: 'tipo', label: 'Tipo', width: 26 },
+    { key: 'op', label: 'Operacion', width: 58 },
+    { key: 'desc', label: 'Descripcion', width: 176 },
+    { key: 'estado', label: 'Estado', width: 102 },
     { key: 'fof', label: 'F. Oferta', width: 44 },
     { key: 'fct', label: 'F. Contrato', width: 48 },
     { key: 'etd', label: 'ETD', width: 42 },
     { key: 'eta', label: 'ETA', width: 42 },
     { key: 'dias', label: 'Dias Mrl', width: 40 },
-    { key: 'seq', label: 'Seq', width: 28 },
-    { key: 'cont', label: 'Contenedor', width: 68 },
-    { key: 'bl', label: 'BL', width: 56 },
+    { key: 'seq', label: 'Seq', width: 24 },
+    { key: 'cont', label: 'Contenedor', width: 96 },
+    { key: 'bl', label: 'BL', width: 86 },
     { key: 'cliente', label: 'Cliente', width: 74 },
-    { key: 'imp', label: 'Importadora', width: 68 },
+    { key: 'imp', label: 'Importadora', width: 98 },
   ] as const;
   const totalColumnWidth = columns.reduce((sum, c) => sum + c.width, 0);
   const x0 = doc.page.margins.left + Math.max(0, (pageWidth - totalColumnWidth) / 2);
@@ -323,11 +323,23 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
       const rowBottomPad = 4;
       const descColIndex = 2;
       const clienteColIndex = 12;
-      const descWidth = columns[descColIndex].width - 4;
-      const clienteWidth = columns[clienteColIndex].width - 4;
-      const descLines = fitLines(doc, String(cells[descColIndex]), descWidth, 2);
-      const clienteLines = fitLines(doc, String(cells[clienteColIndex]), clienteWidth, 2);
-      const maxLinesThisRow = Math.max(1, descLines.length, clienteLines.length);
+      const multilineMaxLines: Record<number, number> = {
+        2: 2,  // descripcion
+        3: 3,  // estado
+        10: 3, // contenedor
+        11: 3, // BL
+        12: 2, // cliente
+        13: 3, // importadora
+      };
+      const linesCache = new Map<number, string[]>();
+      let maxLinesThisRow = 1;
+      for (const [idxRaw, max] of Object.entries(multilineMaxLines)) {
+        const idx = Number(idxRaw);
+        const w = columns[idx].width - 4;
+        const lines = fitLines(doc, String(cells[idx]), w, max);
+        linesCache.set(idx, lines);
+        if (lines.length > maxLinesThisRow) maxLinesThisRow = lines.length;
+      }
       const rowHeight = rowTopPad + maxLinesThisRow * lineStep + rowBottomPad;
 
       ensureSpace(rowHeight);
@@ -370,13 +382,7 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
           doc.fillColor('#111827').font('Helvetica').fontSize(8);
         }
         const cellWidth = columns[i].width - 4;
-        const maxLines = i === clienteColIndex || i === descColIndex ? 2 : 1;
-        const lines =
-          i === clienteColIndex
-            ? clienteLines
-            : i === descColIndex
-              ? descLines
-              : fitLines(doc, String(cells[i]), cellWidth, maxLines);
+        const lines = linesCache.get(i) ?? fitLines(doc, String(cells[i]), cellWidth, 1);
         for (let li = 0; li < lines.length; li++) {
           doc.text(lines[li], x, y + rowTopPad + li * lineStep, {
             width: cellWidth,
