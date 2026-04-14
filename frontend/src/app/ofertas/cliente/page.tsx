@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProductCombobox } from "@/components/ui/product-combobox";
 import { Badge } from "@/components/ui/badge";
 import { getCategoryBadgeClass } from "@/lib/category-colors";
 import { toast } from "sonner";
@@ -998,21 +999,12 @@ export default function OfertasClientePage(): React.ReactElement {
                   {!itemModoLibre ? (
                     <div className="space-y-1.5">
                       <Label className="text-xs sm:text-sm">Producto *</Label>
-                      <Select value={itemFormStrings.productoId} onValueChange={handleSelectProduct}>
-                        <SelectTrigger className="h-10 w-full text-sm">
-                          <SelectValue placeholder="Seleccionar producto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {productos.map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.nombre} ({p.unidadMedida.abreviatura})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-slate-500">
-                        Para cerrar el listado: Esc o clic fuera del listado.
-                      </p>
+                      <ProductCombobox
+                        options={productos.map((p) => ({ id: p.id, nombre: p.nombre, abreviatura: p.unidadMedida.abreviatura }))}
+                        value={itemFormStrings.productoId}
+                        onValueChange={handleSelectProduct}
+                        placeholder="Seleccionar producto"
+                      />
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -1471,21 +1463,12 @@ export default function OfertasClientePage(): React.ReactElement {
                         {!itemModoLibre ? (
                           <div className="space-y-2">
                             <Label>Producto *</Label>
-                            <Select value={itemFormStrings.productoId} onValueChange={handleSelectProduct}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Seleccionar producto" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {productos.map((p) => (
-                                  <SelectItem key={p.id} value={p.id}>
-                                    {p.nombre} ({p.unidadMedida.abreviatura})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <p className="text-xs text-slate-500">
-                              Para cerrar el listado: Esc o clic fuera del listado.
-                            </p>
+                            <ProductCombobox
+                              options={productos.map((p) => ({ id: p.id, nombre: p.nombre, abreviatura: p.unidadMedida.abreviatura }))}
+                              value={itemFormStrings.productoId}
+                              onValueChange={handleSelectProduct}
+                              placeholder="Seleccionar producto"
+                            />
                           </div>
                         ) : (
                           <div className="space-y-3">

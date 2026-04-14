@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ProductCombobox } from "@/components/ui/product-combobox";
 import { getCategoryBadgeClass } from "@/lib/category-colors";
 import { toast } from "sonner";
 import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, Ship, ArrowRight, Pencil, Save, Download, ChevronLeft, ChevronRight, Search, X, Printer } from "lucide-react";
@@ -1924,7 +1925,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
             {!editItemModoLibre ? (
               <div className="space-y-2 w-full">
                 <Label>Producto *</Label>
-                <Select
+                <ProductCombobox
+                  options={productos.filter(p => p.activo).map((p) => ({ id: p.id, nombre: p.nombre, abreviatura: p.unidadMedida?.abreviatura }))}
                   value={editItemForm.productoId}
                   onValueChange={(value) => {
                     const producto = productos.find(p => p.id === value);
@@ -1935,21 +1937,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                       codigoArancelario: producto?.codigoArancelario || "",
                     }));
                   }}
-                >
-                  <SelectTrigger className="w-full max-w-full overflow-hidden text-left">
-                    <SelectValue placeholder="Selecciona un producto" className="truncate block" />
-                  </SelectTrigger>
-                  <SelectContent className="max-w-[calc(100vw-2rem)]">
-                    {productos.filter(p => p.activo).map((producto) => (
-                      <SelectItem key={producto.id} value={producto.id} className="truncate max-w-full">
-                        <span className="truncate block">{producto.nombre}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-slate-500">
-                  Para cerrar el listado: Esc o clic fuera del listado.
-                </p>
+                  placeholder="Selecciona un producto"
+                />
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ProductCombobox } from "@/components/ui/product-combobox";
 import { getCategoryBadgeClass } from "@/lib/category-colors";
 import { toast } from "sonner";
 import { 
@@ -1620,7 +1621,8 @@ export default function FacturasPage(): React.ReactElement {
                 !selectedFactura?.items.find((i) => i.id === editingItemId)?.productoId) && (
               <div className="space-y-2 border-b pb-3">
                 <Label>Producto *</Label>
-                <Select
+                <ProductCombobox
+                  options={productos.map((p) => ({ id: p.id, nombre: p.nombre, abreviatura: p.unidadMedida?.abreviatura }))}
                   value={editItemForm.productoId}
                   onValueChange={(value) => {
                     const producto = productos.find((p) => p.id === value);
@@ -1631,21 +1633,8 @@ export default function FacturasPage(): React.ReactElement {
                       codigoArancelario: producto?.codigoArancelario || p.codigoArancelario,
                     }));
                   }}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Seleccionar producto" />
-                  </SelectTrigger>
-                  <SelectContent className="max-w-[min(100vw-2rem,var(--radix-select-trigger-width))]">
-                    {productos.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.nombre} ({p.unidadMedida.abreviatura})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-slate-500">
-                  Para cerrar el listado: Esc o clic fuera del listado.
-                </p>
+                  placeholder="Seleccionar producto"
+                />
               </div>
             )}
             {!editItemModoLibre &&
