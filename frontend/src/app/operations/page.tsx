@@ -327,6 +327,13 @@ function OperationsPageContent(): React.ReactElement {
     return sortByColumn(rows, sortColumn, sortDirection);
   }
 
+  /** Con filtro «Todos»: bloque Comercial antes que Parcel; si ordenan por columna Tipo, no forzar. */
+  function operationTypeBoardGroupKey(t: string): number {
+    if (t === "COMMERCIAL") return 0;
+    if (t === "PARCEL") return 1;
+    return 2;
+  }
+
   // Función auxiliar para ordenar por columna y dirección
   function sortByColumn(
     rows: typeof containerRows,
@@ -334,6 +341,13 @@ function OperationsPageContent(): React.ReactElement {
     direction: SortDirection
   ): typeof containerRows {
     return [...rows].sort((a, b) => {
+      if (filterType === "all" && column !== "type") {
+        const g =
+          operationTypeBoardGroupKey(a.operation.operationType) -
+          operationTypeBoardGroupKey(b.operation.operationType);
+        if (g !== 0) return g;
+      }
+
       let comparison = 0;
 
       switch (column) {
