@@ -1,4 +1,5 @@
 import type { Operation, OperationContainer } from "@/lib/api";
+import { daysSinceArrivalCalendar, isEtaArrivalDayOnOrBeforeToday } from "@/lib/mariel-days";
 
 function getSuggestedLocation(status: string): string {
   const locationMap: Record<string, string> = {
@@ -60,10 +61,6 @@ export function getLastUpdateDashboard(container: OperationContainer): string {
   return formatDateShort(raw);
 }
 
-function startOfLocalDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
 function formatTableDate(iso?: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -78,12 +75,7 @@ export function formatEtaArriboMarielDashboard(container: OperationContainer): s
 
 export function etaArriboMarielIsGreenDashboard(container: OperationContainer): boolean {
   const raw = container.etaActual || container.etaEstimated;
-  if (!raw) return false;
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return false;
-  const today = startOfLocalDay(new Date());
-  const etaDay = startOfLocalDay(d);
-  return etaDay.getTime() <= today.getTime();
+  return isEtaArrivalDayOnOrBeforeToday(raw ?? null);
 }
 
 export function getDaysInMarielDisplayDashboard(container: OperationContainer): {
@@ -91,18 +83,8 @@ export function getDaysInMarielDisplayDashboard(container: OperationContainer): 
   danger: boolean;
 } {
   const refRaw = container.etaActual || container.etaEstimated;
-  if (!refRaw) {
-    return { text: "—", danger: false };
-  }
-  const arr = new Date(refRaw);
-  if (isNaN(arr.getTime())) {
-    return { text: "—", danger: false };
-  }
-  const today = startOfLocalDay(new Date());
-  const arrDay = startOfLocalDay(arr);
-  const diffMs = today.getTime() - arrDay.getTime();
-  const days = Math.floor(diffMs / 86400000);
-  if (days < 0) {
+  const days = daysSinceArrivalCalendar(refRaw ?? null);
+  if (days === null) {
     return { text: "—", danger: false };
   }
   return { text: String(days), danger: days > 10 };
@@ -111,13 +93,7 @@ export function getDaysInMarielDisplayDashboard(container: OperationContainer): 
 /** Días en Mariel para ordenar; -1 = sin dato (van al final). */
 export function daysInMarielSortKeyDashboard(container: OperationContainer): number {
   const refRaw = container.etaActual || container.etaEstimated;
-  if (!refRaw) return -1;
-  const arr = new Date(refRaw);
-  if (isNaN(arr.getTime())) return -1;
-  const today = startOfLocalDay(new Date());
-  const arrDay = startOfLocalDay(arr);
-  const diffMs = today.getTime() - arrDay.getTime();
-  const days = Math.floor(diffMs / 86400000);
-  if (days < 0) return -1;
+  const days = daysSinceArrivalCalendar(refRaw ?? null);
+  if (days === null) return -1;
   return days;
 }

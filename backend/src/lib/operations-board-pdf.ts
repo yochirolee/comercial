@@ -6,6 +6,11 @@ import {
   INACTIVE_CONTAINER_STATUSES,
   normalizeContainerStatus,
 } from './operation-status.js';
+import {
+  calendarDateKeyInOperationsTz,
+  daysSinceArrivalCalendar,
+  isEtaArrivalDayOnOrBeforeToday,
+} from './mariel-days.js';
 
 type FilterType = 'COMMERCIAL' | 'PARCEL' | 'all';
 
@@ -60,10 +65,6 @@ function clienteNombreCompania(op: OperationWithContainers): string {
   return [c.nombre, c.apellidos].filter(Boolean).join(' ').trim() || '—';
 }
 
-function startOfLocalDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
 function daysInMarielDisplay(container: OperationWithContainers['containers'][number]): string {
   const n = daysInMarielCount(container);
   return n === null ? '—' : String(n);
@@ -71,24 +72,12 @@ function daysInMarielDisplay(container: OperationWithContainers['containers'][nu
 
 function daysInMarielCount(container: OperationWithContainers['containers'][number]): number | null {
   const raw = container.etaActual || container.etaEstimated;
-  if (!raw) return null;
-  const arr = new Date(raw);
-  if (Number.isNaN(arr.getTime())) return null;
-  const today = startOfLocalDay(new Date());
-  const arrDay = startOfLocalDay(arr);
-  const diffMs = today.getTime() - arrDay.getTime();
-  const days = Math.floor(diffMs / 86400000);
-  return days < 0 ? null : days;
+  return daysSinceArrivalCalendar(raw ?? null);
 }
 
 function etaArriboMarielIsGreen(container: OperationWithContainers['containers'][number]): boolean {
   const raw = container.etaActual || container.etaEstimated;
-  if (!raw) return false;
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return false;
-  const today = startOfLocalDay(new Date());
-  const etaDay = startOfLocalDay(d);
-  return etaDay.getTime() <= today.getTime();
+  return isEtaArrivalDayOnOrBeforeToday(raw ?? null);
 }
 
 /** ETA futura cercana: entre 1 y 3 días desde hoy (inclusive). */
@@ -97,9 +86,13 @@ function etaIsNear(container: OperationWithContainers['containers'][number]): bo
   if (!raw) return false;
   const d = new Date(raw);
   if (Number.isNaN(d.getTime())) return false;
-  const today = startOfLocalDay(new Date());
-  const etaDay = startOfLocalDay(d);
-  const diffDays = Math.floor((etaDay.getTime() - today.getTime()) / 86400000);
+  const etaKey = calendarDateKeyInOperationsTz(d);
+  const todayKey = calendarDateKeyInOperationsTz(new Date());
+  const [ya, ma, da] = etaKey.split('-').map(Number);
+  const [yb, mb, db] = todayKey.split('-').map(Number);
+  const diffDays = Math.floor(
+    (Date.UTC(ya, ma - 1, da) - Date.UTC(yb, mb - 1, db)) / 86400000
+  );
   return diffDays >= 1 && diffDays <= 3;
 }
 

@@ -49,6 +49,7 @@ import {
   operationStatusLabelEs,
 } from "@/lib/operation-status";
 import { cn } from "@/lib/utils";
+import { daysSinceArrivalCalendar, isEtaArrivalDayOnOrBeforeToday } from "@/lib/mariel-days";
 
 // Estados considerados como inactivos/completados
 const INACTIVE_STATUSES = [
@@ -123,10 +124,6 @@ function getLastUpdate(container: OperationContainer): string {
   return formatDateShort(raw);
 }
 
-function startOfLocalDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
 function formatTableDate(iso?: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -145,32 +142,17 @@ function formatEtaArriboMariel(container: OperationContainer): string {
   return formatTableDate(raw ?? undefined);
 }
 
-/** Verde si la fecha de arribo es hoy o ya pasó (en Mariel o arribado). */
+/** Verde si la fecha de arribo es hoy o ya pasó (calendario Miami / operaciones). */
 function etaArriboMarielIsGreen(container: OperationContainer): boolean {
   const raw = container.etaActual || container.etaEstimated;
-  if (!raw) return false;
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return false;
-  const today = startOfLocalDay(new Date());
-  const etaDay = startOfLocalDay(d);
-  return etaDay.getTime() <= today.getTime();
+  return isEtaArrivalDayOnOrBeforeToday(raw ?? null);
 }
 
 /** Días desde ETA/arribo hasta hoy; null si aún no aplica. >10 → resaltar en rojo. */
 function getDaysInMarielDisplay(container: OperationContainer): { text: string; danger: boolean } {
   const refRaw = container.etaActual || container.etaEstimated;
-  if (!refRaw) {
-    return { text: "—", danger: false };
-  }
-  const arr = new Date(refRaw);
-  if (isNaN(arr.getTime())) {
-    return { text: "—", danger: false };
-  }
-  const today = startOfLocalDay(new Date());
-  const arrDay = startOfLocalDay(arr);
-  const diffMs = today.getTime() - arrDay.getTime();
-  const days = Math.floor(diffMs / 86400000);
-  if (days < 0) {
+  const days = daysSinceArrivalCalendar(refRaw ?? null);
+  if (days === null) {
     return { text: "—", danger: false };
   }
   return { text: String(days), danger: days > 10 };
@@ -179,14 +161,8 @@ function getDaysInMarielDisplay(container: OperationContainer): { text: string; 
 /** Clave numérica para ordenar por «Días en Mariel»; -1 = sin dato (van al final en asc). */
 function daysInMarielSortKey(container: OperationContainer): number {
   const refRaw = container.etaActual || container.etaEstimated;
-  if (!refRaw) return -1;
-  const arr = new Date(refRaw);
-  if (isNaN(arr.getTime())) return -1;
-  const today = startOfLocalDay(new Date());
-  const arrDay = startOfLocalDay(arr);
-  const diffMs = today.getTime() - arrDay.getTime();
-  const days = Math.floor(diffMs / 86400000);
-  if (days < 0) return -1;
+  const days = daysSinceArrivalCalendar(refRaw ?? null);
+  if (days === null) return -1;
   return days;
 }
 

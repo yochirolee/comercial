@@ -7,6 +7,7 @@ import {
   normalizeContainerStatus,
   statusFilterValuesForQuery,
 } from './operation-status.js';
+import { daysSinceArrivalCalendar, isEtaArrivalDayOnOrBeforeToday } from './mariel-days.js';
 
 const GIFT_PARCEL = 'Gift Parcel';
 
@@ -49,33 +50,16 @@ function formatEsDate(d: Date | string | null | undefined): string {
   });
 }
 
-function startOfLocalDay(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-/** Igual que el board: verde si la fecha de arribo (ETA real o estimada) es hoy o ya pasó. */
+/** Igual que el board: verde si la fecha de arribo (ETA real o estimada) es hoy o ya pasó (calendario Miami). */
 function etaArriboMarielIsGreen(container: BoardContainer): boolean {
   const raw = container.etaActual ?? container.etaEstimated;
-  if (!raw) return false;
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return false;
-  const today = startOfLocalDay(new Date());
-  const etaDay = startOfLocalDay(d);
-  return etaDay.getTime() <= today.getTime();
+  return isEtaArrivalDayOnOrBeforeToday(raw ?? null);
 }
 
 /** Días desde arribo hasta hoy; null si aún no aplica. */
 function daysInMarielCount(container: BoardContainer): number | null {
   const refRaw = container.etaActual ?? container.etaEstimated;
-  if (!refRaw) return null;
-  const arr = new Date(refRaw);
-  if (Number.isNaN(arr.getTime())) return null;
-  const today = startOfLocalDay(new Date());
-  const arrDay = startOfLocalDay(arr);
-  const diffMs = today.getTime() - arrDay.getTime();
-  const days = Math.floor(diffMs / 86400000);
-  if (days < 0) return null;
-  return days;
+  return daysSinceArrivalCalendar(refRaw ?? null);
 }
 
 function statusLabel(status: string): string {
