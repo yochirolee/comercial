@@ -1985,6 +1985,79 @@ export const carriersApi = {
     }),
 };
 
+// ==================== REPORTS ====================
+export interface ReporteOfertaClienteItem {
+  id: string;
+  productoId: string | null;
+  nombreProducto: string | null;
+  producto: { id: string; nombre: string; codigo: string | null } | null;
+  unidadMedida: { abreviatura: string } | null;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+}
+
+export interface ReporteOfertaCliente {
+  id: string;
+  numero: string;
+  fecha: string;
+  estado: string;
+  total: number;
+  cliente: { id: string; nombre: string; apellidos: string | null; nombreCompania: string | null };
+  items: ReporteOfertaClienteItem[];
+  factura: {
+    id: string;
+    numero: string;
+    fecha: string;
+    total: number;
+    flete: number;
+    seguro: number;
+    estado: string;
+  } | null;
+}
+
+export interface ReportePrecioProducto {
+  producto: { id: string; nombre: string; codigo: string | null };
+  precios: Array<{
+    fecha: string;
+    precioUnitario: number;
+    cantidad: number;
+    subtotal: number;
+    unidad: string | null;
+    ofertaNumero: string;
+    ofertaEstado: string;
+    cliente: { id: string; nombre: string; apellidos: string | null; nombreCompania: string | null };
+  }>;
+}
+
+export const reportsApi = {
+  ofertasCliente: (params?: { dateFrom?: string; dateTo?: string; clienteId?: string }) => {
+    const qp = new URLSearchParams();
+    if (params?.dateFrom) qp.append('dateFrom', params.dateFrom);
+    if (params?.dateTo) qp.append('dateTo', params.dateTo);
+    if (params?.clienteId) qp.append('clienteId', params.clienteId);
+    const q = qp.toString();
+    return fetchApi<ReporteOfertaCliente[]>(`/reports/ofertas-cliente${q ? `?${q}` : ''}`);
+  },
+
+  productosPrecios: (params?: { dateFrom?: string; dateTo?: string; productoId?: string }) => {
+    const qp = new URLSearchParams();
+    if (params?.dateFrom) qp.append('dateFrom', params.dateFrom);
+    if (params?.dateTo) qp.append('dateTo', params.dateTo);
+    if (params?.productoId) qp.append('productoId', params.productoId);
+    const q = qp.toString();
+    return fetchApi<ReportePrecioProducto[]>(`/reports/productos-precios${q ? `?${q}` : ''}`);
+  },
+
+  clientesConFacturas: () =>
+    fetchApi<Array<{ id: string; nombre: string; apellidos: string | null; nombreCompania: string | null }>>(
+      '/reports/clientes-con-facturas'
+    ),
+
+  productosEnOfertas: () =>
+    fetchApi<Array<{ id: string; nombre: string; codigo: string | null }>>('/reports/productos-en-ofertas'),
+};
+
 // ==================== SEARCH (Búsqueda Universal) ====================
 export const searchApi = {
   search: (q: string) =>

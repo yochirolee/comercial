@@ -20,6 +20,7 @@ import {
   FileCheck,
   MapPin,
   Search,
+  BarChart2,
 } from "lucide-react";
 
 type AppRole = "admin" | "comercial" | "operador";
@@ -58,6 +59,7 @@ const navigation: NavItem[] = [
   { name: "Facturas", href: "/facturas", icon: Receipt },
   { name: "Operaciones", href: "/operations", icon: MapPin, roles: ["admin", "comercial", "operador"] },
   { name: "Buscar", href: "/importadoras/buscar", icon: Search },
+  { name: "Reportes", href: "/reportes", icon: BarChart2 },
   { name: "Documentación", href: "/documentacion", icon: FileCheck, adminOnly: true },
   { 
     name: "Configuración", 

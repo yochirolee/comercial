@@ -21,6 +21,7 @@ import { terminal49WebhookRouter } from './routes/terminal49Webhook.routes.js';
 import { importadoraRouter } from './routes/importadora.routes.js';
 import { searchRouter } from './routes/search.routes.js';
 import { categoriaProductoRouter } from './routes/categoriaProducto.routes.js';
+import { reportsRouter } from './routes/reports.routes.js';
 import { operadorApiGuard } from './middleware/operador.middleware.js';
 
 const app = express();
@@ -57,6 +58,7 @@ app.use('/api/documentos', documentoRouter);
 app.use('/api/operations', operationRouter);
 app.use('/api/importadoras', importadoraRouter);
 app.use('/api/search', searchRouter);
+app.use('/api/reports', reportsRouter);
 app.use('/api/carriers', carrierRouter);
 app.use('/api/categorias-producto', categoriaProductoRouter);
 app.use('/api/terminal49', terminal49WebhookRouter);
