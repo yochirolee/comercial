@@ -110,7 +110,7 @@ function ReporteOfertasCliente(): React.ReactElement {
     }
   }, [dateFrom, dateTo, clienteId]);
 
-  useEffect(() => { load({}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load({}); }, [clienteId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
