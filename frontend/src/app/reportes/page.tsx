@@ -121,9 +121,9 @@ function ReporteOfertasCliente(): React.ReactElement {
   }
 
   const totalOfertado = data.reduce((s, r) => s + r.total, 0);
-  const totalFacturado = data.reduce((s, r) => s + (r.factura?.total ?? 0), 0);
-  const totalFlete = data.reduce((s, r) => s + (r.factura?.flete ?? 0), 0);
-  const totalSeguro = data.reduce((s, r) => s + (r.factura?.seguro ?? 0), 0);
+  const totalFacturado = data.reduce((s, r) => s + (r.facturaResumen?.total ?? 0), 0);
+  const totalFlete = data.reduce((s, r) => s + (r.facturaResumen?.flete ?? 0), 0);
+  const totalSeguro = data.reduce((s, r) => s + (r.facturaResumen?.seguro ?? 0), 0);
 
   const byCliente = data.reduce<Record<string, { cliente: ReporteOfertaCliente["cliente"]; rows: ReporteOfertaCliente[] }>>((acc, row) => {
     const key = row.cliente.id;
@@ -234,7 +234,8 @@ function ReporteOfertasCliente(): React.ReactElement {
             {/* Filas de ofertas */}
             {rows.map((row) => {
               const expanded = expandedIds.has(row.id);
-              const diff = row.factura ? row.total - row.factura.total : null;
+              const fr = row.facturaResumen;
+              const diff = fr ? row.total - fr.total : null;
               return (
                 <div key={row.id} className="border-b border-slate-100 last:border-0">
                   {/* Fila compacta — touch-friendly */}
@@ -248,7 +249,7 @@ function ReporteOfertasCliente(): React.ReactElement {
                         ? <ChevronDown className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />
                         : <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0 mt-0.5" />}
                       <div className="flex-1 min-w-0 space-y-1">
-                        {/* Línea 1: número + estado */}
+                        {/* Línea 1: número + estado + fecha */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-semibold text-slate-800 text-sm">{row.numero}</span>
                           <EstadoBadge estado={row.estado} />
@@ -259,29 +260,31 @@ function ReporteOfertasCliente(): React.ReactElement {
                           <span className="font-bold text-green-700">
                             Real: {formatCurrency(row.total)}
                           </span>
-                          {row.factura && (
+                          {fr && (
                             <span className="text-slate-500">
-                              Fact: {formatCurrency(row.factura.total)}
+                              Fact: {formatCurrency(fr.total)}
                               {diff !== null && diff > 0.01 && (
                                 <span className="text-amber-500 ml-1">(−{formatCurrency(diff)})</span>
                               )}
                             </span>
                           )}
                         </div>
-                        {/* Línea 3: flete/seguro si existen */}
-                        {row.factura && (row.factura.flete > 0 || row.factura.seguro > 0) && (
-                          <div className="text-xs text-slate-400 flex gap-2">
-                            {row.factura.flete > 0 && <span>Flete {formatCurrency(row.factura.flete)}</span>}
-                            {row.factura.seguro > 0 && <span>Seg. {formatCurrency(row.factura.seguro)}</span>}
+                        {/* Línea 3: facturas + flete/seguro */}
+                        {fr && (
+                          <div className="text-xs text-slate-400 flex flex-wrap gap-x-2 gap-y-0.5">
+                            <span>{fr.count > 1 ? `${fr.count} facturas: ` : "Factura: "}<span className="text-slate-500 font-medium">{fr.numeros}</span></span>
+                            {fr.flete > 0 && <span>Flete {formatCurrency(fr.flete)}</span>}
+                            {fr.seguro > 0 && <span>Seg. {formatCurrency(fr.seguro)}</span>}
                           </div>
                         )}
                       </div>
                     </div>
                   </button>
 
-                  {/* Detalle productos — scroll horizontal en mobile */}
+                  {/* Detalle expandido */}
                   {expanded && (
-                    <div className="bg-slate-50 border-t border-slate-100 px-3 py-3">
+                    <div className="bg-slate-50 border-t border-slate-100 px-3 py-3 space-y-3">
+                      {/* Tabla de productos */}
                       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
                         <Table>
                           <TableHeader>
@@ -309,19 +312,54 @@ function ReporteOfertasCliente(): React.ReactElement {
                                 </TableCell>
                               </TableRow>
                             ))}
-                            <TableRow className="bg-slate-50">
-                              <TableCell colSpan={3} className="text-right text-xs font-bold">Total ofertado</TableCell>
-                              <TableCell className="text-right text-xs font-bold text-green-700 whitespace-nowrap">{formatCurrency(row.total)}</TableCell>
+                            <TableRow className="bg-slate-50 font-bold">
+                              <TableCell colSpan={3} className="text-right text-xs">Total ofertado (real)</TableCell>
+                              <TableCell className="text-right text-xs text-green-700 whitespace-nowrap">{formatCurrency(row.total)}</TableCell>
                             </TableRow>
-                            {row.factura && (
-                              <TableRow className="bg-slate-50 text-slate-500">
-                                <TableCell colSpan={3} className="text-right text-xs">Total facturado</TableCell>
-                                <TableCell className="text-right text-xs whitespace-nowrap">{formatCurrency(row.factura.total)}</TableCell>
-                              </TableRow>
-                            )}
                           </TableBody>
                         </Table>
                       </div>
+
+                      {/* Desglose de facturas individuales si hay más de una */}
+                      {fr && fr.facturas.length > 0 && (
+                        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                          <div className="px-3 py-2 bg-slate-50 border-b border-slate-200">
+                            <p className="text-xs font-semibold text-slate-600">
+                              Facturas vinculadas ({fr.facturas.length})
+                            </p>
+                          </div>
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-slate-50">
+                                <TableHead className="text-xs">Factura</TableHead>
+                                <TableHead className="text-xs whitespace-nowrap">Fecha</TableHead>
+                                <TableHead className="text-xs whitespace-nowrap">Estado</TableHead>
+                                <TableHead className="text-xs text-right whitespace-nowrap">Flete</TableHead>
+                                <TableHead className="text-xs text-right whitespace-nowrap">Seguro</TableHead>
+                                <TableHead className="text-xs text-right whitespace-nowrap">Total fact.</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {fr.facturas.map((f) => (
+                                <TableRow key={f.id}>
+                                  <TableCell className="text-xs font-semibold">{f.numero}</TableCell>
+                                  <TableCell className="text-xs whitespace-nowrap">{formatDate(f.fecha)}</TableCell>
+                                  <TableCell><EstadoBadge estado={f.estado} /></TableCell>
+                                  <TableCell className="text-xs text-right whitespace-nowrap">{f.flete > 0 ? formatCurrency(f.flete) : "—"}</TableCell>
+                                  <TableCell className="text-xs text-right whitespace-nowrap">{f.seguro > 0 ? formatCurrency(f.seguro) : "—"}</TableCell>
+                                  <TableCell className="text-xs text-right font-semibold whitespace-nowrap">{formatCurrency(f.total)}</TableCell>
+                                </TableRow>
+                              ))}
+                              {fr.facturas.length > 1 && (
+                                <TableRow className="bg-slate-50 font-bold">
+                                  <TableCell colSpan={5} className="text-right text-xs">Total facturado</TableCell>
+                                  <TableCell className="text-right text-xs whitespace-nowrap">{formatCurrency(fr.total)}</TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

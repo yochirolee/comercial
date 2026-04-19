@@ -2005,14 +2005,22 @@ export interface ReporteOfertaCliente {
   total: number;
   cliente: { id: string; nombre: string; apellidos: string | null; nombreCompania: string | null };
   items: ReporteOfertaClienteItem[];
-  factura: {
-    id: string;
-    numero: string;
-    fecha: string;
+  /** Resumen consolidado de TODAS las facturas vinculadas a esta OC */
+  facturaResumen: {
+    numeros: string;
+    count: number;
     total: number;
     flete: number;
     seguro: number;
-    estado: string;
+    facturas: Array<{
+      id: string;
+      numero: string;
+      fecha: string;
+      total: number;
+      flete: number;
+      seguro: number;
+      estado: string;
+    }>;
   } | null;
 }
 
