@@ -42,6 +42,7 @@ import {
   importadorasApi,
   unidadesApi
 } from "@/lib/api";
+import { cacheWrap } from "@/lib/prefetch-cache";
 import type {
   OfertaImportadora,
   OfertaCliente,
@@ -224,12 +225,12 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     try {
       setCurrentPage(1);
       const [ofertasData, ofertasClienteData, clientesData, importadorasData, productosData, unidadesData] = await Promise.all([
-        ofertasImportadoraApi.getAll(),
-        ofertasClienteApi.getAll(),
-        clientesApi.getAll(),
-        importadorasApi.getAll(),
-        productosApi.getAll(),
-        unidadesApi.getAll(),
+        cacheWrap("ofertas-importadora", () => ofertasImportadoraApi.getAll()),
+        cacheWrap("ofertas-cliente", () => ofertasClienteApi.getAll()),
+        cacheWrap("clientes", () => clientesApi.getAll()),
+        cacheWrap("importadoras", () => importadorasApi.getAll()),
+        cacheWrap("productos", () => productosApi.getAll()),
+        cacheWrap("unidades", () => unidadesApi.getAll()),
       ]);
       setOfertas(ofertasData);
       setOfertasCliente(

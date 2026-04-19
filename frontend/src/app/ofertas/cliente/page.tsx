@@ -32,6 +32,7 @@ import { getCategoryBadgeClass } from "@/lib/category-colors";
 import { toast } from "sonner";
 import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save, Download, ChevronLeft, ChevronRight, Search, Users, Printer } from "lucide-react";
 import { ofertasClienteApi, ofertasGeneralesApi, clientesApi, productosApi, exportApi, unidadesApi } from "@/lib/api";
+import { cacheWrap } from "@/lib/prefetch-cache";
 import type { OfertaCliente, OfertaGeneral, Cliente, Producto, ItemOfertaClienteInput, UnidadMedida } from "@/lib/api";
 
 const PAGE_SIZE = 10;
@@ -176,11 +177,11 @@ export default function OfertasClientePage(): React.ReactElement {
     try {
       setCurrentPage(1);
       const [ofertasData, ofertasGeneralesData, clientesData, productosData, unidadesData] = await Promise.all([
-        ofertasClienteApi.getAll(),
-        ofertasGeneralesApi.getAll(),
-        clientesApi.getAll(),
-        productosApi.getAll(),
-        unidadesApi.getAll(),
+        cacheWrap("ofertas-cliente", () => ofertasClienteApi.getAll()),
+        cacheWrap("ofertas-generales", () => ofertasGeneralesApi.getAll()),
+        cacheWrap("clientes", () => clientesApi.getAll()),
+        cacheWrap("productos", () => productosApi.getAll()),
+        cacheWrap("unidades", () => unidadesApi.getAll()),
       ]);
       setOfertas(ofertasData);
       setOfertasGenerales(ofertasGeneralesData);

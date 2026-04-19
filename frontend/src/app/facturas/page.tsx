@@ -62,6 +62,7 @@ import {
   productosApi,
   unidadesApi,
 } from "@/lib/api";
+import { cacheWrap } from "@/lib/prefetch-cache";
 import type {
   Factura,
   OfertaCliente,
@@ -233,12 +234,12 @@ export default function FacturasPage(): React.ReactElement {
     try {
       setCurrentPage(1);
       const [facturasData, ocData, oiData, importadorasData, productosData, unidadesData] = await Promise.all([
-        facturasApi.getAll(),
-        ofertasClienteApi.getAll(),
-        ofertasImportadoraApi.getAll(),
-        importadorasApi.getAll(),
-        productosApi.getAll(),
-        unidadesApi.getAll(),
+        cacheWrap("facturas", () => facturasApi.getAll()),
+        cacheWrap("ofertas-cliente", () => ofertasClienteApi.getAll()),
+        cacheWrap("ofertas-importadora", () => ofertasImportadoraApi.getAll()),
+        cacheWrap("importadoras", () => importadorasApi.getAll()),
+        cacheWrap("productos", () => productosApi.getAll()),
+        cacheWrap("unidades", () => unidadesApi.getAll()),
       ]);
       setFacturas(facturasData);
       setOfertasCliente(ocData.filter((o) => o.estado === "aceptada" || o.estado === "pendiente"));

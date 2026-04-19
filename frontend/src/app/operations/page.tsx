@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { operationsApi, ofertasClienteApi, importadorasApi, exportApi } from "@/lib/api";
+import { cacheWrap } from "@/lib/prefetch-cache";
 import type { Operation, OperationContainer, OfertaCliente, Importadora } from "@/lib/api";
 import { operationRowLabel, operationTableDescription } from "@/lib/operation-display";
 import {
@@ -590,8 +591,8 @@ function OperationsPageContent(): React.ReactElement {
       const data = await operationsApi.getAll(params);
       setOperations(data);
       
-      const importadorasData = await importadorasApi.getAll();
-      const ofertas = isOperador ? [] : await ofertasClienteApi.getAll();
+      const importadorasData = await cacheWrap("importadoras", () => importadorasApi.getAll());
+      const ofertas = isOperador ? [] : await cacheWrap("ofertas-cliente", () => ofertasClienteApi.getAll());
       setOfertasCliente(ofertas);
       setImportadoras(importadorasData);
       if (importadorasData.length > 0 && !selectedImportadoraId) {

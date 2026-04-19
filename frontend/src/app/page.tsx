@@ -20,6 +20,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { clientesApi, productosApi, ofertasClienteApi, ofertasImportadoraApi, ofertasGeneralesApi, facturasApi, operationsApi } from "@/lib/api";
+import { cacheWrap } from "@/lib/prefetch-cache";
 import type {
   Producto,
   Factura,
@@ -627,10 +628,10 @@ export default function Dashboard(): React.ReactElement {
       try {
         if (isOperador) {
           const [operations, ofertasCliente, ofertasImportadora, facturas] = await Promise.all([
-            operationsApi.getAll(),
-            ofertasClienteApi.getAll(),
-            ofertasImportadoraApi.getAll(),
-            facturasApi.getAll(),
+            cacheWrap("operaciones", () => operationsApi.getAll()),
+            cacheWrap("ofertas-cliente", () => ofertasClienteApi.getAll()),
+            cacheWrap("ofertas-importadora", () => ofertasImportadoraApi.getAll()),
+            cacheWrap("facturas", () => facturasApi.getAll()),
           ]);
           const estadosTransito = DASHBOARD_ESTADOS_TRANSITO;
           const estadosMariel = DASHBOARD_ESTADOS_MARIEL;
@@ -722,13 +723,13 @@ export default function Dashboard(): React.ReactElement {
         }
 
         const [clientes, productos, ofertasCliente, ofertasImportadora, ofertasGenerales, facturas, operations] = await Promise.all([
-          clientesApi.getAll(),
-          productosApi.getAll(),
-          ofertasClienteApi.getAll(),
-          ofertasImportadoraApi.getAll(),
-          ofertasGeneralesApi.getAll(),
-          facturasApi.getAll(),
-          operationsApi.getAll(),
+          cacheWrap("clientes", () => clientesApi.getAll()),
+          cacheWrap("productos", () => productosApi.getAll()),
+          cacheWrap("ofertas-cliente", () => ofertasClienteApi.getAll()),
+          cacheWrap("ofertas-importadora", () => ofertasImportadoraApi.getAll()),
+          cacheWrap("ofertas-generales", () => ofertasGeneralesApi.getAll()),
+          cacheWrap("facturas", () => facturasApi.getAll()),
+          cacheWrap("operaciones", () => operationsApi.getAll()),
         ]);
 
         // Filtrar facturas del año configurado

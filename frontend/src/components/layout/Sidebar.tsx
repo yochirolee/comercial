@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { prefetchRoute } from "@/lib/prefetch-cache";
 import {
   Building2,
   Users,
@@ -135,6 +136,7 @@ export function Sidebar({ onNavigate, isMobile }: SidebarProps): React.ReactElem
                         key={child.href}
                         href={child.href}
                         onClick={handleLinkClick}
+                        onMouseEnter={() => prefetchRoute(child.href)}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200",
                           isActive
@@ -162,6 +164,7 @@ export function Sidebar({ onNavigate, isMobile }: SidebarProps): React.ReactElem
               key={item.href}
               href={item.href!}
               onClick={handleLinkClick}
+              onMouseEnter={() => prefetchRoute(item.href!)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200",
                 isActive
