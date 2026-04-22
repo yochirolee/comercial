@@ -1498,20 +1498,16 @@ export const OperationController = {
     }
     setCooldown(id);
 
-    // Obtener logo de empresa y convertirlo a base64 para embeber en el email
-    // (Gmail bloquea imágenes externas, base64 inlined las muestra siempre)
+    // Obtener logo de empresa — usar URL de Cloudinary directamente (HTTPS, Gmail la carga sin problema)
+    // Aplicamos transformación /h_80,c_fit/ para que sea pequeña y cargue rápido en el email
     const empresa = await prisma.empresa.findFirst({ select: { logo: true } });
-    let logoBase64: string | null = null;
+    let logoUrl: string | null = null;
     if (empresa?.logo) {
-      try {
-        const res = await fetch(empresa.logo);
-        if (res.ok) {
-          const contentType = res.headers.get('content-type') ?? 'image/png';
-          const buffer = Buffer.from(await res.arrayBuffer());
-          logoBase64 = `data:${contentType};base64,${buffer.toString('base64')}`;
-        }
-      } catch (e) {
-        console.warn('[notify-client] No se pudo obtener logo de empresa:', e);
+      // Si es URL de Cloudinary, inyectamos transformación de tamaño
+      if (empresa.logo.includes('res.cloudinary.com')) {
+        logoUrl = empresa.logo.replace('/upload/', '/upload/h_80,c_fit,f_png/');
+      } else {
+        logoUrl = empresa.logo;
       }
     }
 
@@ -1523,7 +1519,7 @@ export const OperationController = {
       currentLocation: operation.currentLocation ?? undefined,
       notes: operation.notes ?? undefined,
       referenciaOperacion: operation.referenciaOperacion,
-      logoEmpresa: logoBase64,
+      logoEmpresa: logoUrl,
       offerCustomer: operation.offerCustomer
         ? {
             numero: operation.offerCustomer.numero,
