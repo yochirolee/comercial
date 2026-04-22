@@ -1724,6 +1724,7 @@ export interface Operation {
       nombre: string;
       apellidos?: string;
       nombreCompania?: string;
+      email?: string;
     };
     items?: Array<{
       nombreProducto?: string | null;
@@ -1956,6 +1957,9 @@ export const operationsApi = {
       operationId ? `/operations/${operationId}/terminal49-sync` : '/operations/terminal49-sync',
       { method: 'POST' }
     ),
+
+  notifyClient: (operationId: string) =>
+    fetchApi<{ message: string }>(`/operations/${operationId}/notify-client`, { method: 'POST' }),
 };
 
 // ==========================================

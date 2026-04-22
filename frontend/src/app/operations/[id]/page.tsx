@@ -25,6 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, Save, Package, Ship, Clock, Trash2, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { operationsApi, importadorasApi, carriersApi } from "@/lib/api";
+import { getDashboardConfig } from "@/app/settings/dashboard/page";
 import type { Operation, OperationContainer, OperationEvent, ContainerEvent, Carrier } from "@/lib/api";
 import { operationParcelDetailTitle } from "@/lib/operation-display";
 import {
@@ -202,6 +203,16 @@ export default function OperationDetailPage(): React.ReactElement {
       toast.success("Operación actualizada");
       setEditOperationDialogOpen(false);
       loadOperation();
+
+      // Envío automático de email al cliente si está configurado
+      if (operation.operationType === "COMMERCIAL") {
+        const cfg = getDashboardConfig();
+        if (cfg.autoEmailOperaciones) {
+          operationsApi.notifyClient(operationId)
+            .then(() => toast.info("Email de estado enviado al cliente"))
+            .catch((err) => console.error("[notify-client] Error silencioso:", err));
+        }
+      }
     } catch (error) {
       toast.error("Error al actualizar");
       console.error(error);

@@ -13,6 +13,13 @@ import {
   statusFilterValuesForQuery,
 } from '../lib/operation-status.js';
 import { fetchTerminal49Tracking } from '../services/terminal49.service.js';
+import { sendOperationStatusEmail } from '../services/email.service.js';
+
+// ─── TEST MODE ────────────────────────────────────────────────────────────────
+// Mientras estamos en pruebas, todos los emails van a esta dirección.
+// Cuando el usuario confirme, cambiar a: op.offerCustomer?.cliente?.email
+const TEST_EMAIL = 'leidivioleta@gmail.com';
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Schemas de validación
 const operationSchema = z.object({
@@ -1414,5 +1421,101 @@ export const OperationController = {
     });
     
     res.status(204).send();
+  },
+
+  // Enviar notificación de estado al cliente de la operación
+  async notifyClient(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+
+    const operation = await prisma.operation.findUnique({
+      where: { id },
+      include: {
+        offerCustomer: {
+          include: { cliente: true },
+        },
+        importadora: { select: { nombre: true } },
+        carrier: { select: { name: true } },
+        containers: {
+          orderBy: { sequenceNo: 'asc' },
+          select: {
+            containerNo: true,
+            bookingNo: true,
+            blNo: true,
+            status: true,
+            etdEstimated: true,
+            etaEstimated: true,
+            etaActual: true,
+            currentLocation: true,
+          },
+        },
+      },
+    });
+
+    if (!operation) {
+      res.status(404).json({ error: 'Operación no encontrada' });
+      return;
+    }
+
+    if (operation.operationType !== 'COMMERCIAL') {
+      res.status(400).json({ error: 'Solo se notifica en operaciones comerciales' });
+      return;
+    }
+
+    if (!operation.offerCustomer?.cliente) {
+      res.status(400).json({ error: 'La operación no tiene cliente asociado' });
+      return;
+    }
+
+    // TEST MODE: enviar a leidivioleta@gmail.com
+    // Cuando el usuario confirme, usar: operation.offerCustomer.cliente.email
+    const clienteEmail = operation.offerCustomer.cliente.email;
+    const to = TEST_EMAIL; // ← cambiar a clienteEmail cuando se confirme
+    
+    if (!to) {
+      res.status(400).json({ error: 'El cliente no tiene email registrado' });
+      return;
+    }
+
+    const result = await sendOperationStatusEmail(to, {
+      operationNo: operation.operationNo,
+      status: operation.status,
+      originPort: operation.originPort ?? undefined,
+      destinationPort: operation.destinationPort ?? undefined,
+      currentLocation: operation.currentLocation ?? undefined,
+      notes: operation.notes ?? undefined,
+      referenciaOperacion: operation.referenciaOperacion,
+      offerCustomer: operation.offerCustomer
+        ? {
+            numero: operation.offerCustomer.numero,
+            cliente: {
+              nombre: operation.offerCustomer.cliente.nombre,
+              apellidos: operation.offerCustomer.cliente.apellidos,
+              nombreCompania: operation.offerCustomer.cliente.nombreCompania,
+            },
+          }
+        : undefined,
+      importadora: operation.importadora ?? undefined,
+      carrier: operation.carrier ?? undefined,
+      containers: operation.containers.map((c) => ({
+        containerNo: c.containerNo ?? undefined,
+        bookingNo: c.bookingNo ?? undefined,
+        blNo: c.blNo ?? undefined,
+        status: c.status,
+        etdEstimated: c.etdEstimated?.toISOString(),
+        etaEstimated: c.etaEstimated?.toISOString(),
+        etaActual: c.etaActual?.toISOString(),
+        currentLocation: c.currentLocation,
+      })),
+    });
+
+    if (!result.ok) {
+      console.error('[notify-client] Error al enviar email:', result.reason);
+      res.status(500).json({ error: 'No se pudo enviar el email: ' + result.reason });
+      return;
+    }
+
+    // Log para debug: email real del cliente vs email de prueba
+    console.log(`[notify-client] Email enviado a ${to} (cliente real: ${clienteEmail ?? 'sin email'})`);
+    res.json({ message: `Email enviado a ${to}` });
   },
 };

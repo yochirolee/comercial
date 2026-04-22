@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Save, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -21,11 +22,13 @@ const DASHBOARD_CONFIG_KEY = "zas_dashboard_config";
 
 interface DashboardConfig {
   year: number;
+  autoEmailOperaciones: boolean;
 }
 
 function getDefaultConfig(): DashboardConfig {
   return {
     year: new Date().getFullYear(),
+    autoEmailOperaciones: false,
   };
 }
 
@@ -405,6 +408,31 @@ export default function DashboardConfigPage(): React.ReactElement {
                   <Plus className="h-4 w-4" />
                   Agregar
                 </Button>
+              </div>
+            </div>
+
+            {/* Notificaciones por email */}
+            <div className="space-y-3 pt-4 border-t">
+              <div className="space-y-1">
+                <Label className="text-sm font-medium">Notificaciones por email al cliente</Label>
+                <p className="text-xs text-slate-500">
+                  Cuando está activo, al guardar cambios en una operación comercial se envía automáticamente
+                  un email al cliente con el estado y notas de la operación (si el cliente tiene email registrado).
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="auto-email"
+                  checked={config.autoEmailOperaciones}
+                  onCheckedChange={(checked) =>
+                    setConfig((prev) => ({ ...prev, autoEmailOperaciones: checked }))
+                  }
+                />
+                <Label htmlFor="auto-email" className="text-sm cursor-pointer select-none">
+                  {config.autoEmailOperaciones
+                    ? "Activado — se envía email al guardar"
+                    : "Desactivado — no se envían emails"}
+                </Label>
               </div>
             </div>
 

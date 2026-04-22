@@ -49,3 +49,6 @@ operationRouter.post('/terminal49-sync', OperationController.syncTerminal49);
 
 // POST /api/operations/:id/terminal49-sync - Sincronizar solo los contenedores de una operación
 operationRouter.post('/:id/terminal49-sync', OperationController.syncTerminal49);
+
+// POST /api/operations/:id/notify-client - Enviar email de estado al cliente
+operationRouter.post('/:id/notify-client', OperationController.notifyClient);
