@@ -226,7 +226,7 @@ export async function sendOperationStatusEmail(
     .map(
       (c) => `
         <tr>
-          <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:600;color:#0C0A04;">${c.containerNo || '—'}</td>
+          <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:13px;font-weight:600;color:#0C0A04;">${c.containerNo || c.blNo || '—'}</td>
           <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#555;">${c.bookingNo || '—'}</td>
           <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#555;">${c.blNo || '—'}</td>
           <td style="padding:8px 10px;border-bottom:1px solid #f0f0f0;font-size:12px;color:#333;font-weight:500;">${c.status}</td>
@@ -290,7 +290,7 @@ export async function sendOperationStatusEmail(
             <td style="padding:5px 0;font-size:13px;color:#333;white-space:pre-line;">${op.notes.trim()}</td>
           </tr>` : ''}
           ${op.carrier ? `<tr>
-            <td style="padding:5px 0;font-size:12px;color:#888;">Naviera</td>
+            <td style="padding:5px 0;font-size:12px;color:#888;">Carrier</td>
             <td style="padding:5px 0;font-size:13px;color:#333;">${op.carrier.name}</td>
           </tr>` : ''}
           ${op.importadora ? `<tr>
@@ -309,14 +309,14 @@ export async function sendOperationStatusEmail(
       ${(op.containers ?? []).length > 0 ? `
       <!-- Contenedores -->
       <div style="margin:20px 0;">
-        <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#0C0A04;text-transform:uppercase;letter-spacing:0.05em;">📦 Contenedores (${op.containers!.length})</p>
+        <p style="margin:0 0 10px;font-size:13px;font-weight:700;color:#0C0A04;text-transform:uppercase;letter-spacing:0.05em;">📦 Detalle de carga (${op.containers!.length})</p>
         <div style="overflow-x:auto;">
           <table style="width:100%;border-collapse:collapse;font-size:12px;">
             <thead>
               <tr style="background:#0C0A04;color:#F3B450;">
-                <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">Contenedor</th>
+                <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">Contenedor / Guía Aérea</th>
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">Booking</th>
-                <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">B/L</th>
+                <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">B/L / AWB</th>
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">Estado</th>
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">ETD Est.</th>
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">ETA Est.</th>
