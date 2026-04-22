@@ -316,7 +316,7 @@ export async function sendOperationStatusEmail(
               <tr style="background:#0C0A04;color:#F3B450;">
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">Contenedor / Guía Aérea</th>
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">Booking</th>
-                <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">B/L / AWB</th>
+                <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">B/L</th>
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">Estado</th>
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">ETD Est.</th>
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">ETA Est.</th>
