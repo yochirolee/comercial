@@ -180,6 +180,7 @@ export interface OperationEmailData {
   currentLocation?: string;
   notes?: string;
   referenciaOperacion?: string | null;
+  logoEmpresa?: string | null;
   offerCustomer?: {
     numero: string;
     cliente: { nombre: string; apellidos?: string | null; nombreCompania?: string | null };
@@ -237,12 +238,7 @@ export async function sendOperationStatusEmail(
     )
     .join('');
 
-  const notesHtml = op.notes?.trim()
-    ? `<div style="margin:20px 0;padding:16px;background:#fffbeb;border-left:4px solid #F3B450;border-radius:0 8px 8px 0;">
-        <p style="margin:0 0 6px;font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.05em;">📋 Notas de la operación</p>
-        <p style="margin:0;font-size:14px;color:#333;white-space:pre-line;">${op.notes.trim()}</p>
-      </div>`
-    : '';
+  const notesHtml = ''; // Las notas se muestran dentro de la tabla de datos
 
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -251,9 +247,14 @@ export async function sendOperationStatusEmail(
   <div style="max-width:680px;margin:30px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1);">
 
     <!-- Header -->
-    <div style="background:#0C0A04;padding:24px 32px;">
-      <h1 style="margin:0;color:#F3B450;font-size:22px;letter-spacing:1px;">ZAS <span style="color:#888;font-size:14px;font-weight:normal;">by JMC Corp</span></h1>
-      <p style="margin:6px 0 0;color:#aaa;font-size:13px;">Actualización de operación comercial</p>
+    <div style="background:#0C0A04;padding:24px 32px;display:flex;align-items:center;gap:16px;">
+      ${op.logoEmpresa
+        ? `<img src="${op.logoEmpresa}" alt="Logo" style="height:48px;width:auto;object-fit:contain;flex-shrink:0;" />`
+        : ''}
+      <div>
+        <h1 style="margin:0;color:#F3B450;font-size:22px;letter-spacing:1px;">ZAS <span style="color:#888;font-size:14px;font-weight:normal;">by JMC Corp</span></h1>
+        <p style="margin:4px 0 0;color:#aaa;font-size:13px;">Actualización de operación comercial</p>
+      </div>
     </div>
 
     <!-- Body -->
@@ -282,9 +283,9 @@ export async function sendOperationStatusEmail(
             <td style="padding:5px 0;font-size:12px;color:#888;">Ruta</td>
             <td style="padding:5px 0;font-size:13px;color:#333;">${op.originPort || '—'} → ${op.destinationPort || '—'}</td>
           </tr>` : ''}
-          ${op.currentLocation ? `<tr>
-            <td style="padding:5px 0;font-size:12px;color:#888;">Ubicación actual</td>
-            <td style="padding:5px 0;font-size:13px;color:#333;">${op.currentLocation}</td>
+          ${op.notes?.trim() ? `<tr>
+            <td style="padding:5px 0;font-size:12px;color:#888;vertical-align:top;">Notas</td>
+            <td style="padding:5px 0;font-size:13px;color:#333;white-space:pre-line;">${op.notes.trim()}</td>
           </tr>` : ''}
           ${op.carrier ? `<tr>
             <td style="padding:5px 0;font-size:12px;color:#888;">Naviera</td>

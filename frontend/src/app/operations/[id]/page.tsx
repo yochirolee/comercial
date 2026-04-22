@@ -276,6 +276,16 @@ export default function OperationDetailPage(): React.ReactElement {
       setEditContainerDialogOpen(false);
       setSelectedContainer(null);
       loadOperation();
+
+      // Envío automático de email al cliente si está configurado
+      if (operation?.operationType === "COMMERCIAL") {
+        const cfg = getDashboardConfig();
+        if (cfg.autoEmailOperaciones) {
+          operationsApi.notifyClient(operationId)
+            .then(() => toast.info("Email de estado enviado al cliente"))
+            .catch((err) => console.error("[notify-client] Error silencioso:", err));
+        }
+      }
     } catch (error) {
       toast.error("Error al actualizar contenedor");
       console.error(error);

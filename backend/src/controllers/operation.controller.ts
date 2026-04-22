@@ -1470,11 +1470,14 @@ export const OperationController = {
     // Cuando el usuario confirme, usar: operation.offerCustomer.cliente.email
     const clienteEmail = operation.offerCustomer.cliente.email;
     const to = TEST_EMAIL; // ← cambiar a clienteEmail cuando se confirme
-    
+
     if (!to) {
       res.status(400).json({ error: 'El cliente no tiene email registrado' });
       return;
     }
+
+    // Obtener logo de empresa
+    const empresa = await prisma.empresa.findFirst({ select: { logo: true } });
 
     const result = await sendOperationStatusEmail(to, {
       operationNo: operation.operationNo,
@@ -1484,6 +1487,7 @@ export const OperationController = {
       currentLocation: operation.currentLocation ?? undefined,
       notes: operation.notes ?? undefined,
       referenciaOperacion: operation.referenciaOperacion,
+      logoEmpresa: empresa?.logo ?? null,
       offerCustomer: operation.offerCustomer
         ? {
             numero: operation.offerCustomer.numero,
