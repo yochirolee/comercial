@@ -246,16 +246,18 @@ export async function sendOperationStatusEmail(
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f4f4f4;color:#333;">
   <div style="max-width:680px;margin:30px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1);">
 
-    <!-- Header -->
-    <div style="background:#0C0A04;padding:24px 32px;display:flex;align-items:center;gap:16px;">
-      ${op.logoEmpresa
-        ? `<img src="${op.logoEmpresa}" alt="Logo" style="height:48px;width:auto;object-fit:contain;flex-shrink:0;" />`
-        : ''}
-      <div>
-        <h1 style="margin:0;color:#F3B450;font-size:22px;letter-spacing:1px;">ZAS <span style="color:#888;font-size:14px;font-weight:normal;">by JMC Corp</span></h1>
-        <p style="margin:4px 0 0;color:#aaa;font-size:13px;">Actualización de operación comercial</p>
-      </div>
-    </div>
+    <!-- Header (table layout para compatibilidad con Gmail/Outlook) -->
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#0C0A04;">
+      <tr>
+        ${op.logoEmpresa ? `<td style="padding:20px 0 20px 28px;width:1%;white-space:nowrap;vertical-align:middle;">
+          <img src="${op.logoEmpresa}" alt="Logo" style="height:52px;width:auto;display:block;" />
+        </td>` : ''}
+        <td style="padding:20px 28px;vertical-align:middle;">
+          <h1 style="margin:0;color:#F3B450;font-size:22px;letter-spacing:1px;font-family:Arial,sans-serif;">ZAS <span style="color:#888;font-size:14px;font-weight:normal;">by JMC Corp</span></h1>
+          <p style="margin:4px 0 0;color:#aaa;font-size:13px;font-family:Arial,sans-serif;">Actualización de operación comercial</p>
+        </td>
+      </tr>
+    </table>
 
     <!-- Body -->
     <div style="padding:28px 32px;">
@@ -283,7 +285,7 @@ export async function sendOperationStatusEmail(
             <td style="padding:5px 0;font-size:12px;color:#888;">Ruta</td>
             <td style="padding:5px 0;font-size:13px;color:#333;">${op.originPort || '—'} → ${op.destinationPort || '—'}</td>
           </tr>` : ''}
-          ${op.notes?.trim() ? `<tr>
+          ${op.notes && op.notes.trim().length > 0 ? `<tr>
             <td style="padding:5px 0;font-size:12px;color:#888;vertical-align:top;">Notas</td>
             <td style="padding:5px 0;font-size:13px;color:#333;white-space:pre-line;">${op.notes.trim()}</td>
           </tr>` : ''}
@@ -319,7 +321,7 @@ export async function sendOperationStatusEmail(
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">ETD Est.</th>
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">ETA Est.</th>
                 <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">ETA Real</th>
-                <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">Ubicación</th>
+                <th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;">Notas</th>
               </tr>
             </thead>
             <tbody>${containersRows}</tbody>
