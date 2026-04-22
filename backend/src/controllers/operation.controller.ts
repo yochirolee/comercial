@@ -1476,8 +1476,22 @@ export const OperationController = {
       return;
     }
 
-    // Obtener logo de empresa
+    // Obtener logo de empresa y convertirlo a base64 para embeber en el email
+    // (Gmail bloquea imágenes externas, base64 inlined las muestra siempre)
     const empresa = await prisma.empresa.findFirst({ select: { logo: true } });
+    let logoBase64: string | null = null;
+    if (empresa?.logo) {
+      try {
+        const res = await fetch(empresa.logo);
+        if (res.ok) {
+          const contentType = res.headers.get('content-type') ?? 'image/png';
+          const buffer = Buffer.from(await res.arrayBuffer());
+          logoBase64 = `data:${contentType};base64,${buffer.toString('base64')}`;
+        }
+      } catch (e) {
+        console.warn('[notify-client] No se pudo obtener logo de empresa:', e);
+      }
+    }
 
     const result = await sendOperationStatusEmail(to, {
       operationNo: operation.operationNo,
@@ -1487,7 +1501,7 @@ export const OperationController = {
       currentLocation: operation.currentLocation ?? undefined,
       notes: operation.notes ?? undefined,
       referenciaOperacion: operation.referenciaOperacion,
-      logoEmpresa: empresa?.logo ?? null,
+      logoEmpresa: logoBase64,
       offerCustomer: operation.offerCustomer
         ? {
             numero: operation.offerCustomer.numero,
