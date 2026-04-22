@@ -76,13 +76,22 @@ function FiltroFechas({
   );
 }
 
+// Fechas por defecto: primer día del mes actual → hoy
+function defaultDateFrom(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+function defaultDateTo(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
 // ==================== REPORTE 1: OFERTAS A CLIENTE ====================
 
 function ReporteOfertasCliente(): React.ReactElement {
   const [clientes, setClientes] = useState<Array<{ id: string; nombre: string; apellidos: string | null; nombreCompania: string | null }>>([]);
   const [clienteId, setClienteId] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(defaultDateFrom);
+  const [dateTo, setDateTo] = useState(defaultDateTo);
   const [data, setData] = useState<ReporteOfertaCliente[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -393,8 +402,8 @@ function ReporteOfertasCliente(): React.ReactElement {
 function ReporteProductosPrecios(): React.ReactElement {
   const [productos, setProductos] = useState<Array<{ id: string; nombre: string; codigo: string | null }>>([]);
   const [productoId, setProductoId] = useState("all");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(defaultDateFrom);
+  const [dateTo, setDateTo] = useState(defaultDateTo);
   const [data, setData] = useState<ReportePrecioProducto[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
