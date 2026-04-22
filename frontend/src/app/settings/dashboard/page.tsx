@@ -34,6 +34,8 @@ export default function DashboardConfigPage(): React.ReactElement {
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [carrierScacEdits, setCarrierScacEdits] = useState<Record<string, string | undefined>>({});
   const [newCarrier, setNewCarrier] = useState({ name: "", trackingUrlTemplate: "", scac: "" });
+  const [editingCarrierId, setEditingCarrierId] = useState<string | null>(null);
+  const [editingCarrierData, setEditingCarrierData] = useState({ name: "", trackingUrlTemplate: "", scac: "" });
   const [categorias, setCategorias] = useState<CategoriaProducto[]>([]);
   const [newCategoria, setNewCategoria] = useState("");
   const [editingCategoriaId, setEditingCategoriaId] = useState<string | null>(null);
@@ -91,6 +93,27 @@ export default function DashboardConfigPage(): React.ReactElement {
     } catch (error) {
       console.error(error);
       toast.error("Error al actualizar SCAC");
+    }
+  }
+
+  async function handleUpdateCarrier(): Promise<void> {
+    if (!editingCarrierId) return;
+    if (!editingCarrierData.name.trim() || !editingCarrierData.trackingUrlTemplate.trim()) {
+      toast.error("Nombre y URL de tracking son requeridos");
+      return;
+    }
+    try {
+      await carriersApi.update(editingCarrierId, {
+        name: editingCarrierData.name.trim(),
+        trackingUrlTemplate: editingCarrierData.trackingUrlTemplate.trim(),
+        scac: editingCarrierData.scac.trim().toUpperCase().slice(0, 4) || undefined,
+      });
+      setEditingCarrierId(null);
+      toast.success("Carrier actualizado");
+      await loadCarriers();
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al actualizar carrier");
     }
   }
 
@@ -215,48 +238,75 @@ export default function DashboardConfigPage(): React.ReactElement {
                 ) : (
                   <div className="space-y-2">
                     {carriers.map((carrier) => (
-                      <div
-                        key={carrier.id}
-                        className="flex flex-col gap-2 border rounded-md px-3 py-2"
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="text-xs sm:text-sm min-w-0">
-                            <div className="font-medium break-words">{carrier.name}</div>
-                            <div className="text-slate-500 break-all text-[11px] sm:text-xs">
-                              {carrier.trackingUrlTemplate}
+                      <div key={carrier.id} className="border rounded-md px-3 py-2">
+                        {editingCarrierId === carrier.id ? (
+                          <div className="space-y-2">
+                            <Input
+                              className="h-8 text-sm"
+                              placeholder="Nombre del carrier"
+                              value={editingCarrierData.name}
+                              onChange={(e) => setEditingCarrierData((p) => ({ ...p, name: e.target.value }))}
+                            />
+                            <Input
+                              className="h-8 text-sm"
+                              placeholder="URL de tracking (usa {container})"
+                              value={editingCarrierData.trackingUrlTemplate}
+                              onChange={(e) => setEditingCarrierData((p) => ({ ...p, trackingUrlTemplate: e.target.value }))}
+                            />
+                            <div className="flex items-center gap-2">
+                              <Input
+                                className="h-8 text-sm w-20 uppercase"
+                                placeholder="SCAC"
+                                maxLength={4}
+                                value={editingCarrierData.scac}
+                                onChange={(e) => setEditingCarrierData((p) => ({ ...p, scac: e.target.value.toUpperCase().slice(0, 4) }))}
+                              />
+                              <Button size="sm" className="h-8 text-xs" onClick={() => void handleUpdateCarrier()}>
+                                Guardar
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setEditingCarrierId(null)}>
+                                Cancelar
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <Input
-                              placeholder="SCAC"
-                              className="w-14 h-8 text-xs uppercase"
-                              maxLength={4}
-                              value={carrierScacEdits[carrier.id] ?? carrier.scac ?? ""}
-                              onChange={(e) =>
-                                setCarrierScacEdits((p) => ({
-                                  ...p,
-                                  [carrier.id]: e.target.value.toUpperCase().slice(0, 4),
-                                }))
-                              }
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 text-xs"
-                              onClick={() => void handleUpdateCarrierScac(carrier)}
-                            >
-                              SCAC
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 flex-shrink-0"
-                              onClick={() => void handleDeleteCarrier(carrier.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                        ) : (
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="text-xs sm:text-sm min-w-0">
+                              <div className="font-medium break-words">{carrier.name}</div>
+                              <div className="text-slate-500 break-all text-[11px] sm:text-xs">
+                                {carrier.trackingUrlTemplate}
+                              </div>
+                              {carrier.scac && (
+                                <div className="text-xs text-slate-400 mt-0.5">SCAC: {carrier.scac}</div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  setEditingCarrierId(carrier.id);
+                                  setEditingCarrierData({
+                                    name: carrier.name,
+                                    trackingUrlTemplate: carrier.trackingUrlTemplate,
+                                    scac: carrier.scac ?? "",
+                                  });
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => void handleDeleteCarrier(carrier.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
