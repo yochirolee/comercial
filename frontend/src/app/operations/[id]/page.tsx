@@ -204,8 +204,10 @@ export default function OperationDetailPage(): React.ReactElement {
       setEditOperationDialogOpen(false);
       loadOperation();
 
-      // Envío automático de email al cliente si está configurado
-      if (operation.operationType === "COMMERCIAL") {
+      // Email automático solo si el estado de la operación cambió
+      const statusAnterior = operationStatusSelectValue(operation.status);
+      const statusNuevo = operationForm.status;
+      if (operation.operationType === "COMMERCIAL" && statusNuevo !== statusAnterior) {
         const cfg = getDashboardConfig();
         if (cfg.autoEmailOperaciones) {
           operationsApi.notifyClient(operationId)
@@ -277,8 +279,10 @@ export default function OperationDetailPage(): React.ReactElement {
       setSelectedContainer(null);
       loadOperation();
 
-      // Envío automático de email al cliente si está configurado
-      if (operation?.operationType === "COMMERCIAL") {
+      // Email automático solo si el estado del contenedor cambió
+      const statusContenedorAnterior = selectedContainer.status;
+      const statusContenedorNuevo = containerForm.status;
+      if (operation?.operationType === "COMMERCIAL" && statusContenedorNuevo !== statusContenedorAnterior) {
         const cfg = getDashboardConfig();
         if (cfg.autoEmailOperaciones) {
           operationsApi.notifyClient(operationId)

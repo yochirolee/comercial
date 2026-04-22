@@ -21,6 +21,20 @@ import { sendOperationStatusEmail } from '../services/email.service.js';
 const TEST_EMAIL = 'leidivioleta@gmail.com';
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Cooldown: evita emails duplicados si operación y contenedor cambian en < 60s
+const emailCooldown = new Map<string, number>();
+const EMAIL_COOLDOWN_MS = 60_000;
+
+function isOnCooldown(operationId: string): boolean {
+  const last = emailCooldown.get(operationId);
+  if (!last) return false;
+  return Date.now() - last < EMAIL_COOLDOWN_MS;
+}
+
+function setCooldown(operationId: string): void {
+  emailCooldown.set(operationId, Date.now());
+}
+
 // Schemas de validación
 const operationSchema = z.object({
   operationNo: z.string().optional(), // Opcional: se genera para PARCEL, se requiere para COMMERCIAL sin offerCustomerId
@@ -1475,6 +1489,14 @@ export const OperationController = {
       res.status(400).json({ error: 'El cliente no tiene email registrado' });
       return;
     }
+
+    // Cooldown: si ya se envió email para esta operación hace menos de 60s, omitir
+    if (isOnCooldown(id)) {
+      console.log(`[notify-client] Cooldown activo para operación ${id}, email omitido`);
+      res.json({ message: 'Email omitido (cooldown activo, ya se envió recientemente)' });
+      return;
+    }
+    setCooldown(id);
 
     // Obtener logo de empresa y convertirlo a base64 para embeber en el email
     // (Gmail bloquea imágenes externas, base64 inlined las muestra siempre)
