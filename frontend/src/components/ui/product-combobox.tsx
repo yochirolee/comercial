@@ -116,14 +116,14 @@ export function ProductCombobox({
       <button
         type="button"
         onClick={() => (open ? closeDropdown() : openDropdown())}
-        className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 gap-2"
       >
-        <span className={selected ? "text-foreground" : "text-muted-foreground"}>
+        <span className={`min-w-0 flex-1 truncate text-left ${selected ? "text-foreground" : "text-muted-foreground"}`}>
           {selected
             ? `${selected.nombre}${selected.abreviatura ? ` (${selected.abreviatura})` : ""}`
             : placeholder}
         </span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {/* Dropdown — always opens downward */}
@@ -156,18 +156,20 @@ export function ProductCombobox({
                   key={o.id}
                   onMouseDown={() => pick(o.id)}
                   onMouseEnter={() => setHighlighted(idx)}
-                  className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm ${
+                  className={`flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm ${
                     idx === highlighted ? "bg-slate-100" : ""
                   }`}
                 >
-                  <span>
-                    {o.nombre}
-                    {o.abreviatura && (
-                      <span className="ml-1 text-slate-400">({o.abreviatura})</span>
-                    )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">
+                      {o.nombre}
+                      {o.abreviatura && (
+                        <span className="ml-1 text-slate-400">({o.abreviatura})</span>
+                      )}
+                    </span>
                   </span>
                   {o.id === value && (
-                    <Check className="h-4 w-4 text-slate-700" />
+                    <Check className="h-4 w-4 shrink-0 text-slate-700" />
                   )}
                 </li>
               ))

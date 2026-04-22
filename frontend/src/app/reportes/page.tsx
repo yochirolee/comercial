@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ProductCombobox } from "@/components/ui/product-combobox";
 import { toast } from "sonner";
 import {
   Search, TrendingUp, TrendingDown, Minus,
@@ -143,19 +143,15 @@ function ReporteOfertasCliente(): React.ReactElement {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1 sm:col-span-2 lg:col-span-1">
               <Label className="text-xs">Cliente</Label>
-              <Select value={clienteId} onValueChange={setClienteId}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Todos los clientes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los clientes</SelectItem>
-                  {clientes.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {clienteNombre(c)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ProductCombobox
+                value={clienteId}
+                onValueChange={setClienteId}
+                placeholder="Todos los clientes"
+                options={[
+                  { id: "all", nombre: "Todos los clientes" },
+                  ...clientes.map((c) => ({ id: c.id, nombre: clienteNombre(c) })),
+                ]}
+              />
             </div>
             <FiltroFechas
               dateFrom={dateFrom} dateTo={dateTo}
@@ -424,7 +420,7 @@ function ReporteProductosPrecios(): React.ReactElement {
     }
   }, [dateFrom, dateTo, productoId]);
 
-  useEffect(() => { load({}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load({}); }, [productoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function tendencia(precios: ReportePrecioProducto["precios"]): React.ReactElement {
     if (precios.length < 2) return <Minus className="h-4 w-4 text-slate-400" />;
@@ -445,19 +441,15 @@ function ReporteProductosPrecios(): React.ReactElement {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1 sm:col-span-2 lg:col-span-1">
               <Label className="text-xs">Producto</Label>
-              <Select value={productoId} onValueChange={setProductoId}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Todos los productos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los productos</SelectItem>
-                  {productos.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.nombre}{p.codigo ? ` (${p.codigo})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ProductCombobox
+                value={productoId}
+                onValueChange={setProductoId}
+                placeholder="Todos los productos"
+                options={[
+                  { id: "all", nombre: "Todos los productos" },
+                  ...productos.map((p) => ({ id: p.id, nombre: p.nombre, abreviatura: p.codigo ?? undefined })),
+                ]}
+              />
             </div>
             <FiltroFechas
               dateFrom={dateFrom} dateTo={dateTo}
