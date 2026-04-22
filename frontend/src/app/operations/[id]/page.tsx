@@ -25,7 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Pencil, Save, Package, Ship, Clock, Trash2, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { operationsApi, importadorasApi, carriersApi } from "@/lib/api";
-import { getDashboardConfig } from "@/app/settings/dashboard/page";
+import { getDashboardConfig } from "@/lib/dashboard-config";
 import type { Operation, OperationContainer, OperationEvent, ContainerEvent, Carrier } from "@/lib/api";
 import { operationParcelDetailTitle } from "@/lib/operation-display";
 import {

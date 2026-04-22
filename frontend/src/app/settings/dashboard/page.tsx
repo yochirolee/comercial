@@ -18,49 +18,18 @@ import { Input } from "@/components/ui/input";
 import { carriersApi, categoriasProductoApi, type Carrier, type CategoriaProducto } from "@/lib/api";
 import { Pencil } from "lucide-react";
 
-const DASHBOARD_CONFIG_KEY = "zas_dashboard_config";
-
-interface DashboardConfig {
-  year: number;
-  autoEmailOperaciones: boolean;
-}
-
-function getDefaultConfig(): DashboardConfig {
-  return {
-    year: new Date().getFullYear(),
-    autoEmailOperaciones: false,
-  };
-}
-
-export function getDashboardConfig(): DashboardConfig {
-  if (typeof window === "undefined") return getDefaultConfig();
-  
-  try {
-    const stored = localStorage.getItem(DASHBOARD_CONFIG_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch {
-    console.error("Error reading dashboard config");
-  }
-  return getDefaultConfig();
-}
-
-export function saveDashboardConfig(config: DashboardConfig): void {
-  if (typeof window === "undefined") return;
-  
-  try {
-    localStorage.setItem(DASHBOARD_CONFIG_KEY, JSON.stringify(config));
-  } catch {
-    console.error("Error saving dashboard config");
-  }
-}
+import {
+  type DashboardConfig,
+  getDashboardConfig,
+  getDefaultDashboardConfig,
+  saveDashboardConfig,
+} from "@/lib/dashboard-config";
 
 export default function DashboardConfigPage(): React.ReactElement {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   
-  const [config, setConfig] = useState<DashboardConfig>(getDefaultConfig());
+  const [config, setConfig] = useState<DashboardConfig>(getDefaultDashboardConfig());
   const [loaded, setLoaded] = useState(false);
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [carrierScacEdits, setCarrierScacEdits] = useState<Record<string, string | undefined>>({});
