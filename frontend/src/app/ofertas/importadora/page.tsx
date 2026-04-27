@@ -42,7 +42,7 @@ import {
   importadorasApi,
   unidadesApi
 } from "@/lib/api";
-import { cacheWrap } from "@/lib/prefetch-cache";
+import { cacheWrap, cacheDelete } from "@/lib/prefetch-cache";
 import type {
   OfertaImportadora,
   OfertaCliente,
@@ -134,7 +134,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   const [flete, setFlete] = useState("");
   const [seguro, setSeguro] = useState("");
   const [tieneSeguro, setTieneSeguro] = useState(false);
-  const [incluyeFirmaCliente, setIncluyeFirmaCliente] = useState(true);
+  const [incluyeFirmaCliente, setIncluyeFirmaCliente] = useState(false);
   const [totalCifDeseado, setTotalCifDeseado] = useState("");
   const [puertoEmbarque, setPuertoEmbarque] = useState("");
   const [origen, setOrigen] = useState("");
@@ -221,7 +221,8 @@ export default function OfertasImportadoraPage(): React.ReactElement {
   const start = (currentPage - 1) * PAGE_SIZE;
   const paginatedOfertas = sortedOfertas.slice(start, start + PAGE_SIZE);
 
-  async function loadData(): Promise<void> {
+  async function loadData(bust = false): Promise<void> {
+    if (bust) cacheDelete("ofertas-importadora");
     try {
       setCurrentPage(1);
       const [ofertasData, ofertasClienteData, clientesData, importadorasData, productosData, unidadesData] = await Promise.all([
@@ -265,7 +266,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     setFlete("");
     setSeguro("");
     setTieneSeguro(false);
-    setIncluyeFirmaCliente(true);
+    setIncluyeFirmaCliente(false);
     setTotalCifDeseado("");
     // Cargar términos de la primera oferta
     setPuertoEmbarque(primeraOferta?.puertoEmbarque || "");
@@ -439,7 +440,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       }
       
       setDialogOpen(false);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Error al crear");
       console.error(error);
@@ -454,7 +455,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
     try {
       await ofertasImportadoraApi.delete(id);
       toast.success("Oferta eliminada");
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al eliminar");
       console.error(error);
@@ -496,7 +497,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       });
       toast.success("Cambios guardados");
       setDetailDialogOpen(false);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al guardar");
       console.error(error);
@@ -526,7 +527,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       setSelectedOferta(updated);
       setTotalDeseadoEdit("");
       toast.success(`Precios ajustados. CIF = $${total.toLocaleString()}`);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al ajustar precios");
       console.error(error);
@@ -632,7 +633,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       setSelectedOferta(updated);
       setEditItemDialogOpen(false);
       toast.success("Producto actualizado");
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al actualizar");
       console.error(error);
@@ -648,7 +649,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       toast.success("Producto eliminado");
       const updated = await ofertasImportadoraApi.getById(selectedOferta.id);
       setSelectedOferta(updated);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al eliminar");
       console.error(error);
@@ -711,7 +712,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
       setEditItemDialogOpen(false);
       setIsAddingNewItem(false);
       toast.success("Producto agregado");
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al agregar producto");
       console.error(error);
@@ -1883,7 +1884,7 @@ export default function OfertasImportadoraPage(): React.ReactElement {
                   <input
                     type="checkbox"
                     id="editIncluyeFirmaImportadora"
-                    checked={selectedOferta?.incluyeFirmaCliente !== false}
+                    checked={selectedOferta?.incluyeFirmaCliente === true}
                     onChange={(e) => setSelectedOferta(prev => prev ? { ...prev, incluyeFirmaCliente: e.target.checked } : null)}
                     className="h-4 w-4 rounded border-gray-300"
                   />

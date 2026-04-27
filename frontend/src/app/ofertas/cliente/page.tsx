@@ -32,7 +32,7 @@ import { getCategoryBadgeClass } from "@/lib/category-colors";
 import { toast } from "sonner";
 import { Plus, Trash2, FileDown, Eye, FileSpreadsheet, X, Pencil, Save, Download, ChevronLeft, ChevronRight, Search, Users, Printer } from "lucide-react";
 import { ofertasClienteApi, ofertasGeneralesApi, clientesApi, productosApi, exportApi, unidadesApi } from "@/lib/api";
-import { cacheWrap } from "@/lib/prefetch-cache";
+import { cacheWrap, cacheDelete } from "@/lib/prefetch-cache";
 import type { OfertaCliente, OfertaGeneral, Cliente, Producto, ItemOfertaClienteInput, UnidadMedida } from "@/lib/api";
 
 const PAGE_SIZE = 10;
@@ -173,7 +173,8 @@ export default function OfertasClientePage(): React.ReactElement {
   const start = (currentPage - 1) * PAGE_SIZE;
   const paginatedOfertas = sortedOfertas.slice(start, start + PAGE_SIZE);
 
-  async function loadData(): Promise<void> {
+  async function loadData(bust = false): Promise<void> {
+    if (bust) cacheDelete("ofertas-cliente", "ofertas-generales");
     try {
       setCurrentPage(1);
       const [ofertasData, ofertasGeneralesData, clientesData, productosData, unidadesData] = await Promise.all([
@@ -432,7 +433,7 @@ export default function OfertasClientePage(): React.ReactElement {
       });
       toast.success("Oferta creada");
       setDialogOpen(false);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al guardar oferta");
       console.error(error);
@@ -447,7 +448,7 @@ export default function OfertasClientePage(): React.ReactElement {
     try {
       await ofertasClienteApi.delete(id);
       toast.success("Oferta eliminada");
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al eliminar");
       console.error(error);
@@ -498,7 +499,7 @@ export default function OfertasClientePage(): React.ReactElement {
         const updated = await ofertasClienteApi.getById(selectedOferta.id);
         setSelectedOferta(updated);
       }
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al actualizar");
       console.error(error);
@@ -517,7 +518,7 @@ export default function OfertasClientePage(): React.ReactElement {
       setSelectedOferta(updated);
       setItemDialogOpen(false);
       resetItemForm();
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al agregar");
       console.error(error);
@@ -532,7 +533,7 @@ export default function OfertasClientePage(): React.ReactElement {
       toast.success("Producto eliminado");
       const updated = await ofertasClienteApi.getById(selectedOferta.id);
       setSelectedOferta(updated);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al eliminar");
       console.error(error);
@@ -618,7 +619,7 @@ export default function OfertasClientePage(): React.ReactElement {
       setSelectedOferta(updated);
       setEditItemDialogOpen(false);
       setEditingItemId(null);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al actualizar");
       console.error(error);
@@ -639,7 +640,7 @@ export default function OfertasClientePage(): React.ReactElement {
       toast.success("Precios ajustados correctamente");
       setSelectedOferta(updated);
       setTotalDeseado("");
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al ajustar precios");
       console.error(error);

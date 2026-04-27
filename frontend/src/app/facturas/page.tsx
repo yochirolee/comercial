@@ -62,7 +62,7 @@ import {
   productosApi,
   unidadesApi,
 } from "@/lib/api";
-import { cacheWrap } from "@/lib/prefetch-cache";
+import { cacheWrap, cacheDelete } from "@/lib/prefetch-cache";
 import type {
   Factura,
   OfertaCliente,
@@ -230,7 +230,8 @@ export default function FacturasPage(): React.ReactElement {
   const start = (currentPage - 1) * PAGE_SIZE;
   const paginatedFacturas = filteredFacturas.slice(start, start + PAGE_SIZE);
 
-  async function loadData(): Promise<void> {
+  async function loadData(bust = false): Promise<void> {
+    if (bust) cacheDelete("facturas");
     try {
       setCurrentPage(1);
       const [facturasData, ocData, oiData, importadorasData, productosData, unidadesData] = await Promise.all([
@@ -362,8 +363,8 @@ export default function FacturasPage(): React.ReactElement {
         flete: oferta.flete?.toString() || "0",
         tieneSeguro: oferta.tieneSeguro || false,
         seguro: oferta.seguro?.toString() || "0",
-        // Firma del cliente
-        incluyeFirmaCliente: oferta.incluyeFirmaCliente || false,
+        // Firma del cliente: siempre desmarcado al crear nueva factura
+        incluyeFirmaCliente: false,
         firmaClienteNombre: nombreCliente,
         firmaClienteCargo: "DIRECTOR",
         firmaClienteEmpresa: ofertaCliente?.cliente.nombreCompania || oferta.cliente.nombreCompania || "",
@@ -423,7 +424,7 @@ export default function FacturasPage(): React.ReactElement {
       await facturasApi.createFromOfertaImportadora(data);
       toast.success("Factura creada exitosamente");
       setNewDialogOpen(false);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al crear factura");
       console.error(error);
@@ -495,7 +496,7 @@ export default function FacturasPage(): React.ReactElement {
       });
       toast.success("Factura actualizada");
       setDetailDialogOpen(false);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al actualizar");
       console.error(error);
@@ -519,7 +520,7 @@ export default function FacturasPage(): React.ReactElement {
       toast.success("Precios ajustados");
       setSelectedFactura(updated);
       setAdjustTotal("");
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al ajustar");
       console.error(error);
@@ -604,7 +605,7 @@ export default function FacturasPage(): React.ReactElement {
       toast.success("Producto eliminado");
       const updated = await facturasApi.getById(selectedFactura.id);
       setSelectedFactura(updated);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al eliminar");
       console.error(error);
@@ -686,7 +687,7 @@ export default function FacturasPage(): React.ReactElement {
       setSelectedFactura(updated);
       setEditItemDialogOpen(false);
       setIsAddingFacturaItem(false);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al agregar producto");
       console.error(error);
@@ -753,7 +754,7 @@ export default function FacturasPage(): React.ReactElement {
       const updated = await facturasApi.getById(selectedFactura.id);
       setSelectedFactura(updated);
       setEditItemDialogOpen(false);
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al actualizar item");
       console.error(error);
@@ -768,7 +769,7 @@ export default function FacturasPage(): React.ReactElement {
     try {
       await facturasApi.delete(id);
       toast.success("Factura eliminada");
-      loadData();
+      loadData(true);
     } catch (error) {
       toast.error("Error al eliminar");
       console.error(error);
@@ -850,15 +851,33 @@ export default function FacturasPage(): React.ReactElement {
                   </Select>
                 </div>
 
-                {/* Número de Factura */}
-                <div className="space-y-2">
-                  <Label>Número de Factura *</Label>
-                  <Input
-                    value={newFormData.numeroFactura}
-                    onChange={(e) => setNewFormData((p) => ({ ...p, numeroFactura: e.target.value }))}
-                    placeholder="FAC-XXX"
-                    required
-                  />
+                {/* Número de Factura + Fecha + Contrato */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-2">
+                    <Label>Número de Factura *</Label>
+                    <Input
+                      value={newFormData.numeroFactura}
+                      onChange={(e) => setNewFormData((p) => ({ ...p, numeroFactura: e.target.value }))}
+                      placeholder="FAC-XXX"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Fecha</Label>
+                    <Input
+                      type="date"
+                      value={newFormData.fecha}
+                      onChange={(e) => setNewFormData((p) => ({ ...p, fecha: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>NRO Contrato (opcional)</Label>
+                    <Input
+                      value={newFormData.nroContrato}
+                      onChange={(e) => setNewFormData((p) => ({ ...p, nroContrato: e.target.value }))}
+                      placeholder="Número de contrato"
+                    />
+                  </div>
                 </div>
 
                 {selectedOfertaImportadoraId && (
@@ -944,29 +963,6 @@ export default function FacturasPage(): React.ReactElement {
                           <p className="text-xs text-slate-500">
                             Si ingresa un valor, los precios se ajustarán.
                           </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Fecha y contrato */}
-                    <div className="p-3 sm:p-4 bg-slate-50 rounded-lg border space-y-3">
-                      <h4 className="font-medium text-slate-700 text-sm sm:text-base">Datos de contrato</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="text-slate-500 text-xs sm:text-sm">Fecha</Label>
-                          <Input
-                            type="date"
-                            value={newFormData.fecha}
-                            onChange={(e) => setNewFormData((p) => ({ ...p, fecha: e.target.value }))}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-slate-500 text-xs sm:text-sm">NRO Contrato (opcional)</Label>
-                          <Input
-                            value={newFormData.nroContrato}
-                            onChange={(e) => setNewFormData((p) => ({ ...p, nroContrato: e.target.value }))}
-                            placeholder="Número de contrato"
-                          />
                         </div>
                       </div>
                     </div>
@@ -1297,7 +1293,7 @@ export default function FacturasPage(): React.ReactElement {
                 />
               </div>
               <div>
-                <Label className="text-slate-500">Contrato</Label>
+                <Label className="text-slate-500">NRO Contrato</Label>
                 <Input
                   className="mt-1"
                   value={editFormData.nroContrato}

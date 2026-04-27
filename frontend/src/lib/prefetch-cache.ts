@@ -43,6 +43,14 @@ export function cacheSet<T>(key: string, data: T): void {
   store.set(key, { data, timestamp: Date.now() });
 }
 
+/** Remove one or more keys from the cache so the next cacheWrap fetches fresh data. */
+export function cacheDelete(...keys: string[]): void {
+  for (const key of keys) {
+    store.delete(key);
+    pending.delete(key);
+  }
+}
+
 /**
  * Wraps a fetcher with cache + in-flight deduplication.
  * - If cached: returns cached value instantly.
