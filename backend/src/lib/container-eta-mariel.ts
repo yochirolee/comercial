@@ -14,8 +14,9 @@ function utcDayStartMs(d: Date): number {
 }
 
 /**
- * True si el día de arribo (ETA real o estimada) es hoy o ya pasó.
- * Misma idea que el indicador «verde» en el frontend (arribo vencido o cumplido en calendario).
+ * True si el día de arribo (ETA real o estimada) ya pasó (estrictamente anterior a hoy).
+ * Se excluye el mismo día para evitar auto-promover un contenedor que puede llegar de noche.
+ * El indicador visual «verde» en el frontend sigue usando <= hoy (isEtaArrivalDayOnOrBeforeToday).
  */
 export function etaCalendarDayOnOrBeforeToday(
   etaEstimated: Date | null | undefined,
@@ -24,7 +25,7 @@ export function etaCalendarDayOnOrBeforeToday(
   const eta = etaActual ?? etaEstimated;
   if (!eta || Number.isNaN(eta.getTime())) return false;
   const now = new Date();
-  return utcDayStartMs(eta) <= utcDayStartMs(now);
+  return utcDayStartMs(eta) < utcDayStartMs(now);
 }
 
 /** Auto-promoción solo desde tránsito hacia Mariel (incl. legacy normalizado). */
