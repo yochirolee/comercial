@@ -266,7 +266,12 @@ export default function OperationDetailPage(): React.ReactElement {
 
   async function handleUpdateContainer(): Promise<void> {
     if (!selectedContainer) return;
-    
+
+    // Capturar el status general de la operación ANTES de guardar el contenedor.
+    // El backend puede auto-actualizar el status general vía syncOperationSummaryFromContainers,
+    // por lo que el email se dispara solo si ese status general cambió (no por el contenedor en sí).
+    const opStatusAntes = operation?.status;
+
     try {
       await operationsApi.updateContainer(operationId, selectedContainer.id, {
         ...containerForm,
@@ -279,15 +284,17 @@ export default function OperationDetailPage(): React.ReactElement {
       setSelectedContainer(null);
       loadOperation();
 
-      // Email automático solo si el estado del contenedor cambió
-      const statusContenedorAnterior = selectedContainer.status;
-      const statusContenedorNuevo = containerForm.status;
-      if (operation?.operationType === "COMMERCIAL" && statusContenedorNuevo !== statusContenedorAnterior) {
+      // Email automático solo si el status GENERAL de la operación cambió como
+      // consecuencia de la actualización del contenedor (backend lo sincroniza).
+      if (operation?.operationType === "COMMERCIAL") {
         const cfg = getDashboardConfig();
         if (cfg.autoEmailOperaciones) {
-          operationsApi.notifyClient(operationId)
-            .then(() => toast.info("Email de estado enviado al cliente"))
-            .catch((err) => console.error("[notify-client] Error silencioso:", err));
+          const refreshed = await operationsApi.getById(operationId);
+          if (refreshed.status !== opStatusAntes) {
+            operationsApi.notifyClient(operationId)
+              .then(() => toast.info("Email de estado enviado al cliente"))
+              .catch((err) => console.error("[notify-client] Error silencioso:", err));
+          }
         }
       }
     } catch (error) {
