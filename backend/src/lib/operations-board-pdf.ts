@@ -57,11 +57,24 @@ function operationDescription(op: OperationWithContainers): string {
   return text.length > 80 ? `${text.slice(0, 77)}…` : text;
 }
 
+/** Abbreviations for long importer/company names to keep PDF rows compact. */
+const NAME_ABBREVIATIONS: Record<string, string> = {
+  'EMCI MENSAJERIA Y CAMBIO INTERNACIONAL': 'EMCI',
+};
+
+function applyNameAbbreviation(name: string): string {
+  const upper = name.trim().toUpperCase();
+  for (const [full, short] of Object.entries(NAME_ABBREVIATIONS)) {
+    if (upper === full || upper.startsWith(full)) return short;
+  }
+  return name.trim();
+}
+
 function clienteNombreCompania(op: OperationWithContainers): string {
   const c = op.offerCustomer?.cliente;
   if (!c) return '—';
   const comp = c.nombreCompania?.trim();
-  if (comp) return comp;
+  if (comp) return applyNameAbbreviation(comp);
   return [c.nombre, c.apellidos].filter(Boolean).join(' ').trim() || '—';
 }
 
@@ -314,7 +327,8 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
     }
     drawTableHeader();
 
-    for (const row of rows) {
+    for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+      const row = rows[rowIdx];
       const c = row.container;
       const o = row.operation;
       const cells = [
@@ -331,7 +345,7 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
         c.containerNo || '—',
         c.blNo || '—',
         clienteNombreCompania(o),
-        o.importadora?.nombre || '—',
+        applyNameAbbreviation(o.importadora?.nombre || '—'),
       ];
       const rowTopPad = 3;
       const lineStep = 7.2;
@@ -367,6 +381,11 @@ export async function buildOperationsBoardPdfBuffer(filters: ExportFilters): Pro
       const daysCount = daysInMarielCount(c);
       const daysDanger = daysCount !== null && daysCount > 10;
       const statusRetenido = (c.status || '').trim().toLowerCase() === 'retenido en aduana';
+
+      // Alternating row background (even rows get a very light stripe)
+      if (rowIdx % 2 === 1) {
+        doc.rect(x0, y, totalColumnWidth, rowHeight).fill('#F8FAFC');
+      }
 
       let fillX = x0;
       for (let i = 0; i < columns.length; i++) {
