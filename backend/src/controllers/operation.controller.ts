@@ -1545,13 +1545,12 @@ export const OperationController = {
     });
 
     if (!result.ok) {
-      console.error('[notify-client] Error al enviar email:', result.reason);
+      console.error(`[notify-client] Error al enviar email a ${to}:`, result.reason);
       res.status(500).json({ error: 'No se pudo enviar el email: ' + result.reason });
       return;
     }
 
-    // Log para debug: email real del cliente vs email de prueba
-    console.log(`[notify-client] Email enviado a ${to} (cliente real: ${clienteEmail ?? 'sin email'})`);
+    console.log(`[notify-client] ✅ Email enviado a ${to} (cliente real: ${clienteEmail ?? 'sin email'}) — op: ${operation.operationNo}`);
     res.json({ message: `Email enviado a ${to}` });
   },
 };

@@ -207,12 +207,24 @@ export default function OperationDetailPage(): React.ReactElement {
       // Email automático solo si el estado de la operación cambió
       const statusAnterior = operationStatusSelectValue(operation.status);
       const statusNuevo = operationForm.status;
+      const cfg = getDashboardConfig();
+      console.log("[notify-client] check:", {
+        tipo: operation.operationType,
+        statusAnterior,
+        statusNuevo,
+        autoEmail: cfg.autoEmailOperaciones,
+        changed: statusNuevo !== statusAnterior,
+      });
       if (operation.operationType === "COMMERCIAL" && statusNuevo !== statusAnterior) {
-        const cfg = getDashboardConfig();
         if (cfg.autoEmailOperaciones) {
           operationsApi.notifyClient(operationId)
-            .then(() => toast.info("Email de estado enviado al cliente"))
-            .catch((err) => console.error("[notify-client] Error silencioso:", err));
+            .then(() => toast.success("Email de estado enviado al cliente"))
+            .catch((err) => {
+              console.error("[notify-client] Error:", err);
+              toast.error("Error al enviar email al cliente");
+            });
+        } else {
+          console.log("[notify-client] autoEmailOperaciones desactivado en Ajustes generales");
         }
       }
     } catch (error) {
