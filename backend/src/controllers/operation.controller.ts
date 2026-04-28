@@ -1490,14 +1490,6 @@ export const OperationController = {
       return;
     }
 
-    // Cooldown: si ya se envió email para esta operación hace menos de 60s, omitir
-    if (isOnCooldown(id)) {
-      console.log(`[notify-client] Cooldown activo para operación ${id}, email omitido`);
-      res.json({ message: 'Email omitido (cooldown activo, ya se envió recientemente)' });
-      return;
-    }
-    setCooldown(id);
-
     // Obtener logo de empresa — usar URL de Cloudinary directamente (HTTPS, Gmail la carga sin problema)
     // Aplicamos transformación /h_80,c_fit/ para que sea pequeña y cargue rápido en el email
     const empresa = await prisma.empresa.findFirst({ select: { logo: true } });

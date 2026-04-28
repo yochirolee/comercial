@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,24 @@ export default function OperationDetailPage(): React.ReactElement {
   
   // Selected
   const [selectedContainer, setSelectedContainer] = useState<OperationContainer | null>(null);
+
+  // Debounce para email: espera 20s desde el último cambio de estado antes de enviar,
+  // así múltiples actualizaciones de contenedores producen un solo email con todos los estados.
+  const emailDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const EMAIL_DEBOUNCE_MS = 20_000;
+
+  function scheduleNotifyClient(): void {
+    if (emailDebounceRef.current) clearTimeout(emailDebounceRef.current);
+    toast.info("Email al cliente se enviará en 20s si no hay más cambios…");
+    emailDebounceRef.current = setTimeout(() => {
+      operationsApi.notifyClient(operationId)
+        .then(() => toast.success("Email de estado enviado al cliente"))
+        .catch((err) => {
+          console.error("[notify-client] Error:", err);
+          toast.error("Error al enviar email al cliente");
+        });
+    }, EMAIL_DEBOUNCE_MS);
+  }
   
   // Forms
   const [operationForm, setOperationForm] = useState({
@@ -217,12 +235,7 @@ export default function OperationDetailPage(): React.ReactElement {
       });
       if (operation.operationType === "COMMERCIAL" && statusNuevo !== statusAnterior) {
         if (cfg.autoEmailOperaciones) {
-          operationsApi.notifyClient(operationId)
-            .then(() => toast.success("Email de estado enviado al cliente"))
-            .catch((err) => {
-              console.error("[notify-client] Error:", err);
-              toast.error("Error al enviar email al cliente");
-            });
+          scheduleNotifyClient();
         } else {
           console.log("[notify-client] autoEmailOperaciones desactivado en Ajustes generales");
         }
@@ -303,9 +316,7 @@ export default function OperationDetailPage(): React.ReactElement {
         if (cfg.autoEmailOperaciones) {
           const refreshed = await operationsApi.getById(operationId);
           if (refreshed.status !== opStatusAntes) {
-            operationsApi.notifyClient(operationId)
-              .then(() => toast.info("Email de estado enviado al cliente"))
-              .catch((err) => console.error("[notify-client] Error silencioso:", err));
+            scheduleNotifyClient();
           }
         }
       }
